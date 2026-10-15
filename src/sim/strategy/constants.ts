@@ -1,7 +1,6 @@
 // Exact constants (decisions.md §4, D6b), Trips excluded. Pinned in constants.test.ts.
 // E[total wager] values (ante units) for the non-perfect strategies come from the exact
 // per-class counts of the independent solver (solve3.c); EVs match decisions.md §4 exactly.
-import type { TripsPaytableId } from '../engine/types';
 import type { Fraction } from '../math/types';
 import { frac } from './fraction';
 import type { StrategyId, StrategyLens } from './types';
@@ -77,15 +76,3 @@ export const STRATEGY_CONSTANTS: Readonly<Record<StrategyId, StrategyConstant>> 
     pickable: false,
   },
 };
-
-/** Exact Trips edge per unit wagered (decisions.md D6b): the house's expected win. */
-export const TRIPS_EDGE: Readonly<Record<TripsPaytableId, Fraction>> = {
-  'trips-9-7-4': frac(301629n, 33446140n),
-  'trips-8-6-5': frac(48987n, 2572780n),
-  'trips-8-7-4': frac(233985n, 6689228n),
-  'trips-7-6-5': frac(115779n, 2572780n),
-  'trips-8-6-4': frac(545459n, 8361535n),
-};
-
-/** D10: hands per hour for every per-hour figure. */
-export const HANDS_PER_HOUR = 30;

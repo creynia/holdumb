@@ -2,7 +2,8 @@
 import { resolveRules } from '../engine/rules';
 import type { TableRules } from '../engine/types';
 import type { Fraction } from '../math/types';
-import { HANDS_PER_HOUR, STRATEGY_CONSTANTS, TRIPS_EDGE } from './constants';
+import { HANDS_PER_HOUR, tripsEdge } from '../math/edges';
+import { STRATEGY_CONSTANTS } from './constants';
 import { frac, fracAdd, fracDiv, fracMul, fracNeg } from './fraction';
 import type { StrategyMetrics, StrategySpec } from './types';
 
@@ -20,7 +21,7 @@ export function strategyMetrics(
   const c = STRATEGY_CONSTANTS[spec.id];
   const ante = frac(spec.ante);
   const trips = frac(spec.trips);
-  const tripsEv = fracNeg(fracMul(TRIPS_EDGE[r.tripsPaytable], trips));
+  const tripsEv = fracNeg(fracMul(tripsEdge(r.tripsPaytable).edge, trips));
   const evPerHandCents = fracAdd(fracMul(c.ev, ante), tripsEv);
   const wagerCents = fracAdd(fracMul(c.wager, ante), trips);
   const loss = fracNeg(evPerHandCents);

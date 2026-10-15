@@ -8,8 +8,9 @@ describe('D36 (slow, SLOW=1)', () => {
     () => {
       const r = checkToRiverHiddenOnly();
       console.log('D36', r.num.toString(), r.den.toString(), Number(r.num) / Number(r.den));
-      // -1070600065/2139523848 (50.0392%) per the curriculum solvers
-      expect(r.num * 2139523848n).toBe(-1070600065n * r.den);
+      // The app's exact engine settles D36: -69584314001/139069050120 (50.0358%), the design
+      // reviewer's figure. The curriculum solvers' -1070600065/2139523848 (50.0392%) was off.
+      expect(r.num * 139069050120n).toBe(-69584314001n * r.den);
     },
     900_000,
   );

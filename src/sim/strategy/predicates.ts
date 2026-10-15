@@ -1,6 +1,7 @@
 // Hand predicates (decisions.md §3): flop rules (a)(b)(c), river "hidden" and dealer outs.
 import { handValueOf } from '../engine/evaluator';
 import type { Card } from '../engine/types';
+import { riverFacts } from '../math/alternatives';
 import type { HandPredicate } from './types';
 
 const CAT = (v: number): number => v >>> 20;
@@ -50,24 +51,14 @@ export function flushDrawFlop(
   return false;
 }
 
-/** River "hidden": category(best 5 of 7) >= pair and > category(the board's 5 cards). */
+/** River "hidden" (math/alternatives riverFacts: the single source for decisions.md §3). */
 export function isHidden(hole: readonly Card[], board: readonly Card[]): boolean {
-  const cat = CAT(handValueOf([...hole, ...board]));
-  return cat >= 1 && cat > CAT(handValueOf(board));
+  return riverFacts(hole as readonly [Card, Card], board).hidden;
 }
 
-/** River dealer outs: unseen cards c (of 45) with value(best 5 of board + c) > value(your 7). */
+/** River dealer outs of the 45 unseen cards. */
 export function dealerOuts(hole: readonly Card[], board: readonly Card[]): number {
-  const mine = handValueOf([...hole, ...board]);
-  const seen = new Set<number>([...hole, ...board]);
-  const six = [...board, 0];
-  let outs = 0;
-  for (let c = 0; c < 52; c++) {
-    if (seen.has(c)) continue;
-    six[5] = c;
-    if (handValueOf(six) > mine) outs++;
-  }
-  return outs;
+  return riverFacts(hole as readonly [Card, Card], board).outs;
 }
 
 /** Evaluates one predicate at the decision street implied by the board length. */

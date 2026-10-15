@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseCards } from '../engine/cards';
 import type { Card } from '../engine/types';
-import { STRATEGY_CONSTANTS, TRIPS_EDGE } from './constants';
+import { tripsEdge } from '../math/edges';
+import { STRATEGY_CONSTANTS } from './constants';
 import { fracToNumber } from './fraction';
 import { strategyMetrics } from './metrics';
 import { strategyAction } from './presets';
@@ -41,7 +42,13 @@ describe('constants (decisions.md section 4)', () => {
     expect(fracToNumber(m.evPerHourCents)).toBeCloseTo(-655.49, 1);
     const t = strategyMetrics({ id: 'perfect', ante: 1000, trips: 500 });
     expect(fracToNumber(t.evPerHourCents)).toBeCloseTo(-655.49 - 285.6, 0);
-    expect(TRIPS_EDGE['trips-8-6-5'].den).toBe(2572780n);
+    const te = (id: Parameters<typeof tripsEdge>[0]) =>
+      `${tripsEdge(id).edge.num}/${tripsEdge(id).edge.den}`;
+    expect(te('trips-9-7-4')).toBe('301629/33446140');
+    expect(te('trips-8-6-5')).toBe('48987/2572780');
+    expect(te('trips-8-7-4')).toBe('233985/6689228');
+    expect(te('trips-7-6-5')).toBe('115779/2572780');
+    expect(te('trips-8-6-4')).toBe('545459/8361535');
     const cost = (id: StrategyId) =>
       -fracToNumber(strategyMetrics({ id, ante: 1000, trips: 0 }).evPerHourCents) - 655.49;
     expect(cost('expert')).toBeCloseTo(26, 0);

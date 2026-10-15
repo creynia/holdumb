@@ -12,8 +12,7 @@ export function checkToRiverHiddenOnly(rule: RiverRule = 'hidden'): { num: bigin
   for (let a = 0; a < 4; a++)
     for (let b = 0; b < 4; b++)
       for (let c = 0; c < 4; c++)
-        for (let d = 0; d < 4; d++)
-          if (new Set([a, b, c, d]).size === 4) perms.push([a, b, c, d]);
+        for (let d = 0; d < 4; d++) if (new Set([a, b, c, d]).size === 4) perms.push([a, b, c, d]);
   const groups = new Map<number, { cards: number[]; w: number }>();
   const x = [0, 0, 0, 0, 0];
   for (let a = 0; a < 52; a++)
@@ -74,7 +73,7 @@ export function checkToRiverHiddenOnly(rule: RiverRule = 'hidden'): { num: bigin
         nq[pa[i]!]!++;
         nq[pb[i]!]!++;
       }
-    for (let g = 0; g < n; ) {
+    for (let g = 0; g < n;) {
       let e = g;
       while (e < n && vals[order[e]!] === vals[order[g]!]) e++;
       for (let k = g; k < e; k++) {
