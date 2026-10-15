@@ -33,12 +33,13 @@ spike's and the simulator spike's `strat.c`/`strat2.c`), plus orchestrator spot 
 | D11 | Practice mode | A sandbox toggle that hides EV until you confirm, off by default. Drill always grades after the answer. |
 | D12 | Blind presets | One Blind preset (`blind-standard`). No sourced cheaper table exists. Ship one preflop table, but keep the generator and types parameterised by the Blind paytable so a preset can be added later (chip). Blind variants are not in the v1 settings UI. |
 | D13 | Wire format | `Fraction = { num, den }` (bigint) as in `architecture.md`'s `protocol.ts`. |
-| D15 | Practical lens | The practical strategies are `basic` and `simple` (D16). The simulator draft's old `simple` is renamed **`riverLeak`**, is lesson-only, and is never offered as a practical preset. |
+| D15 | Practical lens | The practical strategies are `basic` and `simple` (D16). The simulator draft's old `simple` is renamed **`river-leak`**, is lesson-only, and is never offered as a practical preset. |
 | D16 | `simple` | Preflop 4x with 33+, any A, any K, Q8+ (suited or not), JT; otherwise check. Flop 2x with two pair or better (rule a) or a hidden pair (rule b); otherwise check. River as `basic`. |
 | D17 | Primary metric | **House edge per Ante.** The EV sheet shows each option's whole-hand EV in antes and dollars plus its cost against the best option. Element of risk is secondary, taught in `edge-vs-risk`. |
 | D18 | How EV is computed | River: exact on device (990 dealer hands). Flop: exact in the Web Worker (1,070,190 showdowns), started as soon as the flop is dealt. Preflop: a precomputed exact table of 169 classes (~11 kB). Monte Carlo only for multi-hand simulation, always labelled "≈ … simulated". Long auto-play runs use `expert` as the fast stand-in for `perfect`. |
 | D19 | Ids | See §4. The scene schema is owned by `simulator.md`. |
 | D20 | Rule definitions | See §3. |
+| D21 | Cross-check | Two independent exhaustive solvers plus the Opus design reviewer's own solver agree on every number in §4. |
 | D22 | Table regeneration in CI | `simulator.md` wins over `architecture.md` §8: generating the preflop table takes hours, so CI does **not** regenerate it. CI checks the shipped table against the pinned values (simulator.md Appendix A) plus Monte Carlo and sampled exact checks. |
 | D23 | Settings paytable | `Settings.paytable` is a typed preset id (simulator.md), not a free-form object. |
 | D24 | Tiers | Decision tiers on regret r (antes): `best` r = 0 (ties within 1e-9 both `best`), `close` ≤ 0.02, `small` ≤ 0.10, `costly` ≤ 0.50 (alternative card), `blunder` > 0.50 (red, second tap "Do it anyway" when `confirmCostlyMoves` is on, default on). Wager tiers for Trips use crappy's thresholds: `free` ≤ 0, `good` ≤ 2%, `fair` ≤ 5%, `poor` < 9%, `avoid` ≥ 9%. A text label always accompanies the colour. |
@@ -65,7 +66,7 @@ spike's and the simulator spike's `strat.c`/`strat2.c`), plus orchestrator spot 
 | `expert` (perfect preflop, basic flop, exact river) | −106357031/4682459600 | 2.27140% | $0.26/h |
 | `basic` | −54758439/2299422125 | 2.38140% | $0.59/h |
 | `simple` | −47068162901/1738363126500 | 2.70761% | $1.57/h |
-| `riverLeak` (lesson only) | −6205519211/38630291700 | 16.06387% | $41.64/h |
+| `river-leak` (lesson only) | −6205519211/38630291700 | 16.06387% | $41.64/h |
 | `check-to-river` | −111371309107/347672625300 | 32.0334% | — |
 | `never-fold` = `always-max` | −6432686411/15803301150 | 40.7047% | — |
 
@@ -84,6 +85,59 @@ spike's and the simulator spike's `strat.c`/`strat2.c`), plus orchestrator spot 
 **Chapter ids:** `foundations`, `ev-basics`, `perfect-lowest-edge`, `perfect-practical`,
 `perfect-fun`, `real-casino`.
 
-## 5. Open items
+## 5. Design-review resolutions (Opus review of 1744b01)
 
-Filled in by the design review (§6 of the playbook).
+The math was independently re-solved and matches. These items fix contracts and scenes. Content and
+implementation agents follow these over the spike docs.
+
+### D25 Scene mapping (content authors write simulator `SceneConfig` only)
+The scene YAML in curriculum.md §1.2 is superseded by simulator.md §4.1. Mapping:
+- `table.{bankroll,ante,trips}` → `bankroll`, `bets.{ante,trips}`; `tripsPaytable` → `rules.trips`
+- `say` → `text`; `showEv` → `showEV`
+- `allowed` → `allowedActions` + `allowedOptions` (`all` = omit; `[]` = `[]`)
+- `{action: play-4}` → `{action:{type: play, option: play-4}}`; `{action: deal}` → `{action:{type: deal}}`
+- `{next:true}` → `{acknowledged:true}` + `advance: button`
+- `{handsPlayed:n}` → `{hands:n}`; `{autoPlayDone:true}` → `{autoPlayCompleted:{}}`
+- `{tap: ev-sheet}` → `{previewed:{option:…}}`
+- `startAt: preflop` (string) is invalid: use `startAt:{street, deal}` or a step `deals`.
+- `autoPlay.{hands,strategy,speed,compare,sessions,chart}` → `autoPlay.{handOptions:[n], defaultStrategy:{id,ante,trips}, compare: StrategySpec[]}` and `ui.speed`. Compare entries use `id:`.
+- Scene ids stay `lNN-sN`. YAML lists of ranks/classes are quoted strings (`highlight: ["33", …]`).
+
+### D26 Tap conditions
+Add `Condition {tapped: CircleId | 'session'}` and `SceneInput {kind:'tapped'; target}`. The container emits it on circle or session-panel taps even when `set-bet` is gated. Add `ui.showSession?: boolean`.
+
+### D27 Best-decision steps
+`best:true` → `expect:[{type:…, best:true}]` + `completeWhen:{bestDecisions:{count:1, street:<street taught>}}`. A non-best action is rejected with the step's hint; there is no "Try again" replay. Each hand's forced deal goes on the step that deals it (step `deals`), not a scene-level queue. Deal is locked (no `deal` in `allowedActions`) while a step waits for a decision.
+
+### D27a No dead ends
+Every reachable street must have at least one allowed option. `validateScene` enforces this ("every reachable street has ≥1 allowed option") and the build fails otherwise. Scenes l05-s1, l06-s1, l06-s2 and l09-s1 must allow `play-2, play-1, fold` (or use D27 gating).
+
+### D28 Frozen type files
+WP0 copies all four type files verbatim (engine `types.ts`, `math/types.ts`, `strategy/types.ts`, `scene/types.ts`) plus `protocol.ts`, with imports fixed so they lint and compile: import `Rank` in strategy/types and `Action` in scene/types; drop the unused `HandCategory` (math), `ForcedDeal`, `BlindPaytableId`, `TripsPaytableId` (strategy) imports. All become batons.
+
+### D29 File ownership
+simulator.md §7 wins over architecture.md §9: `ui/{AutoPlayPanel,BankrollChart,OutcomeHistogram}` → strategy; `ui/{Simulator,StepPanel,persist,settings}` → integration. Content split by lesson: content-a lessons 1–6 + `content/*.json`; content-b lessons 7–14; content-c lessons 15–23.
+
+### D30 Settings
+`paytable: PaytablePresetId` (default `trips-8-6-5`), `practice: boolean` (default false, D11), `confirmCostlyMoves: boolean` (default true), `skipPreview: boolean` (default false). The ante field is `anteUnitCents` everywhere.
+
+### D31 Button labels
+`Bet 4x · Bet 3x · Check · Bet 2x · Bet 1x · Fold` in the simulator (`DecisionOption.label`), Drill, lessons and architecture.md. Never "Raise".
+
+### D32 Auto-play and bust
+100-session runs draw a p10–p90 band plus a survival curve, not individual lines, and a "Trips hits" summary rather than per-hand markers. `stopAtBust`: bust when equity < 6×ante + trips. `autoPlayCompleted` fires when the run ends, busts included. `minHands` = requested hands per session.
+
+### D33 Drill
+`DrillSpot` and `DrillFilter` carry `category: DrillCategoryId` (the 18 categories in curriculum.md §9.1). Flop spots only come from chart-check hands. A Drill answer is correct iff its tier ∈ {`best`, `close`}.
+
+### D34 Performance lines
+The phone target is ~1 s per flop decision. The CI hard-fail is 1.5 s at 4× CPU throttle (architecture.md §4.5).
+
+### D35 Content corrections (curriculum.md; the curriculum spike applies them)
+- S4: l07-s1 and l23-s1 set `practice: true` (EV hidden until you confirm).
+- S5: l17-s2 / l21-s1 copy refers to the survival curve, bust rate and "Trips hits" summary (D32).
+- S7: the "pair-only river" and "check to river, hidden pair only" figures are recomputed with §3's "hidden" and the prose is updated.
+- S8: lesson 15 says "every per-hour figure on the EV sheet, Drill and auto-play".
+- S9: lesson 21: "below ≈$160,500 it loses money; below ≈$46,500 it loses a third or more"; "about twice the standard cost"; $19.99.
+- S10: lesson 20 says the progressive's awards are "for 1" with the $1 kept.
+- Nits: §4 count is 21 lessons + 1 checkpoint (14) + exam (23); EV sheet starts at lesson 5; $6.55/h; preflop table ≈ 11 kB; `riverLeak` → `river-leak`; Trips wager tier `poor` label is "Poor bet"; lesson 12's "1 in 90" is labelled "≈ sampled"; inline `{{cards}}` render in quiz text, options and explanations; lesson 21 rec. 5 says "the count".
