@@ -1,0 +1,51 @@
+{
+  "name": "holdumb",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "predev": "node scripts/gen-icons.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/gen-icons.mjs",
+    "build": "tsc -b && vite build",
+    "build:single": "vite build --mode single && node scripts/finalize-single.mjs",
+    "build:all": "npm run build && npm run build:single && cp dist-single/holdumb.html dist/holdumb.html",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "gen:tables": "GEN_TABLES=1 vitest run --project node --passWithNoTests tests/gen",
+    "lint": "eslint .",
+    "typecheck": "tsc -b --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run lint && npm run typecheck && npm run format:check && npm test"
+  },
+  "dependencies": {
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10",
+    "@playwright/test": "1.56.1",
+    "@preact/preset-vite": "^2.10.6",
+    "@testing-library/preact": "^3.2.4",
+    "@types/node": "^22",
+    "eslint": "^10",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "happy-dom": "^21.0.1",
+    "marked": "^18.1.1",
+    "prettier": "^3",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^5.0.4",
+    "yaml": "^2.9.1"
+  }
+}

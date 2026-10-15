@@ -1,0 +1,63 @@
+/* Theme tokens. Light by default; dark follows the OS unless forced with data-theme. */
+:root {
+  color-scheme: light dark;
+  --bg: #f6f4ee;
+  --surface: #ffffff;
+  --text: #1b2430;
+  --muted: #5b6675;
+  --accent: #0b2e4a;
+  --felt: #0b2e4a;
+  --card: #f8f5ec;
+  --tier-best: #1a7f4b;
+  --tier-close: #2d7bb6;
+  --tier-small: #8a6d00;
+  --tier-costly: #b45309;
+  --tier-blunder: #b42318;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0e1620;
+    --surface: #17222f;
+    --text: #e7ecf2;
+    --muted: #9aa7b6;
+    --accent: #7fb7e6;
+    --felt: #0b2e4a;
+    --card: #f8f5ec;
+    --tier-best: #4cc38a;
+    --tier-close: #6db3e8;
+    --tier-small: #e0c14d;
+    --tier-costly: #f0a04b;
+    --tier-blunder: #ff7b72;
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0e1620;
+  --surface: #17222f;
+  --text: #e7ecf2;
+  --muted: #9aa7b6;
+  --accent: #7fb7e6;
+  --felt: #0b2e4a;
+  --card: #f8f5ec;
+  --tier-best: #4cc38a;
+  --tier-close: #6db3e8;
+  --tier-small: #e0c14d;
+  --tier-costly: #f0a04b;
+  --tier-blunder: #ff7b72;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+main {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 16px;
+}
