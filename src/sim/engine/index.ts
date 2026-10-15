@@ -21,4 +21,15 @@ export { formatMoney, formatPct } from './money';
 export { createGame, applyAction, replay, visibleView, equity, legalActions } from './game';
 export type { CreateGameOptions } from './game';
 export { validateAction } from './validate';
-export { evaluate7, evaluateN, handValueOf } from './evaluator';
+export {
+  evaluate7,
+  evaluate5,
+  evaluateN,
+  evaluateHand,
+  handValueOf,
+  evalMasks,
+  categoryOf,
+  describeHand,
+  compareHands,
+} from './evaluator';
+export { seedRng, nextU32, randBelow, shuffle } from './rng';
