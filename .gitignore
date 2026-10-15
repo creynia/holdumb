@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-single/
+public/icons/
+coverage/
+playwright-report/
+test-results/
+.DS_Store
+*.log
