@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, renameSync, statSync } from 'node:fs';
 
 // Size budget (architecture.md 5.4): target <= 600 kB, hard fail at 800 kB.
+const TARGET_SINGLE_BYTES = 600_000;
 const MAX_SINGLE_BYTES = 800_000;
 
 const dir = 'dist-single';
@@ -37,5 +38,8 @@ if (size > MAX_SINGLE_BYTES) bad.push(`size ${size} B exceeds the ${MAX_SINGLE_B
 if (bad.length) {
   console.error('finalize-single: external references found:\n  ' + bad.join('\n  '));
   process.exit(1);
+}
+if (size > TARGET_SINGLE_BYTES) {
+  console.warn(`finalize-single: WARNING ${size} B is over the ${TARGET_SINGLE_BYTES} B target`);
 }
 console.log(`finalize-single: dist-single/holdumb.html (no external references, ${size} B)`);

@@ -4,6 +4,7 @@
 type UpdateListener = (apply: () => void) => void;
 
 let waiting: ServiceWorker | null = null;
+let registration: ServiceWorkerRegistration | null = null;
 const listeners = new Set<UpdateListener>();
 
 function applyUpdate(): void {
@@ -22,6 +23,33 @@ export function onUpdateAvailable(listener: UpdateListener): () => void {
   return () => listeners.delete(listener);
 }
 
+export type UpdateCheck = 'unsupported' | 'update-available' | 'up-to-date' | 'failed';
+
+/**
+ * Settings → "Check for updates". Asks the browser to re-fetch sw.js and resolves with the
+ * outcome ('unsupported' in dev, the single-file build, file:// and browsers without SW).
+ * When an update is found the onUpdateAvailable listeners fire (toast), as for the automatic check.
+ */
+export async function checkForUpdates(): Promise<UpdateCheck> {
+  if (!registration) return 'unsupported';
+  try {
+    await registration.update();
+    const found = registration.waiting ?? registration.installing;
+    if (!found || !navigator.serviceWorker.controller) return 'up-to-date';
+    if (found.state === 'installed') notify(found);
+    else
+      await new Promise<void>((done) => {
+        found.addEventListener('statechange', () => {
+          if (found.state === 'installed') notify(found);
+          if (found.state === 'installed' || found.state === 'redundant') done();
+        });
+      });
+    return waiting ? 'update-available' : 'up-to-date';
+  } catch {
+    return 'failed';
+  }
+}
+
 export function registerSW(): void {
   if (__SINGLE_FILE__ || import.meta.env.DEV) return;
   if (!('serviceWorker' in navigator)) return;
@@ -38,6 +66,7 @@ export function registerSW(): void {
     navigator.serviceWorker
       .register('./sw.js')
       .then((reg) => {
+        registration = reg;
         if (reg.waiting && navigator.serviceWorker.controller) notify(reg.waiting);
         reg.addEventListener('updatefound', () => {
           const installing = reg.installing;

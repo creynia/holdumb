@@ -1,12 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="96" fill="#0b2e4a"/>
-  <rect x="96" y="96" width="320" height="320" rx="56" fill="#f8f5ec"/>
-  <g fill="#0b2e4a">
-    <circle cx="170" cy="170" r="34"/>
-    <circle cx="342" cy="170" r="34"/>
-    <circle cx="256" cy="256" r="34"/>
-    <circle cx="170" cy="342" r="34"/>
-    <circle cx="342" cy="342" r="34"/>
-  </g>
   <circle cx="256" cy="256" r="236" fill="none" stroke="#d4af37" stroke-width="8"/>
+  <g transform="translate(214 262) rotate(-14)">
+    <rect x="-98" y="-140" width="196" height="280" rx="26" fill="#f8f5ec"/>
+    <polygon points="-76,-40 -44,-86 -12,-40 -44,6" fill="#c0392b"/>
+  </g>
+  <g transform="translate(300 256) rotate(10)">
+    <rect x="-105" y="-147" width="210" height="294" rx="33" fill="#0b2e4a"/>
+    <rect x="-98" y="-140" width="196" height="280" rx="26" fill="#f8f5ec"/>
+    <g fill="#0b2e4a" transform="translate(0 -6)">
+      <polygon points="0,-74 -66,14 66,14"/>
+      <circle cx="-33" cy="14" r="35"/>
+      <circle cx="33" cy="14" r="35"/>
+      <polygon points="0,10 -20,76 20,76"/>
+    </g>
+  </g>
 </svg>
