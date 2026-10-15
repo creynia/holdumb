@@ -3195,7 +3195,7 @@ The numbers come from math (never typed into JSON) and must equal these exact va
 | Never bet 2x on the flop | 9.4187% | −16373139857/173836312650 |
 | 4x only with pairs and aces | 5.6472% | −196337758313/3476726253000 |
 | Chart + basic flop, river 1x only when hidden (§3) | 7.1290% | −22532354359/316066023000 |
-| Check to the river, bet 1x only with a hidden pair | 50.0392% | −1070600065/2139523848 |
+| Check to the river, bet 1x only with a hidden pair | 50.0358% | −69584314001/139069050120 |
 | `river-leak` | 16.0639% | −6205519211/38630291700 |
 
 ### 7.3 What the strategy chart shows (`#/strategy`)
@@ -3540,7 +3540,7 @@ Resolved in decisions.md: the `simple` redefinition (D15/D16; the old one is `ri
 dealer-outs definitions (§3), the scene format (D25–D27a), the tiers (D24) and the button labels (D31).
 Still open or assumed:
 
-1. **"Check to the river, bet 1x only with a hidden pair" = −1070600065/2139523848 (50.0392%).** The design
+1. **SETTLED (decisions D36): "Check to the river, bet 1x only with a hidden pair" = −69584314001/139069050120 (50.0358%).** The earlier figure below, −1070600065/2139523848 (50.0392%), was wrong. The design
    reviewer reported 50.0358%. I recomputed it two independent ways with §3's "hidden": the flop-centric
    solver (mode 3), and a separate board-centric enumeration over all 134,459 canonical boards (`bb3.c`).
    Both give exactly −1070600065/2139523848, and the same program reproduces never-fold (−6432686411/15803301150)
