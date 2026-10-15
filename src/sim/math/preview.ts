@@ -148,7 +148,7 @@ export function riverPreview(req: PreviewRequest): DecisionPreview {
 function* flopPreview(req: PreviewRequest): Generator<Progress | undefined, DecisionPreview, void> {
   const gen = flopTotalsJob({
     hole: req.hole,
-    flop: req.board as readonly [number, number, number],
+    flop: req.board,
     blind: req.blindPaytable,
   });
   let step = gen.next();

@@ -110,7 +110,7 @@ export function* flopTotalsJob(
   const unseen: number[] = [];
   for (let c = 0; c < 52; c++) if (!dead[c]) unseen.push(c);
   const scratch = makeScratch();
-  const board = [flop[0] as number, flop[1] as number, flop[2] as number, 0, 0];
+  const board = [flop[0], flop[1], flop[2], 0, 0];
   const t: FlopTotals = {
     runouts: 0,
     wq: 0,

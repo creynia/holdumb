@@ -28,7 +28,7 @@ describe('Trips edges (decisions.md D6b)', () => {
     expect(e.tier).toBe(tier);
   });
   it('covers every preset', () => {
-    expect(PAYTABLE_PRESET_IDS.sort()).toEqual(Object.keys(want).sort());
+    expect([...PAYTABLE_PRESET_IDS].sort()).toEqual(Object.keys(want).sort());
   });
   it('category counts sum to the 7-card total with the rest below trips', () => {
     const total = Object.values(SEVEN_CARD_COUNTS).reduce((a, b) => a + b, 0n);
