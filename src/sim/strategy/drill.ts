@@ -142,9 +142,9 @@ function isClose(s: DrillSpot): boolean {
 function randomClassSpot(rng: RngState, cls: string): [DrillSpot, RngState] {
   const { hi, lo, suited, pair } = parseClass(cls);
   let r = rng;
-  let s1: number;
+  const [s1, r1] = randBelow(r, 4);
+  r = r1;
   let s2: number;
-  [s1, r] = randBelow(r, 4);
   if (suited) s2 = s1;
   else {
     let d: number;
@@ -178,8 +178,8 @@ export function nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngSta
   if (!filter.interesting) return sampleWhere(r, street, base);
 
   // ~60% close spots: pick the wanted kind first, then sample until it matches.
-  let u: number;
-  [u, r] = randBelow(r, 1000);
+  const [u, r2] = randBelow(r, 1000);
+  r = r2;
   const wantClose = u < 600;
   return sampleWhere(r, street, (s) => base(s) && isClose(s) === wantClose);
 }

@@ -78,7 +78,7 @@ function* session(
     if (stopped) {
       out.eq[h] = out.eq[h - 1]!;
     } else {
-      state = dealAndPlay(state, strat.decide);
+      state = dealAndPlay(state, (v) => strat.decide(v));
       const res = state.hand!.result!;
       out.played++;
       out.outcomes[res.outcome]++;

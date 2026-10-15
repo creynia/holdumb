@@ -55,9 +55,13 @@ export function riverCounts(
         (b & 3) === 3 ? am[3]! | (1 << (b >> 2)) : am[3]!,
       );
       const q = d >= 1 << 20;
-      if (player > d) q ? wq++ : wnq++;
-      else if (player < d) q ? lq++ : lnq++;
-      else tie++;
+      if (player > d) {
+        if (q) wq++;
+        else wnq++;
+      } else if (player < d) {
+        if (q) lq++;
+        else lnq++;
+      } else tie++;
     }
   }
   return {

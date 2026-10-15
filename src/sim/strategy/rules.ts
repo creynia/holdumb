@@ -1,5 +1,4 @@
 // The rule-based presets as DATA (simulator.md §5.2, decisions.md §3 / D16 / D20).
-import type { Rank } from '../engine/types';
 import { ALL_CLASSES } from './ranks';
 import type { HandPredicate, RuleStrategyDef, StrategyId } from './types';
 
@@ -46,9 +45,9 @@ export const PREFLOP_4X_SIMPLE: readonly string[] = [
 export const PREFLOP_4X_RIVER_LEAK: readonly string[] = [...pairs('2'), ...span('A', '2', 'so')];
 
 const FLOP_A: HandPredicate = { flopMade: 'two-pair-plus-hole-plays' };
-const FLOP_B_NO_DEUCES: HandPredicate = { hiddenPair: { exceptPocket: [0 as Rank] } };
+const FLOP_B_NO_DEUCES: HandPredicate = { hiddenPair: { exceptPocket: [0] } };
 const FLOP_B_ANY: HandPredicate = { hiddenPair: {} };
-const FLOP_C: HandPredicate = { flushDraw: { minCards: 4, minHoleRank: 8 as Rank } };
+const FLOP_C: HandPredicate = { flushDraw: { minCards: 4, minHoleRank: 8 } };
 const RIVER_HIDDEN: HandPredicate = { hidden: true };
 const RIVER_OUTS: HandPredicate = { dealerOutsBelow: 21 };
 

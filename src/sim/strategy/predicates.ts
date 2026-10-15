@@ -29,7 +29,7 @@ export function hiddenPairFlop(
 ): boolean {
   const ra = hole[0]! >> 2;
   const rb = hole[1]! >> 2;
-  if (ra === rb) return !exceptPocket.includes(ra);
+  if (ra === rb && !exceptPocket.includes(ra)) return true;
   for (const f of flop) {
     const r = f >> 2;
     if (r === ra || r === rb) return true;
