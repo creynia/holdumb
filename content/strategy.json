@@ -1,0 +1,73 @@
+{
+  "perfect": {
+    "title": "Perfect",
+    "summary": "The exact best option at every decision. It gives the lowest house edge, and nothing does better.",
+    "rules": [
+      "**Preflop:** 4x with the hands on the chart (pairs 33 and up, any ace, any suited king, K5o+, Q6s+, Q8o+, J8s+, JTo), otherwise check. 3x is never best.",
+      "**Flop:** the exact best of 2x or check, found by looking at every possible turn, river and dealer hand. The basic flop rule matches it almost always.",
+      "**River:** the exact best of 1x or fold, found by looking at every dealer hand. The basic river rule matches it almost always.",
+      "Perfect play differs from the basic rules only in rare spots; the EV sheet always shows the exact answer."
+    ]
+  },
+  "expert": {
+    "title": "Expert",
+    "summary": "The chart preflop, the basic flop rule and the exact river decision. Used as a fast stand-in for perfect play in long simulations.",
+    "rules": [
+      "**Preflop:** the chart (the same as perfect).",
+      "**Flop:** the basic flop rule.",
+      "**River:** the exact best of 1x or fold."
+    ]
+  },
+  "basic": {
+    "title": "Basic",
+    "summary": "The practical strategy: a chart you can learn, two flop rules and one river rule.",
+    "rules": [
+      "**Preflop:** 4x with pairs 33 and up, any ace, any suited king, K5o+, Q6s+, Q8o+, J8s+ and JTo. Otherwise check.",
+      "**Flop:** bet 2x with two pair or better that uses your cards, or a hidden pair (a pocket pair other than 22, or a hole card matching a flop rank), or four to a flush with a ten or higher of that suit in your hand. Otherwise check.",
+      "**River:** bet 1x if you have a hidden pair or better, or if fewer than 21 unseen cards would beat you. Otherwise fold."
+    ]
+  },
+  "simple": {
+    "title": "Simple",
+    "summary": "The lightest practical strategy, with short preflop and flop rules.",
+    "rules": [
+      "**Preflop:** 4x with pairs 33 and up, any ace, any king, Q8 or better, and JT. Otherwise check.",
+      "**Flop:** bet 2x with two pair or better that uses your cards, or a hidden pair. Otherwise check. There is no flush rule.",
+      "**River:** the same as basic."
+    ]
+  },
+  "check-to-river": {
+    "title": "Check to the river",
+    "summary": "The cautious player: never bets early, then decides exactly at the river. A common habit that is costly.",
+    "rules": [
+      "**Preflop:** always check.",
+      "**Flop:** always check.",
+      "**River:** the exact best of 1x or fold."
+    ]
+  },
+  "never-fold": {
+    "title": "Never fold",
+    "summary": "Checks every street and always bets 1x at the river. Shows what the \"never fold\" myth costs.",
+    "rules": [
+      "**Preflop and flop:** always check.",
+      "**River:** always bet 1x."
+    ]
+  },
+  "always-max": {
+    "title": "Always bet the maximum",
+    "summary": "Bets 4x every hand before the flop. The fun and maniac strategy.",
+    "rules": [
+      "**Preflop:** always bet 4x, whatever the cards.",
+      "There are no more decisions after that."
+    ]
+  },
+  "river-leak": {
+    "title": "River leak",
+    "summary": "A lesson-only strategy that gets the river wrong. It is not a practical preset.",
+    "rules": [
+      "**Preflop:** 4x with any pair or any ace. Otherwise check.",
+      "**Flop:** bet 2x with a hidden pair or two pair or better. Otherwise check.",
+      "**River:** bet 1x only with a hidden pair; fold everything else."
+    ]
+  }
+}
