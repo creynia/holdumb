@@ -142,8 +142,8 @@ The phone target is ~1 s per flop decision. The CI hard-fail is 1.5 s at 4× CPU
 - S10: lesson 20 says the progressive's awards are "for 1" with the $1 kept.
 - Nits: §4 count is 21 lessons + 1 checkpoint (14) + exam (23); EV sheet starts at lesson 5; $6.55/h; preflop table ≈ 11 kB; `riverLeak` → `river-leak`; Trips wager tier `poor` label is "Poor bet"; lesson 12's "1 in 90" is labelled "≈ sampled"; inline `{{cards}}` render in quiz text, options and explanations; lesson 21 rec. 5 says "the count".
 
-### D36 Disputed lesson-only figure
-"Check to the river, bet 1x only with a hidden pair": the curriculum's two solvers give −1070600065/2139523848 (50.0392%); the design reviewer's gives 50.0358%. Both round to the 50.04% shown in lesson prose. This fraction is **not** pinned in unit tests until the strategy work package's exact engine settles it (tracked in `docs/chips.md`). Every other pinned value in curriculum.md §11 stands.
+### D36 Settled lesson-only figure
+"Check to the river, bet 1x only with a hidden pair" = **−69584314001/139069050120 (50.0358%)**, computed exactly by the strategy work package with the app's own evaluator over every deal; the same enumerator reproduces never-fold and check-to-river exactly. The design reviewer's figure was right; the curriculum spike's 50.0392% was not. Lesson prose ("50.04%") is unchanged. Pin this fraction.
 
 ### D37 WP0 contract placements
 `Progress` and `Job` live in `src/sim/engine/job.ts` (re-exported by `worker/protocol.ts`) so math can use them without importing the worker. `EvClient` is declared in `worker/protocol.ts`. `CircleId` is defined in `src/sim/scene/types.ts`; table-ui imports it rather than redefining it. `@playwright/test` and `playwright-core` are pinned to 1.56.1 via `overrides`.
