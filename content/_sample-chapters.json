@@ -1,0 +1,8 @@
+[
+  {
+    "id": "sample-chapter",
+    "title": "Sample chapter",
+    "summary": "Placeholder content so the app has something to show until the real lessons land.",
+    "lessons": ["sample-cards", "sample-quiz"]
+  }
+]

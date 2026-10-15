@@ -1,12 +1,22 @@
 import { render } from 'preact';
+import { App } from './app/App';
+import { AppProviders } from './app/context';
+import { Store } from './app/store';
+import { applyTheme } from './app/theme';
+import { onUpdateAvailable, registerSW } from './pwa/register';
+import content from 'virtual:content';
 import './app/styles/tokens.css';
+import './app/styles/app.css';
 import './app/test-hook';
 
-// WP0 shell. TODO(app) replaces it with the real app (router, store, screens).
+const store = new Store();
+applyTheme(store.settings);
+
 render(
-  <main>
-    <h1>holdumb</h1>
-    <p>Ultimate Texas Hold&apos;em, from zero to perfect strategy. Under construction.</p>
-  </main>,
+  <AppProviders content={content} store={store}>
+    <App onUpdateAvailable={onUpdateAvailable} />
+  </AppProviders>,
   document.getElementById('app')!,
 );
+
+registerSW();
