@@ -128,7 +128,15 @@ export interface GameState {
   rules: TableRules;
   street: Street;
   bankroll: Cents;                 // money in the rack, NOT on the felt
-  /** Chips on the felt for the current/next hand. blind always equals ante. */
+  /**
+   * Chips on the felt for the current hand (already out of `bankroll`); blind always equals ante.
+   * In 'settled' it is the NEXT hand's intent, still counted in `bankroll` until `deal` re-bets
+   * it (decisions.md D38).
+   */
+  /**
+   * Before a deal and during a hand: chips on the felt (already out of `bankroll`). In 'settled':
+   * the NEXT hand's intent, still counted in `bankroll` until `deal` re-bets them (decisions.md D38).
+   */
   bets: Readonly<Record<WagerId, Cents>>;
   hand: HandState | null;          // null before the first deal / after 'clear'
   handCount: number;
