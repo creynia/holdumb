@@ -1,5 +1,4 @@
 import { useEffect, useReducer, useRef } from 'preact/hooks';
-import { UpdateToast, type UpdateSubscribe } from './components/UpdateToast';
 import { Shell } from './components/Shell';
 import { useStore } from './context';
 import { consumeFreshNav, useRoute } from './router';
@@ -23,7 +22,7 @@ function writeScroll(hash: string, y: number) {
   }
 }
 
-export function App(props: { onUpdateAvailable?: UpdateSubscribe }) {
+export function App() {
   const route = useRoute();
   const store = useStore();
   const { theme, animationSpeed, reduceMotion, fourColorDeck } = store.settings;
@@ -79,7 +78,6 @@ export function App(props: { onUpdateAvailable?: UpdateSubscribe }) {
       }
     >
       {renderRoute(route)}
-      {props.onUpdateAvailable && <UpdateToast subscribe={props.onUpdateAvailable} />}
     </Shell>
   );
 }

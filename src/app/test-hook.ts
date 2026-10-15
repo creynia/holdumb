@@ -1,4 +1,4 @@
-// WP0 test hook: exposes the EV client to e2e (worker smoke). TODO(app) may keep or drop it.
+// Test hook: exposes the EV client to e2e. Required by tests/e2e/single-file.spec.ts.
 import { parseCards } from '../sim/engine';
 import { createEvClient } from '../sim/worker';
 
