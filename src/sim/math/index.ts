@@ -23,3 +23,7 @@ export {
 export { isChartHand, preflopClass, preflopClasses, preflopRow, rowSums } from './preflop';
 export type { PreflopRow } from './preflop';
 export * as fraction from './fraction';
+export { riverPreview, preflopPreview } from './preview';
+export { riverTotals, flopTotalsJob, blindX2 } from './enumerate';
+export type { RiverTotals, FlopTotals, FlopRequest } from './enumerate';
+export { classWeight, preflopRow as preflopTableRow } from './preflop';

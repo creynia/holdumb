@@ -6,6 +6,9 @@ import { previewJob } from './preview';
 import { flopEvNaive, mulberry32, riverEv } from './__tests__/reference';
 import type { DecisionPreview, PreviewRequest } from './types';
 import type { Card } from '../engine/types';
+import { settleHand } from '../engine/wagers';
+import { DEFAULT_RULES } from '../engine/rules';
+import type { Fraction } from './types';
 
 export function runPreview(req: PreviewRequest): DecisionPreview {
   const g = previewJob(req);
@@ -172,4 +175,89 @@ describe('better alternatives', () => {
     expect(a?.vars.pairRank).toBe('7');
     expect(a?.basicException).toBeUndefined();
   });
+});
+
+describe('agreement with the engine settlement (settleHand)', () => {
+  const ANTE = 200;
+  const net = (hole: Card[], dealer: Card[], board: Card[], play: 1 | 2 | null): number =>
+    settleHand(
+      {
+        player: hole as [Card, Card],
+        dealer: dealer as [Card, Card],
+        board: board as never,
+        forced: false,
+      },
+      { ante: ANTE, blind: ANTE, trips: 0 },
+      play ? { multiple: play } : null,
+      play === null,
+      DEFAULT_RULES,
+    ).net;
+  function deckWithout(dead: Card[]): Card[] {
+    return Array.from({ length: 52 }, (_, i) => i).filter((c) => !dead.includes(c));
+  }
+  function riverAvg(hole: Card[], board: Card[], play: 1 | null): Fraction {
+    const rest = deckWithout([...hole, ...board]);
+    let total = 0;
+    for (let i = 0; i < rest.length; i++)
+      for (let j = i + 1; j < rest.length; j++)
+        total += net(hole, [rest[i]!, rest[j]!], board, play);
+    return frac(total, 990 * ANTE);
+  }
+  it('200 random rivers: both options equal the mean of settleHand', () => {
+    const rnd = mulberry32(31);
+    for (let n = 0; n < 200; n++) {
+      const deck = Array.from({ length: 52 }, (_, i) => i);
+      for (let i = 51; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [deck[i], deck[j]] = [deck[j]!, deck[i]!];
+      }
+      const hole = deck.slice(0, 2) as [Card, Card];
+      const board = deck.slice(2, 7);
+      const p = runPreview({
+        street: 'river',
+        hole,
+        board,
+        blindPaytable: 'blind-standard',
+        ante: ANTE,
+      });
+      expect(toRatio(p.options[0]!.ev)).toBe(toRatio(riverAvg(hole, board, 1)));
+      expect(toRatio(p.options[1]!.ev)).toBe(toRatio(riverAvg(hole, board, null)));
+    }
+  });
+  it('a flop: all 1,070,190 settleHand cases, 2x and check (best river play)', () => {
+    const hole = parseCards('Ah 7c') as [Card, Card];
+    const flop = parseCards('7d Ks 2c');
+    const rest = deckWithout([...hole, ...flop]);
+    let s2 = 0;
+    let sc = 0;
+    for (let i = 0; i < rest.length; i++) {
+      for (let j = i + 1; j < rest.length; j++) {
+        const board = [...flop, rest[i]!, rest[j]!];
+        const left = deckWithout([...hole, ...board]);
+        let t2 = 0;
+        let t1 = 0;
+        for (let a = 0; a < left.length; a++) {
+          for (let b = a + 1; b < left.length; b++) {
+            const d = [left[a]!, left[b]!];
+            t2 += net(hole, d, board, 2);
+            t1 += net(hole, d, board, 1);
+          }
+        }
+        s2 += t2;
+        sc += Math.max(t1, -2 * ANTE * 990);
+      }
+    }
+    const p = runPreview({
+      street: 'flop',
+      hole,
+      board: flop,
+      blindPaytable: 'blind-standard',
+      ante: ANTE,
+    });
+    const d = 990 * 1081 * ANTE;
+    expect([toRatio(p.options[0]!.ev), toRatio(p.options[1]!.ev)]).toEqual([
+      toRatio(frac(s2, d)),
+      toRatio(frac(sc, d)),
+    ]);
+  }, 120_000);
 });

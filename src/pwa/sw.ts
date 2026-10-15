@@ -32,7 +32,9 @@ const indexUrl = new URL('./index.html', sw.location.href).href;
 
 sw.addEventListener('install', (event) => {
   // Note: no automatic skipWaiting; the app shows "Update available" and posts SKIP_WAITING.
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(urls)));
+  event.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(urls.map((u) => new Request(u, { cache: 'reload' })))),
+  );
 });
 
 sw.addEventListener('activate', (event) => {
