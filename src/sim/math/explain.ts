@@ -93,7 +93,7 @@ function factor(f: Fraction): string {
 /** '308/990 × 1 + … = −1663/990 ≈ −1.680 antes'. Big denominators print as decimals. */
 export function formulaFor(rows: readonly WhyRow[], ev: Fraction): string {
   const terms = rows
-    .filter((r) => r.count > 0n)
+    .filter((r) => r.count > 0n && r.netAnte.num !== 0n)
     .map((r) => {
       const small = r.probability.den < 10_000n && r.netAnte.den < 10_000n;
       return small
