@@ -71,4 +71,3 @@ export function tripsPerHour(
 ): Fraction {
   return scale(tripsEdge(id).edge, handsPerHour * tripsCents);
 }
-

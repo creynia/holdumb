@@ -175,10 +175,16 @@ export function betterAlternative(
     if (f.pairRank) vars.pairRank = f.pairRank;
     const alt: BetterAlternative =
       act.type === 'check'
-        ? { ...base, copyKey: f.hiddenPair || f.twoPairPlus ? 'flop-check-hidden' : 'flop-check-other', vars }
+        ? {
+            ...base,
+            copyKey: f.hiddenPair || f.twoPairPlus ? 'flop-check-hidden' : 'flop-check-other',
+            vars,
+          }
         : { ...base, copyKey: 'flop-2x-no-hand', vars };
     if (f.basicRaise !== (best.action.type === 'play')) {
-      alt.basicException = { ruleAction: f.basicRaise ? { type: 'play', multiple: 2 } : { type: 'check' } };
+      alt.basicException = {
+        ruleAction: f.basicRaise ? { type: 'play', multiple: 2 } : { type: 'check' },
+      };
     }
     return alt;
   }

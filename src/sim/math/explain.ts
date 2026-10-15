@@ -104,14 +104,9 @@ export function formulaFor(rows: readonly WhyRow[], ev: Fraction): string {
   return `${body} = ${signed(toRatio(ev))} ≈ ${fmtAntes(ev)} antes`;
 }
 
-export function breakdown(
-  rows: WhyRow[],
-  casesLabel: string,
-  note?: string,
-): WhyBreakdown {
+export function breakdown(rows: WhyRow[], casesLabel: string, note?: string): WhyBreakdown {
   const ev = totalOf(rows);
   const out: WhyBreakdown = { rows, casesLabel, formula: formulaFor(rows, ev) };
   if (note) out.note = note;
   return out;
 }
-

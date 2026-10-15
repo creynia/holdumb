@@ -96,7 +96,7 @@ export function toRatio(a: Fraction): string {
 }
 
 /** Whole cents, rounded half away from zero. For display only; EV itself stays exact. */
-export function toCents(a: Fraction): number {
+export function round(a: Fraction): number {
   const neg_ = a.num < 0n;
   const n = neg_ ? -a.num : a.num;
   const q = (2n * n + a.den) / (2n * a.den);

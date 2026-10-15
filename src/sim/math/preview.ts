@@ -2,7 +2,14 @@
 // River: 990 dealer hands on the spot. Flop: 1,070,190 showdowns, chunked. Preflop: the table.
 import type { Progress } from '../engine/job';
 import type { DecisionAction, DecisionStreet } from '../engine/types';
-import { riverTotals, flopTotalsJob, deadMask, DEALER_HANDS, FLOP_SHOWDOWNS, RUNOUTS } from './enumerate';
+import {
+  riverTotals,
+  flopTotalsJob,
+  deadMask,
+  DEALER_HANDS,
+  FLOP_SHOWDOWNS,
+  RUNOUTS,
+} from './enumerate';
 import { breakdown, makeRow, showdownRows } from './explain';
 import { cmp, frac, mul, sub } from './fraction';
 import { BOARDS, DEALER, FLOPS, preflopClass, preflopRow, rowSums } from './preflop';
@@ -115,8 +122,22 @@ export function riverPreview(req: PreviewRequest): DecisionPreview {
   return finish(
     'river',
     [
-      { action: PLAY(1), label: LABELS[1], ev: ev1, wager: 3, assumesBestLater: false, why: breakdown(rows, 'dealer hands') },
-      { action: FOLD, label: LABELS.fold, ev: frac(-2), wager: 2, assumesBestLater: false, why: foldWhy(n) },
+      {
+        action: PLAY(1),
+        label: LABELS[1],
+        ev: ev1,
+        wager: 3,
+        assumesBestLater: false,
+        why: breakdown(rows, 'dealer hands'),
+      },
+      {
+        action: FOLD,
+        label: LABELS.fold,
+        ev: frac(-2),
+        wager: 2,
+        assumesBestLater: false,
+        why: foldWhy(n),
+      },
     ],
     req.ante,
     'enumeration',
@@ -124,9 +145,7 @@ export function riverPreview(req: PreviewRequest): DecisionPreview {
   );
 }
 
-function* flopPreview(
-  req: PreviewRequest,
-): Generator<Progress | undefined, DecisionPreview, void> {
+function* flopPreview(req: PreviewRequest): Generator<Progress | undefined, DecisionPreview, void> {
   const gen = flopTotalsJob({
     hole: req.hole,
     flop: req.board as readonly [number, number, number],
@@ -158,19 +177,26 @@ function* flopPreview(
   const runouts = BigInt(RUNOUTS);
   const unit = 2n * BigInt(DEALER_HANDS); // half-antes → antes per runout
   const checkRows = [
+    makeRow('later-play', BigInt(t.playRunouts), runouts, frac(BigInt(t.sumPlay), unit), frac(0)),
     makeRow(
-      'later-play',
-      BigInt(t.playRunouts),
+      'later-fold',
+      BigInt(t.foldRunouts),
       runouts,
-      frac(BigInt(t.sumPlay), unit),
-      frac(0),
+      frac(-2n * BigInt(t.foldRunouts)),
+      frac(-2),
     ),
-    makeRow('later-fold', BigInt(t.foldRunouts), runouts, frac(-2n * BigInt(t.foldRunouts)), frac(-2)),
   ];
   return finish(
     'flop',
     [
-      { action: PLAY(2), label: LABELS[2], ev: ev2, wager: 4, assumesBestLater: false, why: breakdown(rows2, 'turn-river cards × dealer hands') },
+      {
+        action: PLAY(2),
+        label: LABELS[2],
+        ev: ev2,
+        wager: 4,
+        assumesBestLater: false,
+        why: breakdown(rows2, 'turn-river cards × dealer hands'),
+      },
       {
         action: CHECK,
         label: LABELS.check,

@@ -10,7 +10,21 @@ import { PREFLOP_BLIND_STANDARD } from '../../src/sim/math/tables/preflop-blind-
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const CSV = here('./precompute/preflop-blind-standard.csv');
 const OUT = here('../../src/sim/math/tables/preflop-blind-standard.ts');
-const COLS = ['SW', 'SL', 'Wq', 'Lq', 'bb2q', 'bb2nq', 'S2x', 'Scp', 'F2', 'Cf', 'SAs', 'SPs', 'SCs'];
+const COLS = [
+  'SW',
+  'SL',
+  'Wq',
+  'Lq',
+  'bb2q',
+  'bb2nq',
+  'S2x',
+  'Scp',
+  'F2',
+  'Cf',
+  'SAs',
+  'SPs',
+  'SCs',
+];
 
 export function encodeRows(csv: string): string {
   const lines = csv.trim().split('\n');

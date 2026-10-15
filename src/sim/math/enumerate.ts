@@ -100,7 +100,9 @@ export interface FlopRequest {
 }
 
 /** Yields progress every 32 runouts (~34 k showdowns). Pure; allocates its scratch once. */
-export function* flopTotalsJob(req: FlopRequest): Generator<Progress | undefined, FlopTotals, void> {
+export function* flopTotalsJob(
+  req: FlopRequest,
+): Generator<Progress | undefined, FlopTotals, void> {
   const { hole, flop, blind } = req;
   if (flop.length !== 3) throw new Error('flop needs 3 cards');
   const dead = deadMask([...hole, ...flop]);
