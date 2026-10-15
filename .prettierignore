@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-single
+public/icons
+coverage
+playwright-report
+test-results
+package-lock.json
+docs
+content
+LICENSE
+src/sim/math/tables
+src/sim/engine/types.ts
+src/sim/math/types.ts
+src/sim/strategy/types.ts
+src/sim/scene/types.ts
+src/sim/worker/protocol.ts
