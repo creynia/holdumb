@@ -13,7 +13,7 @@ const play = (multiple: 1 | 2 | 3 | 4): DecisionAction => ({ type: 'play', multi
 
 const FOUR_X: Readonly<Record<StrategyId, ReadonlySet<string>>> = Object.fromEntries(
   Object.values(RULE_DEFS).map((d) => [d.id, new Set(d.preflop4x)]),
-) as Record<StrategyId, ReadonlySet<string>>;
+) as unknown as Record<StrategyId, ReadonlySet<string>>;
 
 /** The action a strategy takes with this hole and board (0, 3 or 5 cards). Pure and sync. */
 export function strategyAction(
@@ -75,7 +75,10 @@ export function getStrategy(id: StrategyId): Strategy {
 }
 
 /** Auto-play picker, grouped by lens (river-leak is lesson-only and never listed, D15). */
-export const PICKER_GROUPS: readonly { lens: 'perfect' | 'practical' | 'fun'; ids: StrategyId[] }[] = [
+export const PICKER_GROUPS: readonly {
+  lens: 'perfect' | 'practical' | 'fun';
+  ids: StrategyId[];
+}[] = [
   { lens: 'perfect', ids: ['perfect', 'expert'] },
   { lens: 'practical', ids: ['basic', 'simple'] },
   { lens: 'fun', ids: ['check-to-river', 'never-fold', 'always-max'] },

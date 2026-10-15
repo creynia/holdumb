@@ -22,7 +22,13 @@ export function parseClass(cls: string): { hi: Rank; lo: Rank; suited: boolean; 
   const hi = RANK_CHARS.indexOf(cls.charAt(0));
   const lo = RANK_CHARS.indexOf(cls.charAt(1));
   const t = cls.charAt(2);
-  if (hi < 0 || lo < 0 || hi < lo || cls.length > 3 || (hi === lo ? t !== '' : t !== 's' && t !== 'o'))
+  if (
+    hi < 0 ||
+    lo < 0 ||
+    hi < lo ||
+    cls.length > 3 ||
+    (hi === lo ? t !== '' : t !== 's' && t !== 'o')
+  )
     throw new Error(`Bad hand class "${cls}"`);
   return { hi: hi as Rank, lo: lo as Rank, suited: t === 's', pair: hi === lo };
 }

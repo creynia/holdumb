@@ -46,7 +46,7 @@ export function flushDrawFlop(
   const n = [0, 0, 0, 0];
   for (const c of hole) n[c & 3]!++;
   for (const c of flop) n[c & 3]!++;
-  for (const c of hole) if (n[c & 3]! >= minCards && (c >> 2) >= minHoleRank) return true;
+  for (const c of hole) if (n[c & 3]! >= minCards && c >> 2 >= minHoleRank) return true;
   return false;
 }
 
@@ -73,11 +73,16 @@ export function dealerOuts(hole: readonly Card[], board: readonly Card[]): numbe
 /** Evaluates one predicate at the decision street implied by the board length. */
 export function matches(p: HandPredicate, hole: readonly Card[], board: readonly Card[]): boolean {
   if ('flopMade' in p) return board.length === 3 && flopMade(hole, board);
-  if ('hiddenPair' in p) return board.length === 3 && hiddenPairFlop(hole, board, p.hiddenPair.exceptPocket);
+  if ('hiddenPair' in p)
+    return board.length === 3 && hiddenPairFlop(hole, board, p.hiddenPair.exceptPocket);
   if ('flushDraw' in p)
-    return board.length === 3 && flushDrawFlop(hole, board, p.flushDraw.minCards, p.flushDraw.minHoleRank);
+    return (
+      board.length === 3 &&
+      flushDrawFlop(hole, board, p.flushDraw.minCards, p.flushDraw.minHoleRank)
+    );
   if ('hidden' in p) return board.length === 5 && isHidden(hole, board);
-  if ('dealerOutsBelow' in p) return board.length === 5 && dealerOuts(hole, board) < p.dealerOutsBelow;
+  if ('dealerOutsBelow' in p)
+    return board.length === 5 && dealerOuts(hole, board) < p.dealerOutsBelow;
   return p.any.some((q) => matches(q, hole, board));
 }
 export const matchesAny = (
@@ -85,4 +90,3 @@ export const matchesAny = (
   hole: readonly Card[],
   board: readonly Card[],
 ): boolean => ps.some((p) => matches(p, hole, board));
-
