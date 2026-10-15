@@ -39,7 +39,7 @@ The lesson format is defined in `architecture.md` §3.2. It is crappy's format p
 |---|---|---|
 | Show the math | `:::math Title` … `:::` | A collapsible box, closed by default. The lesson must read fine with every box closed. |
 | Tip | `:::tip` … `:::` | Etiquette or practical advice. |
-| Inline cards | `{{As Kd}}` | Cards drawn inline, with suit glyphs and an aria label. |
+| Inline cards | `{{As Kd}}` | Cards drawn inline, with suit glyphs and an aria label. They also render in quiz questions, options and explanations. |
 | Scene | ` ```scene ` YAML | An embedded simulator (1.2). |
 | Chart | ` ```chart ` YAML `{strategy, view, highlight?}` | A `StrategyChart` drawn from the strategy registry, never typed by hand. |
 | Quiz | ` ```quiz ` YAML list `{q, options, answer (0-based), explain, hand?}` | At the end of each lesson. `hand: {hole, board?}` draws the cards above the question. |
@@ -47,49 +47,33 @@ The lesson format is defined in `architecture.md` §3.2. It is crappy's format p
 Card codes: rank `23456789TJQKA` plus suit `shdc`, e.g. `As`, `Td`. Hand classes: `AKs` (suited),
 `AKo` (offsuit), `77` (pair).
 
-### 1.2 Scene schema (proposal; `simulator.md` owns the final `SceneConfig`)
+### 1.2 Scenes
 
-```yaml
-id: l03-s1                    # unique: l<NN>-s<n>
-title: A hand you raise early
-table:
-  bankroll: 50000             # cents
-  ante: 1000                  # cents; the Blind always equals the Ante
-  trips: 0                    # cents; 0 = no Trips bet
-  tripsPaytable: trips-8-6-5  # optional; default from settings
-deals:                        # forced deals, consumed in order by each Deal (engine ForcedDeal)
-  - { player: [Qs, Qd], dealer: [Ac, 7h], flop: [7c, 3d, Qh], turn: 9s, river: 2c }
-seed: 11                      # RNG for any card or hand not forced
-startAt: preflop              # optional: open with the cards already dealt (betting → preflop)
-allowed: [deal, check, play-4, play-3, play-2, play-1, fold]   # or "all"; others greyed out
-showEv: true                  # show the EV sheet (lesson 6 onward)
-autoPlay: { hands: 300, strategy: expert, speed: fast, compare: [expert, check-to-river] }
-steps:
-  - say: "Tap **Deal**."
-    completeWhen: { action: deal }
-  - say: "Pocket queens! Raise **4x**."
-    completeWhen: { action: play-4 }
-```
+Scenes are written in the simulator's **`SceneConfig`** format, as defined in `simulator.md` §4.1. This file
+doesn't define its own schema. The rules from `decisions.md` D25–D27a apply to every scene here:
 
-`completeWhen` kinds used in this file:
+* The `rules`, `bankroll` and `bets.{ante,trips}` fields hold money in cents. Each step has `id`, `text` and
+  `completeWhen`; a step that only explains uses `{ acknowledged: true }` with `advance: button`.
+* **Forced deals go on the step that deals them**, as a step's `deals` (when the learner taps **Deal**) or
+  `startAt: { street, deal }` (to jump straight to a decision). There is no scene-level deal queue.
+* **Best-decision steps** use `expect: [{ type: …, best: true }, …]` and
+  `completeWhen: { bestDecisions: { count: 1, street: <street taught> } }`. A non-best action is rejected
+  with the step's `hint`, and there is no "Try again" replay. Deal is locked (no `deal` in
+  `allowedActions`) while a step waits for a decision.
+* **No dead ends**: every street a hand can reach within a step has at least one allowed option. After each
+  best-decision step that can leave a hand unfinished, a "finish" step allows `check, play, fold` until
+  `{ street: settled }`.
+* Felt taps use `{ tapped: ante | blind | play | trips | session }` (D26). `ui.showSession: true` shows the
+  session panel.
+* Auto-play scenes set `autoPlay.{enabled, defaultStrategy: {id, ante, trips}, handOptions, sessions,
+  compare}` and `ui.speed: fast`. They complete on `{ autoPlayCompleted: { minHands } }`. Auto-play uses the
+  fast strategies only (`expert`, `basic`, `simple`, `check-to-river`, `never-fold`, `always-max`), never
+  `perfect` (§10).
+* YAML lists of ranks or classes are quoted strings (`highlight: ["33", "A2o"]`).
 
-| Kind | Meaning |
-|---|---|
-| `{ action: <id> }` | The learner took that action. Ids: `deal`, `check`, `play-4`, `play-3`, `play-2`, `play-1`, `fold`, `set-ante`, `set-trips`. |
-| `{ best: true }` | The learner's last decision was the EV-best option (exact preview). On a miss the hand plays out, then **Try again** replays the same forced deal. |
-| `{ street: preflop\|flop\|river\|settled }` | The hand has reached that street. |
-| `{ handsPlayed: n }` | n hands have settled in this scene. |
-| `{ tap: <target> }` | The learner tapped a felt area: `ante`, `blind`, `play`, `trips`, `board`, `dealer`, `ev-sheet`, `session`. |
-| `{ autoPlayDone: true }` | The auto-play run finished. |
-| `{ next: true }` | The learner tapped **Next**. Used for "read this" steps. |
-
-Rules for scene authors (playbook §9):
-* While a step waits for a decision, **Deal is locked**. Forced cards belong to the deal that the step uses.
-* Every scene must complete. Auto-play scenes get a bankroll big enough that a bust can't block the step.
-* Auto-play uses the fast strategies (`expert`, `basic`, `simple`, `check-to-river`, `never-fold`, `always-max`).
-  `perfect` needs an exact flop enumeration per hand, so it is used only for single hands and Drill (§10).
-* Each forced deal has 9 distinct cards. This file's scenes were machine-checked for that and for the
-  outcomes their steps describe (§12).
+Every scene here was machine-checked (§12). Forced deals have distinct, valid cards. Each forced flop or
+river spot is reachable under perfect play (the hand checks the streets before it). Every outcome a step
+describes matches the engine's settlement.
 
 ### 1.3 Ids
 
@@ -119,7 +103,7 @@ Rule set `standard` (Shuffle Master's published rules, as dealt in Las Vegas, At
 | Dealer beats you | Play and Blind lose. The Ante loses if the dealer qualifies, else pushes. |
 | Tie | Ante, Blind and Play all push. |
 | Trips | Paid on your own best five of seven cards, **win or lose against the dealer, and even if you fold**. |
-| After a fold | The app reveals the dealer's hand and shows what playing 1x would have done (D7). |
+| After a fold | The app reveals the dealer's hand and shows what betting 1x would have done (D7). |
 
 **Blind paytable** `blind-standard` (the only Blind preset, D12):
 
@@ -172,7 +156,7 @@ have no raises.
 
 **Per decision** (the EV sheet), the primary metric is the **EV of the whole hand** (Ante + Blind + Play)
 for each option, in **Ante units and dollars**, plus the **cost against the best option** (regret).
-Example: "Raise 4x: **+$36.01** (+3.601 antes) · Best." A regret is never shown as a house edge.
+Example: "Bet 4x: **+$36.01** (+3.601 antes) · Best." A regret is never shown as a house edge.
 
 **Per hour** = hands per hour × Ante × edge per Ante. The app uses **30 hands per hour** (D10).
 It's a setting, and every per-hour figure scales linearly.
@@ -189,7 +173,7 @@ Trips has its own edge per Trips bet (§2), and it adds to the hourly cost at it
 
 ## 4. Course map
 
-The course has 23 units in 6 chapters: 20 teaching lessons, 2 checkpoints and a final exam. Every unit
+The course has 23 units in 6 chapters: 21 teaching lessons, 1 checkpoint (lesson 14) and a final exam (lesson 23). Every unit
 ends with a quiz. All lessons are open (no gating); checkpoints (✔) are cumulative quizzes with one practical scene.
 
 | # | Lesson id | Title | Chapter |
@@ -202,9 +186,9 @@ ends with a quiz. All lessons are open (no gating); checkpoints (✔) are cumula
 | 6 | `reading-the-ev-sheet` | Reading the EV sheet (and why 3x is never right) | 2. EV basics |
 | 7 | `preflop-raise` | Preflop: when to bet 4x | 3. Perfect strategy I: lowest edge (`perfect-lowest-edge`) |
 | 8 | `preflop-close-calls` | Preflop close calls | 3. Perfect strategy I |
-| 9 | `flop-raise` | The flop: raise 2x or check | 3. Perfect strategy I |
+| 9 | `flop-raise` | The flop: bet 2x or check | 3. Perfect strategy I |
 | 10 | `flop-tricky-boards` | Tricky flops: paired boards, draws, small pairs | 3. Perfect strategy I |
-| 11 | `river-call-or-fold` | The river: play 1x or fold | 3. Perfect strategy I |
+| 11 | `river-call-or-fold` | The river: bet 1x or fold | 3. Perfect strategy I |
 | 12 | `counting-dealer-outs` | Counting the dealer's outs | 3. Perfect strategy I |
 | 13 | `strategy-lowest-edge` | Perfect strategy I: the whole picture | 3. Perfect strategy I |
 | 14 | `checkpoint-strategy` ✔ | Checkpoint: perfect strategy | 3. Perfect strategy I |
@@ -288,36 +272,52 @@ lesson is a five-minute refresher, and **More → Hand rankings** is always one 
 
 ```scene
 id: l01-s1
+version: 1
 title: Find the circles
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-allowed: []
-showEv: false
+bankroll: 50000
+bets: { ante: 1000 }
+allowedActions: []
+showEV: false
 steps:
-  - say: "Tap the **Ante** circle."
-    completeWhen: { tap: ante }
-  - say: "Now the **Blind**. It always matches the Ante."
-    completeWhen: { tap: blind }
-  - say: "Tap **Trips**, the optional side bet."
-    completeWhen: { tap: trips }
-  - say: "And **Play**: it stays empty until you make your one raise."
-    completeWhen: { tap: play }
+  - id: ante
+    text: "Tap the **Ante** circle."
+    completeWhen: { tapped: ante }
+  - id: blind
+    text: "Now the **Blind**. It always matches the Ante."
+    completeWhen: { tapped: blind }
+  - id: trips
+    text: "Tap **Trips**, the optional side bet."
+    completeWhen: { tapped: trips }
+  - id: play
+    text: "And **Play**: it stays empty until you make your one bet."
+    completeWhen: { tapped: play }
 ```
 
 ```scene
 id: l01-s2
+version: 1
 title: Watch a hand
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Ah, Kd], dealer: [9c, 9h], flop: [Kh, 7s, 2d], turn: Jc, river: 4h }
-allowed: [deal, play-4]
-showEv: false
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Your $10 Ante and $10 Blind are already out. Tap **Deal**."
-    completeWhen: { action: deal }
-  - say: "Ace-king is a great start. Make the biggest Play bet: tap **Bet 4x** ($40)."
-    completeWhen: { action: play-4 }
-  - say: "That was your only decision. The dealer now shows every card. Your pair of kings beats the dealer's nines: Ante and Play both pay, and the Blind pushes. You won **$50**."
-    completeWhen: { next: true }
+  - id: deal
+    text: "Your $10 Ante and $10 Blind are already out. Tap **Deal**."
+    deals:
+      - { player: [Ah, Kd], dealer: [9c, 9h], flop: [Kh, 7s, 2d], turn: Jc, river: 4h }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: bet
+    text: "Ace-king is a great start. Make the biggest Play bet: tap **Bet 4x** ($40)."
+    allowedActions: [play]
+    allowedOptions: [play-4]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "That was your only decision. The dealer now shows every card. Your pair of kings beats the dealer's nines: Ante and Play both pay, and the Blind pushes. You won **$50**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -399,19 +399,34 @@ You're more likely to make one pair (43.8%) than nothing at all (17.4%), because
 
 ```scene
 id: l02-s1
+version: 1
 title: Best five of seven
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [9s, 8d], dealer: [Kc, Ks], flop: [Th, 7c, 2s], turn: Jd, river: Kh }
-allowed: [deal, check, play-1]
-showEv: false
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal**, then **Check** twice to see all five board cards."
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [9s, 8d], dealer: [Kc, Ks], flop: [Th, 7c, 2s], turn: Jd, river: Kh }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: see-board
+    text: "Tap **Check** twice to see all five board cards."
+    allowedActions: [check]
+    allowedOptions: [check]
     completeWhen: { street: river }
-  - say: "Find your hand: 7-8-9-10-J is a **straight**, using both your cards. Tap **Bet 1x**."
-    completeWhen: { action: play-1 }
-  - say: "The dealer made three kings. A straight beats trips. And because you won with a straight, the **Blind pays 1 to 1** as well."
-    completeWhen: { next: true }
+  - id: bet
+    text: "Find your hand: 7-8-9-10-J is a **straight**, using both your cards. Tap **Bet 1x**."
+    allowedActions: [play]
+    allowedOptions: [play-1]
+    expect: [ { type: play, option: play-1 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "The dealer made three kings. A straight beats trips. And because you won with a straight, the **Blind pays 1 to 1** as well."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -442,7 +457,7 @@ steps:
 
 **Objectives**
 
-* Play a hand through each path: raise preflop, raise on the flop, play 1x at the river, or fold.
+* Play a hand through each path: bet 4x preflop, bet 2x on the flop, bet 1x at the river, or fold.
 * Know that one Play bet ends your decisions.
 * Know that folding costs exactly the Ante and the Blind.
 
@@ -470,59 +485,105 @@ back. Checking early is free, so the only ways to lose more than your Ante and B
 a Play bet.
 
 There's one more thing to know about folding: it costs exactly **2 Antes** (your Ante and Blind), no
-matter what the dealer has. If you play 1x instead, you can win or lose up to 3 Antes. Lesson 11 shows when
+matter what the dealer has. If you bet 1x instead, you can win or lose up to 3 Antes. Lesson 11 shows when
 that's worth it.
 
 **Simulator scenes**
 
 ```scene
 id: l03-s1
-title: Raise before the flop
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Qs, Qd], dealer: [Ac, 7h], flop: [7c, 3d, Qh], turn: 9s, river: 2c }
-allowed: [deal, play-4]
+version: 1
+title: Bet before the flop
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal**."
-    completeWhen: { action: deal }
-  - say: "Pocket queens. Bet **4x**: $40 goes into Play."
-    completeWhen: { action: play-4 }
-  - say: "You made three queens; the dealer has a pair of sevens. Ante +$10, Play +$40, Blind pushes (trips is below a straight): **+$50**."
-    completeWhen: { next: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [Qs, Qd], dealer: [Ac, 7h], flop: [7c, 3d, Qh], turn: 9s, river: 2c }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: bet
+    text: "Pocket queens. **Bet 4x**: $40 goes into Play."
+    allowedActions: [play]
+    allowedOptions: [play-4]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "You made three queens; the dealer has a pair of sevens. Ante +$10, Play +$40, Blind pushes (trips is below a straight): **+$50**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l03-s2
-title: Check, check, play 1x
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Jh, 8c], dealer: [6c, 4d], flop: [Kd, 5s, 2c], turn: Jd, river: 6h }
-allowed: [deal, check, play-1]
+version: 1
+title: Check, check, bet 1x
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal**. Jack-eight isn't strong enough to bet 4x, so tap **Check**."
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [Jh, 8c], dealer: [6c, 4d], flop: [Kd, 5s, 2c], turn: Jd, river: 6h }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: preflop
+    text: "Jack-eight isn't strong enough to bet 4x, so tap **Check**."
+    allowedActions: [check]
+    allowedOptions: [check]
     completeWhen: { street: flop }
-  - say: "The flop missed you. **Check** again."
+  - id: flop
+    text: "The flop missed you. **Check** again."
+    allowedActions: [check]
+    allowedOptions: [check]
     completeWhen: { street: river }
-  - say: "The river gave you a pair of jacks. Bet **1x**."
-    completeWhen: { action: play-1 }
-  - say: "Your jacks beat the dealer's sixes: Ante +$10, Play +$10, Blind pushes. **+$20**."
-    completeWhen: { next: true }
+  - id: river
+    text: "The river gave you a pair of jacks. **Bet 1x**."
+    allowedActions: [play]
+    allowedOptions: [play-1]
+    expect: [ { type: play, option: play-1 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "Your jacks beat the dealer's sixes: Ante +$10, Play +$10, Blind pushes. **+$20**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l03-s3
+version: 1
 title: Knowing when to fold
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [8s, 3d], dealer: [Td, 6s], flop: [Kh, Qc, 6d], turn: Jc, river: 2s }
-allowed: [deal, check, fold]
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal**, then **Check** on the preflop and on the flop."
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [8s, 3d], dealer: [Td, 6s], flop: [Kh, Qc, 6d], turn: Jc, river: 2s }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: checks
+    text: "Tap **Check** before the flop and again on the flop."
+    allowedActions: [check]
+    allowedOptions: [check]
     completeWhen: { street: river }
-  - say: "Eight high on a board of K-Q-J-6-2: almost any dealer hand beats you. Tap **Fold**."
-    completeWhen: { action: fold }
-  - say: "The dealer had a pair of sixes. Folding cost $20 (Ante + Blind); playing 1x would have cost $30."
-    completeWhen: { next: true }
+  - id: fold
+    text: "Eight high on a board of K-Q-J-6-2: almost any dealer hand beats you. Tap **Fold**."
+    allowedActions: [fold]
+    allowedOptions: [fold]
+    expect: [ { type: fold } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "The dealer had a pair of sixes. Folding cost $20 (Ante + Blind); betting 1x would have cost $30."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -611,74 +672,142 @@ dealer hands):
 
 ```scene
 id: l04-s1
+version: 1
 title: The dealer doesn't qualify
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Ks, Jd], dealer: [Qc, 8h], flop: [Ah, 9d, 5c], turn: 3s, river: 2h }
-allowed: [deal, play-4]
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal**, then bet **4x** with king-jack."
-    completeWhen: { action: play-4 }
-  - say: "Neither of you has a pair, and your king beats the dealer's queen. But the dealer didn't qualify, so the **Ante pushes**. Play pays $40, the Blind pushes: **+$40**."
-    completeWhen: { next: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [Ks, Jd], dealer: [Qc, 8h], flop: [Ah, 9d, 5c], turn: 3s, river: 2h }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: bet
+    text: "**Bet 4x** with king-jack."
+    allowedActions: [play]
+    allowedOptions: [play-4]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "Neither of you has a pair, and your king beats the dealer's queen. But the dealer didn't qualify, so the **Ante pushes**. Play pays $40, the Blind pushes: **+$40**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l04-s2
+version: 1
 title: A Blind bonus
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Ah, Qh], dealer: [8s, 8c], flop: [Kh, 7h, 2c], turn: Jh, river: 5d }
-allowed: [deal, play-4]
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal** and bet **4x**."
-    completeWhen: { action: play-4 }
-  - say: "An ace-high heart flush! You beat the dealer's eights. Ante +$10, Play +$40, and the **Blind pays 3 to 2: +$15**. Total **+$65**."
-    completeWhen: { next: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [Ah, Qh], dealer: [8s, 8c], flop: [Kh, 7h, 2c], turn: Jh, river: 5d }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: bet
+    text: "**Bet 4x**."
+    allowedActions: [play]
+    allowedOptions: [play-4]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "An ace-high heart flush! You beat the dealer's eights. Ante +$10, Play +$40, and the **Blind pays 3 to 2: +$15**. Total **+$65**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l04-s3
+version: 1
 title: The board plays, it's a tie
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Ad, 4c], dealer: [As, 3d], flop: [Kc, Kd, Qh], turn: Qs, river: Jh }
-allowed: [deal, play-4]
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal** and bet **4x** with your ace."
-    completeWhen: { action: play-4 }
-  - say: "You both have K-K-Q-Q with an ace kicker. The 4 and the 3 don't play. **Tie**: every bet pushes."
-    completeWhen: { next: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [Ad, 4c], dealer: [As, 3d], flop: [Kc, Kd, Qh], turn: Qs, river: Jh }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: bet
+    text: "**Bet 4x** with your ace."
+    allowedActions: [play]
+    allowedOptions: [play-4]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "You both have K-K-Q-Q with an ace kicker. The 4 and the 3 don't play. **Tie**: every bet pushes."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l04-s4
+version: 1
 title: Losing to a dealer who didn't qualify
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Qc, 9d], dealer: [Ac, 3h], flop: [Ks, 8h, 6d], turn: 4c, river: 2s }
-allowed: [deal, play-4]
+bankroll: 50000
+bets: { ante: 1000 }
+showEV: false
 steps:
-  - say: "Tap **Deal** and bet **4x** with queen-nine."
-    completeWhen: { action: play-4 }
-  - say: "The dealer's ace high beats your queen high. The dealer didn't qualify, so only the **Ante** is saved. Play −$40, Blind −$10: **−$50**."
-    completeWhen: { next: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [Qc, 9d], dealer: [Ac, 3h], flop: [Ks, 8h, 6d], turn: 4c, river: 2s }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: bet
+    text: "**Bet 4x** with queen-nine."
+    allowedActions: [play]
+    allowedOptions: [play-4]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "The dealer's ace high beats your queen high. The dealer didn't qualify, so only the **Ante** is saved. Play −$40, Blind −$10: **−$50**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l04-s5
+version: 1
 title: Fold, and Trips still pays
-table: { bankroll: 50000, ante: 1000, trips: 500 }
-deals:
-  - { player: [7s, 2d], dealer: [Kc, Qd], flop: [9c, 9d, 9h], turn: Kh, river: 4s }
-allowed: [deal, check, fold]
+bankroll: 50000
+bets: { ante: 1000, trips: 500 }
+showEV: false
 steps:
-  - say: "This time you have a $5 Trips bet too. Tap **Deal**, then **Check** twice."
+  - id: deal
+    text: "This time you have a $5 Trips bet too. Tap **Deal**."
+    deals:
+      - { player: [7s, 2d], dealer: [Kc, Qd], flop: [9c, 9d, 9h], turn: Kh, river: 4s }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: checks
+    text: "Tap **Check** twice."
+    allowedActions: [check]
+    allowedOptions: [check]
     completeWhen: { street: river }
-  - say: "Three nines are on the board, so the dealer has them too, and the king pairs any king the dealer holds. Tap **Fold**."
-    completeWhen: { action: fold }
-  - say: "The dealer had a full house. Your Ante and Blind lose (−$20), but **Trips pays 3 to 1 on your three nines (+$15)**. Net **−$5**."
-    completeWhen: { next: true }
+  - id: fold
+    text: "Three nines are on the board, so the dealer has them too, and the king pairs any king the dealer holds. Tap **Fold**."
+    allowedActions: [fold]
+    allowedOptions: [fold]
+    expect: [ { type: fold } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "The dealer had a full house. Your Ante and Blind lose (−$20), but **Trips pays 3 to 1 on your three nines (+$15)**. Net **−$5**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -738,13 +867,13 @@ game: **−0.02185 antes per hand**, a house edge of **2.185% of the Ante**. At 
 cost of about **22¢ a hand**. No strategy does better. Every decision this course teaches is part of
 reaching that 2.19%.
 
-Here's what decisions are worth. If you never raised early and always played 1x at the river, never folding,
+Here's what decisions are worth. If you never raised early and always bet 1x at the river, never folding,
 you'd lose **40.7% of your Ante per hand**. That's almost twenty times more. The Ante and the Blind are
 built to lose if you just ride them to showdown. Your raises with strong hands, and your folds with hopeless
 ones, win nearly all of it back.
 
 :::math Where the 40.7% comes from
-If you always play 1x at the river, the Play bet is a pure coin flip. You win and lose equally often
+If you always bet 1x at the river, the Play bet is a pure coin flip. You win and lose equally often
 (47.97% each), so its EV is exactly 0. Look at the other two bets:
 
 * **Ante**: it's paid only when the dealer qualifies, but it is lost whenever a qualifying dealer beats you.
@@ -761,37 +890,62 @@ enumerations over every deal (§12).
 
 ```scene
 id: l05-s1
+version: 1
 title: Meet the EV sheet
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Ah, Kd] }
+bankroll: 50000
+bets: { ante: 1000 }
 seed: 501
-allowed: [deal, play-4, play-3, check]
-showEv: true
+showEV: true
 steps:
-  - say: "Tap **Deal**. The **EV sheet** lists every option with its average result for the whole hand."
-    completeWhen: { action: deal }
-  - say: "Ace-king offsuit: **Bet 4x** is +$11.72, **Check** is +$5.69. Pick the best option."
-    completeWhen: { best: true }
-  - say: "Whatever happens next is luck. Your decision was worth **+$11.72** on average."
-    completeWhen: { next: true }
+  - id: deal
+    text: "Tap **Deal**. The **EV sheet** lists every option with its average result for the whole hand."
+    deals:
+      - { player: [Ah, Kd] }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: decide
+    text: "Ace-king offsuit: **Bet 4x** is +$11.72, **Check** is +$5.69. Pick the best option."
+    hint: "Look for the **Best play** badge."
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: finish
+    text: "Whatever happens next is luck. Your decision was worth **+$11.72** on average."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: done
+    text: "That's the whole idea of EV: judge the decision, not the result."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l05-s2
+version: 1
 title: A hand that loses either way
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [7s, 2d] }
+bankroll: 50000
+bets: { ante: 1000 }
 seed: 502
-allowed: [deal, play-4, play-3, check, play-2, play-1, fold]
-showEv: true
+showEV: true
 steps:
-  - say: "Tap **Deal**. Seven-deuce: every option is negative. Find the one that loses least."
-    completeWhen: { action: deal }
-  - say: "**Check** loses $8.83 on average; betting 4x loses $21.18. Check."
-    completeWhen: { best: true }
-  - say: "Play the rest of the hand however the EV sheet suggests."
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [7s, 2d] }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: decide
+    text: "Seven-deuce: every option is negative. Find the one that loses least."
+    hint: "**Check** loses $8.83 on average; betting 4x loses $21.18."
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: finish
+    text: "Play the rest of the hand however the EV sheet suggests."
+    allowedActions: [check, play, fold]
     completeWhen: { street: settled }
 ```
 
@@ -857,7 +1011,7 @@ If you don't, even 3x is worse than checking and playing just 1x later. **Either
 :::math The 3x proof, with numbers
 Write the preflop EV of betting P as EV(P) = a + P·b, where b = P(win) − P(lose) for the hand at showdown.
 * If b ≥ 0: EV(4) − EV(3) = b ≥ 0, so 4x is at least as good.
-* If b < 0: EV(3) = a + 3b < a + b = EV(check, then always play 1x) ≤ EV(check, then play the river perfectly).
+* If b < 0: EV(3) = a + 3b < a + b = EV(check, then always bet 1x) ≤ EV(check, then play the river perfectly).
 
 For aces: EV(4x) = 472094411/131098275 ≈ 3.6011, EV(3x) ≈ 2.8970, EV(check) = 38331809/17479770 ≈ 2.1929.
 Playing perfect strategy except always betting 3x instead of 4x raises the house edge from 2.19% to **9.86%**.
@@ -867,34 +1021,70 @@ Playing perfect strategy except always betting 3x instead of 4x raises the house
 
 ```scene
 id: l06-s1
+version: 1
 title: Three options, one best
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [As, Ad] }
+bankroll: 50000
+bets: { ante: 1000 }
 seed: 601
-allowed: [deal, play-4, play-3, check]
-showEv: true
+showEV: true
 steps:
-  - say: "Tap **Deal**, then tap each option once to see its line on the EV sheet. Don't confirm yet."
-    completeWhen: { tap: ev-sheet }
-  - say: "4x is +$36.01, 3x +$28.97, check +$21.93. Confirm the **Best play**."
-    completeWhen: { best: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [As, Ad] }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: compare
+    text: "Tap **Bet 3x** and **Check** to see their lines on the EV sheet. Don't confirm yet."
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { all: [ { previewed: { option: play-3 } }, { previewed: { option: check } } ] }
+  - id: decide
+    text: "4x is +$36.01, 3x +$28.97, check +$21.93. Confirm the **Best play**."
+    hint: "3x is never the best play."
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: finish
+    text: "The hand plays out."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
 ```
 
 ```scene
 id: l06-s2
+version: 1
 title: A big mistake, on purpose
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [7s, 2d] }
+bankroll: 50000
+bets: { ante: 1000 }
 seed: 602
-allowed: [deal, play-4, check]
-showEv: true
+showEV: true
 steps:
-  - say: "Tap **Deal**, then tap **Bet 4x** on seven-deuce. See the red **Big mistake** badge and the suggested alternative."
-    completeWhen: { tap: ev-sheet }
-  - say: "Tap **Check**, the better option."
-    completeWhen: { best: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [7s, 2d] }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: look
+    text: "Tap **Bet 4x** on seven-deuce, but don't confirm. See the red **Big mistake** badge and the suggested alternative."
+    allowedActions: [check, play]
+    allowedOptions: [play-4, check]
+    expect: [ { type: check } ]
+    hint: "Look at the badge first, then choose **Check**."
+    completeWhen: { any: [ { previewed: { option: play-4 } }, { street: flop } ] }
+  - id: decide
+    text: "Now tap **Check**, the better option."
+    allowedActions: [check, play]
+    allowedOptions: [play-4, check]
+    expect: [ { type: check, best: true } ]
+    completeWhen: { any: [ { bestDecisions: { count: 1, street: preflop } }, { street: flop } ] }
+  - id: finish
+    text: "Play out the rest of the hand using the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
 ```
 
 ```quiz
@@ -950,7 +1140,7 @@ the app solved every hand, and all 169 kinds match these rules. You'll bet 4x on
 ```chart
 strategy: perfect
 view: preflop-grid
-highlight: [33, A2o, K2s, K5o, Q6s, Q8o, J8s, JTo]
+highlight: ["33", "A2o", "K2s", "K5o", "Q6s", "Q8o", "J8s", "JTo"]
 ```
 
 Why does a hand like {{Ac 2d}} deserve 4x? An ace is the strongest high card, and even when nobody pairs,
@@ -967,7 +1157,7 @@ EV per hand under perfect play, by preflop decision:
 * Bet 4x (500 of 1,326 hands): average EV **+0.703** antes. Aces +3.601, kings +3.289, AKs +1.658, AKo +1.172.
 * Check (826 hands): average EV **−0.461** antes. 72o −0.883, 22 −0.179.
 
-Overall: −0.02185 antes per hand. 37.71% of hands are 4x, 21.28% bet 2x on the flop, 21.82% play 1x on the
+Overall: −0.02185 antes per hand. 37.71% of hands are 4x, 21.28% bet 2x on the flop, 21.82% bet 1x on the
 river and 19.19% fold.
 :::
 
@@ -975,31 +1165,86 @@ river and 19.19% fold.
 
 ```scene
 id: l07-s1
+version: 1
 title: Preflop calls
-table: { bankroll: 100000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Ac, 3d] }
-  - { player: [Kh, 7c] }
-  - { player: [Qd, 9s] }
-  - { player: [Js, 9h] }
-  - { player: [3h, 3s] }
-  - { player: [Th, 9h] }
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 701
-allowed: [deal, play-4, check, play-2, play-1, fold]
-showEv: true
+showEV: true
+practice: true
 steps:
-  - say: "Six hands. For each one, **Deal**, then make the preflop call from the eight rules. The EV sheet shows you after you choose. Hand 1: ace-three offsuit."
-    completeWhen: { best: true }
-  - say: "Play out the hand, then deal hand 2: king-seven offsuit."
-    completeWhen: { best: true }
-  - say: "Hand 3: queen-nine offsuit."
-    completeWhen: { best: true }
-  - say: "Hand 4: jack-nine offsuit."
-    completeWhen: { best: true }
-  - say: "Hand 5: pocket threes."
-    completeWhen: { best: true }
-  - say: "Hand 6: ten-nine suited."
-    completeWhen: { best: true }
+  - id: h1
+    text: "Six hands. Make each preflop call from the eight rules; the EV sheet appears after you confirm. Hand 1: ace-three offsuit."
+    hint: "Any ace is a 4x hand."
+    startAt: { street: preflop, deal: { player: [Ac, 3d] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h1-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h2
+    text: "Hand 2: king-seven offsuit."
+    hint: "Offsuit kings: K5 and up."
+    startAt: { street: preflop, deal: { player: [Kh, 7c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h2-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h3
+    text: "Hand 3: queen-nine offsuit."
+    hint: "Offsuit queens: Q8 and up."
+    startAt: { street: preflop, deal: { player: [Qd, 9s] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h3-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h4
+    text: "Hand 4: jack-nine offsuit."
+    hint: "Offsuit jacks need a ten: JT."
+    startAt: { street: preflop, deal: { player: [Js, 9h] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h4-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h5
+    text: "Hand 5: pocket threes."
+    hint: "Every pair from 33 up."
+    startAt: { street: preflop, deal: { player: [3h, 3s] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h5-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h6
+    text: "Hand 6: ten-nine suited."
+    hint: "Top card a ten or lower, not a pair: check."
+    startAt: { street: preflop, deal: { player: [Th, 9h] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h6-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
 ```
 
 ```quiz
@@ -1077,28 +1322,73 @@ Betting 4x with 7-2 offsuit every time: 30 × (12/1,326) × 1.235 × $10 ≈ $3.
 
 ```scene
 id: l08-s1
+version: 1
 title: Edge of the chart
-table: { bankroll: 100000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Kc, 5d] }
-  - { player: [Kd, 4c] }
-  - { player: [Qs, 8h] }
-  - { player: [Qd, 7c] }
-  - { player: [2c, 2h] }
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 801
-allowed: [deal, play-4, check, play-2, play-1, fold]
-showEv: true
+showEV: true
 steps:
-  - say: "Deal and decide: king-five offsuit."
-    completeWhen: { best: true }
-  - say: "Play it out, then deal: king-four offsuit."
-    completeWhen: { best: true }
-  - say: "Queen-eight offsuit."
-    completeWhen: { best: true }
-  - say: "Queen-seven offsuit."
-    completeWhen: { best: true }
-  - say: "Pocket deuces."
-    completeWhen: { best: true }
+  - id: h1
+    text: "King-five offsuit."
+    hint: "K5o is the lowest offsuit king to bet 4x."
+    startAt: { street: preflop, deal: { player: [Kc, 5d] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h1-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h2
+    text: "King-four offsuit."
+    hint: "One below K5o: check (a close one)."
+    startAt: { street: preflop, deal: { player: [Kd, 4c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h2-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h3
+    text: "Queen-eight offsuit."
+    hint: "Q8o is the lowest offsuit queen to bet 4x."
+    startAt: { street: preflop, deal: { player: [Qs, 8h] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h3-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h4
+    text: "Queen-seven offsuit."
+    hint: "One below Q8o: check."
+    startAt: { street: preflop, deal: { player: [Qd, 7c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h4-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h5
+    text: "Pocket deuces."
+    hint: "Deuces are the one pair you check."
+    startAt: { street: preflop, deal: { player: [2c, 2h] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h5-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
 ```
 
 ```quiz
@@ -1118,7 +1408,7 @@ steps:
 ```
 ---
 
-### Lesson 9: `flop-raise`: The flop: raise 2x or check
+### Lesson 9: `flop-raise`: The flop: bet 2x or check
 
 **Front matter:** `chapter: perfect-lowest-edge` · `minutes: 8` · summary: "Hidden pairs, two pair and good flush draws are 2x hands."
 
@@ -1168,7 +1458,7 @@ Ante** compared with perfect flop play. Lesson 10 shows where they slip.
 For a flop decision the app goes through every turn and river pair (C(47, 2) = 1,081) and every dealer hand
 (C(45, 2) = 990): **1,070,190 showdowns**.
 * Bet 2x: EV = average over all showdowns of the settled result with Play = 2.
-* Check: for each turn and river, take the better of "play 1x" and "fold (−2)", then average.
+* Check: for each turn and river, take the better of "bet 1x" and "fold (−2)", then average.
 
 {{9s 7d}} on {{9h Kc 2s}}: EV(2x) = 154367/178365 ≈ 0.8655; EV(check) = 10203/23782 ≈ 0.4290.
 :::
@@ -1177,38 +1467,83 @@ For a flop decision the app goes through every turn and river pair (C(47, 2) = 1
 
 ```scene
 id: l09-s1
+version: 1
 title: Hidden pair, bet 2x
-table: { bankroll: 50000, ante: 1000, trips: 0 }
-deals:
-  - { player: [9s, 7d], flop: [9h, Kc, 2s] }
+bankroll: 50000
+bets: { ante: 1000 }
 seed: 901
-allowed: [deal, check, play-2]
-showEv: true
+showEV: true
 steps:
-  - say: "Tap **Deal**, then **Check**: nine-seven offsuit isn't a 4x hand."
-    completeWhen: { street: flop }
-  - say: "Your 9 pairs the board: a **hidden pair**. Check the EV sheet, then bet **2x**."
-    completeWhen: { best: true }
+  - id: deal
+    text: "Tap **Deal**."
+    deals:
+      - { player: [9s, 7d], flop: [9h, Kc, 2s] }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: preflop
+    text: "Nine-seven offsuit isn't a 4x hand: **Check**."
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: flop
+    text: "Your 9 pairs the board: a **hidden pair**. Check the EV sheet, then make the best play."
+    hint: "A pair that uses your card: bet 2x."
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: finish
+    text: "The rest of the cards are dealt and the hand is settled."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
 ```
 
 ```scene
 id: l09-s2
+version: 1
 title: Three flops, three calls
-table: { bankroll: 100000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Th, 4h], flop: [Jh, 8h, 2c] }
-  - { player: [9h, 4h], flop: [Jh, 8h, 2c] }
-  - { player: [9c, 8d], flop: [Ks, Kd, 4c] }
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 902
-allowed: [deal, check, play-2, play-1, fold]
-showEv: true
+showEV: true
 steps:
-  - say: "Hand 1: deal, check preflop, then decide on the flop. Four hearts, with the ten of hearts in your hand."
-    completeWhen: { best: true }
-  - say: "Finish the hand. Hand 2: the same flop, but your best heart is the nine."
-    completeWhen: { best: true }
-  - say: "Hand 3: a pair of kings on the board, nothing in your hand."
-    completeWhen: { best: true }
+  - id: h1
+    text: "Hand 1: you checked preflop. Four hearts, with the ten of hearts in your hand."
+    hint: "Four to a flush with a ten or better of that suit in hand: bet 2x."
+    startAt: { street: flop, deal: { player: [Th, 4h], flop: [Jh, 8h, 2c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h1-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h2
+    text: "Hand 2: the same flop, but your best heart is the nine."
+    hint: "Below a ten: check."
+    startAt: { street: flop, deal: { player: [9h, 4h], flop: [Jh, 8h, 2c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h2-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h3
+    text: "Hand 3: a pair of kings on the board, nothing in your hand."
+    hint: "A pair on the board belongs to the dealer too."
+    startAt: { street: flop, deal: { player: [9c, 8d], flop: [Ks, Kd, 4c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h3-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
 ```
 
 ```quiz
@@ -1258,7 +1593,7 @@ deuces. But the nines belong to everyone, and your deuces are the lowest pair th
 rare mistakes.
 
 **Straight draws.** An open-ended draw like {{9c 8d}} on {{Ts 7h 2c}} is a **check** (−0.140 vs −0.235).
-A straight comes only about 1 time in 3 by the river, and you can wait and play 1x when it does. With a
+A straight comes only about 1 time in 3 by the river, and you can wait and bet 1x when it does. With a
 higher draw like {{Tc 8d}} on {{Js 9c 4h}}, the two options are dead even (−0.1526 vs −0.1532). Either is fine.
 
 **Flush draw plus straight draw.** {{7h 6h}} on {{8h 5c 2h}} has a flush draw (no high heart in hand) and an
@@ -1278,25 +1613,61 @@ exact answer.
 
 ```scene
 id: l10-s1
+version: 1
 title: Tricky flops
-table: { bankroll: 100000, ante: 1000, trips: 0 }
-deals:
-  - { player: [2c, 2d], flop: [9s, 9h, 5c] }
-  - { player: [9c, 8d], flop: [Ts, 7h, 2c] }
-  - { player: [7h, 6h], flop: [8h, 5c, 2h] }
-  - { player: [Jd, 5c], flop: [5h, 5s, Kc] }
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 1001
-allowed: [deal, check, play-2, play-1, fold]
-showEv: true
+showEV: true
 steps:
-  - say: "Hand 1: deuces on a board with a pair of nines. Deal, check, and make the flop decision."
-    completeWhen: { best: true }
-  - say: "Hand 2: an open-ended straight draw."
-    completeWhen: { best: true }
-  - say: "Hand 3: a flush draw and a straight draw together."
-    completeWhen: { best: true }
-  - say: "Hand 4: three fives, one of them yours."
-    completeWhen: { best: true }
+  - id: h1
+    text: "Hand 1: deuces on a board with a pair of nines."
+    hint: "Your deuces are the lowest pair there is: check."
+    startAt: { street: flop, deal: { player: [2c, 2d], flop: [9s, 9h, 5c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h1-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h2
+    text: "Hand 2: an open-ended straight draw."
+    hint: "Straight draws are checks."
+    startAt: { street: flop, deal: { player: [9c, 8d], flop: [Ts, 7h, 2c] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h2-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h3
+    text: "Hand 3: a flush draw and a straight draw together."
+    hint: "Both draws together are worth 2x here, though the basic card says check."
+    startAt: { street: flop, deal: { player: [7h, 6h], flop: [8h, 5c, 2h] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h3-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h4
+    text: "Hand 4: three fives, one of them yours."
+    hint: "Trips using your card: bet 2x."
+    startAt: { street: flop, deal: { player: [Jd, 5c], flop: [5h, 5s, Kc] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h4-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
 ```
 
 ```quiz
@@ -1309,7 +1680,7 @@ steps:
   hand: { hole: 9c 8d, board: Ts 7h 2c }
   options: ["Bet 2x", "Check"]
   answer: 1
-  explain: "Straight draws are checks. You can play 1x on the river if the straight comes."
+  explain: "Straight draws are checks. You can bet 1x on the river if the straight comes."
 - q: How much does following the three flop rules (instead of perfect flop play) cost?
   options: ["About 0.09% of the Ante", "About 1% of the Ante", "About 5% of the Ante", "Nothing"]
   answer: 0
@@ -1318,49 +1689,49 @@ steps:
 
 ---
 
-### Lesson 11: `river-call-or-fold`: The river: play 1x or fold
+### Lesson 11: `river-call-or-fold`: The river: bet 1x or fold
 
-**Front matter:** `chapter: perfect-lowest-edge` · `minutes: 8` · summary: "Folding costs 2 antes for sure. Play 1x when that's worse."
+**Front matter:** `chapter: perfect-lowest-edge` · `minutes: 8` · summary: "Folding costs 2 antes for sure. Bet 1x when that's worse."
 
 **Objectives**
 
-* Compare playing 1x with folding, using the fact that folding always costs exactly 2 antes.
+* Compare betting 1x with folding, using the fact that folding always costs exactly 2 antes.
 * Know that you need to win only **about 1 time in 5** for 1x to beat folding.
-* Play 1x with any hidden pair or better.
+* Bet 1x with any hidden pair or better.
 
 **Lesson**
 
-You've checked twice and all five community cards are out. Now it's **play 1x or fold**.
+You've checked twice and all five community cards are out. Now it's **bet 1x or fold**.
 
 Folding is easy to price: you lose your Ante and your Blind, **exactly 2 antes**, every time. So the
-question is: **does playing 1x lose less than 2 antes on average?**
+question is: **does betting 1x lose less than 2 antes on average?**
 
-If you play 1x and win, you collect on Play and usually on the Ante (+2). If you lose, you lose Ante, Blind
+If you bet 1x and win, you collect on Play and usually on the Ante (+2). If you lose, you lose Ante, Blind
 and Play (−3). You're only putting 1 extra Ante at risk, to protect the 2 you'd give up by folding. That's
 why the bar is low: when the dealer qualifies, **winning about 1 time in 5 is enough**.
 
-Rule one is simple: **with a hidden pair or better, always play 1x.** {{Td 4c}} on {{Ts Kh 7d 3s 2c}}
+Rule one is simple: **with a hidden pair or better, always bet 1x.** {{Td 4c}} on {{Ts Kh 7d 3s 2c}}
 (a pair of tens) has an EV of **+0.261** for 1x against −2 for folding.
 
 Without a pair it's closer, and you need to know how many dealer hands beat you. Lesson 12 shows a
 quick way to count. For now, look at the EV sheet:
 
-| You | Board | Play 1x | Fold | Best |
+| You | Board | Bet 1x | Fold | Best |
 |---|---|---|---|---|
 | {{Td 4c}} | {{Ts Kh 7d 3s 2c}} | **+0.261** | −2 | 1x (hidden pair) |
 | {{Qc 7d}} | {{Kd Jh 9s 5c 2d}} | **−1.821** | −2 | 1x (queen high, but enough wins) |
 | {{8c 6d}} | {{Kh Qs 4d 3c 2h}} | −2.492 | **−2** | Fold (eight high) |
 | {{4c 3d}} | {{As Ks Qs Jd Th}} | **−0.136** | −2 | 1x (the board plays: mostly ties) |
 
-{{Qc 7d}} loses money either way. Playing 1x loses 1.82 antes on average and folding loses 2, so you play.
+{{Qc 7d}} loses money either way. Betting 1x loses 1.82 antes on average and folding loses 2, so you play.
 Your queen high beats every dealer hand that didn't pair, and when the dealer doesn't qualify your
 Ante can't lose.
 
-When the board makes the best hand for everyone, as with {{As Ks Qs Jd Th}}, always play 1x. Most of the
+When the board makes the best hand for everyone, as with {{As Ks Qs Jd Th}}, always bet 1x. Most of the
 time it's a tie and everything pushes, which is much better than losing 2 antes.
 
 :::math The "1 in 5" bar
-Ignore ties and Blind bonuses for a moment, and say the dealer qualifies. Play 1x: win +2 (Ante + Play), lose
+Ignore ties and Blind bonuses for a moment, and say the dealer qualifies. Bet 1x: win +2 (Ante + Play), lose
 −3 (Ante + Blind + Play). EV(1x) = 2w − 3(1 − w) = 5w − 3, which beats −2 when **w > 1/5**.
 
 When the dealer doesn't qualify, the Ante pushes. Then a win pays +1 (Play) and a loss costs −2 (Blind +
@@ -1376,25 +1747,45 @@ and lose to 725 (609 qualifying, 116 not). EV(1x) = (256 × 1 − 609 × 3 − 1
 
 ```scene
 id: l11-s1
-title: Play or fold?
-table: { bankroll: 100000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Td, 4c], flop: [Kh, 7d, 3s], turn: Ts, river: 2c }
-  - { player: [Qc, 7d], flop: [Kd, Jh, 9s], turn: 5c, river: 2d }
-  - { player: [8c, 6d], flop: [Kh, Qs, 4d], turn: 3c, river: 2h }
-  - { player: [4c, 3d], flop: [As, Ks, Qs], turn: Jd, river: Th }
+version: 1
+title: Bet 1x or fold?
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 1101
-allowed: [deal, check, play-1, fold]
-showEv: true
+showEV: true
 steps:
-  - say: "Four river decisions. For each hand: Deal, check, check, then **play 1x or fold**. Hand 1."
-    completeWhen: { best: true }
-  - say: "Hand 2: queen high."
-    completeWhen: { best: true }
-  - say: "Hand 3: eight high."
-    completeWhen: { best: true }
-  - say: "Hand 4: the board is a royal straight."
-    completeWhen: { best: true }
+  - id: h1
+    text: "Four river decisions. Hand 1: the turn paired your ten."
+    hint: "A hidden pair: always bet 1x."
+    startAt: { street: river, deal: { player: [Td, 4c], flop: [Kh, 7d, 3s], turn: Ts, river: 2c } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
+  - id: h2
+    text: "Hand 2: queen high."
+    hint: "Folding is −2 antes; compare with that."
+    startAt: { street: river, deal: { player: [Qc, 7d], flop: [Kd, Jh, 9s], turn: 5c, river: 2d } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
+  - id: h3
+    text: "Hand 3: eight high."
+    hint: "Almost every dealer hand beats you."
+    startAt: { street: river, deal: { player: [8c, 6d], flop: [Kh, Qs, 4d], turn: 3c, river: 2h } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
+  - id: h4
+    text: "Hand 4: the board is a royal straight."
+    hint: "When the board plays, it's usually a tie."
+    startAt: { street: river, deal: { player: [4c, 3d], flop: [As, Ks, Qs], turn: Jd, river: Th } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
 ```
 
 ```quiz
@@ -1403,30 +1794,30 @@ steps:
   answer: 1
   explain: "You give up your Ante and Blind: exactly 2 antes."
 - q: You have a hidden pair on the river. What's the play?
-  options: ["Always play 1x", "Fold unless it's a high pair", "Play 1x only if the board has no flush draw", "Fold"]
+  options: ["Always bet 1x", "Fold unless it's a high pair", "Bet 1x only if the board has no flush draw", "Fold"]
   answer: 0
   explain: "A hidden pair or better is always worth playing."
-- q: Why can playing 1x be right even when its EV is negative (say −1.8 antes)?
+- q: Why can betting 1x be right even when its EV is negative (say −1.8 antes)?
   options: ["It can't", "Because folding is −2, which is worse", "Because the Blind might pay", "Because of the Trips bet"]
   answer: 1
   explain: "Compare it with folding, not with zero."
 - q: What's the best river play?
   hand: { hole: 4c 3d, board: As Ks Qs Jd Th }
-  options: ["Play 1x", "Fold"]
+  options: ["Bet 1x", "Fold"]
   answer: 0
-  explain: "The board plays, so it's usually a tie. Playing 1x costs 0.136 antes on average, and folding costs 2."
+  explain: "The board plays, so it's usually a tie. Betting 1x costs 0.136 antes on average, and folding costs 2."
 ```
 
 ---
 
 ### Lesson 12: `counting-dealer-outs`: Counting the dealer's outs
 
-**Front matter:** `chapter: perfect-lowest-edge` · `minutes: 9` · summary: "Fewer than 21 cards that beat you: play 1x."
+**Front matter:** `chapter: perfect-lowest-edge` · `minutes: 9` · summary: "Fewer than 21 cards that beat you: bet 1x."
 
 **Objectives**
 
 * Count the dealer's **outs**: unseen cards that, in the dealer's hand, would beat you.
-* Use the rule: no hidden pair, but **fewer than 21 outs** → play 1x; otherwise fold.
+* Use the rule: no hidden pair, but **fewer than 21 outs** → bet 1x; otherwise fold.
 * Know where the rule is slightly off.
 
 **Lesson**
@@ -1443,23 +1834,23 @@ How to count, step by step:
    card you hold counts as seen.
 3. **Straights and flushes.** Add any single card that would complete one for the dealer.
 
-Then: **fewer than 21 outs → play 1x. 21 or more → fold.**
+Then: **fewer than 21 outs → bet 1x. 21 or more → fold.**
 
 Example 1. {{Qc 7d}} on {{Kd Jh 9s 5c 2d}}. Board pairs: K, J, 9, 5, 2 = 15. Higher than your queen and
-not on the board: only the ace = 4. No straight or flush is one card away. **19 outs → play 1x.**
+not on the board: only the ace = 4. No straight or flush is one card away. **19 outs → bet 1x.**
 
 Example 2. {{8c 6d}} on {{Kh Qs 4d 3c 2h}}. Board pairs = 15. Cards that beat your K-Q-8 kicker: aces,
 jacks, tens and nines = 16. **31 outs → fold.**
 
 Example 3. {{Jd 8c}} on the same board {{Kh Qs 4d 3c 2h}}. Board pairs = 15, and only aces beat your
-K-Q-J = 4. **19 outs → play 1x.** One card made the difference.
+K-Q-J = 4. **19 outs → bet 1x.** One card made the difference.
 
 Example 4. {{Jc 9d}} on {{8s 8h 5c 3d 2s}}. The board is paired, so you're playing 8-8 with J-9-5. The
 dealer beats you with an ace, king or queen kicker (12), a 5, 3 or 2 for two pair (9), or the last two
 eights (2). **23 outs → fold.**
 
 **How good is the rule?** Very good. In a random sample of 3,000 river spots, it disagreed with perfect
-play on about 1 in 90. Nearly all of those are at 19 or 20 outs, where perfect play folds by a few
+play on about 1 in 90 (≈ sampled). Nearly all of those are at 19 or 20 outs, where perfect play folds by a few
 hundredths of an Ante. One example is {{2c 4h}} on {{Qc Qh Kh Qs 9d}}: 19 outs, but folding is better
 (1x is −2.124). Following the rule instead of perfect river play costs **0.11% of the Ante**, about 33¢
 an hour at $10.
@@ -1474,31 +1865,49 @@ practical rule ignores it.
 
 ```scene
 id: l12-s1
+version: 1
 title: Count, then decide
-table: { bankroll: 100000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Jd, 8c], flop: [Kh, Qs, 4d], turn: 3c, river: 2h }
-  - { player: [Jc, 9d], flop: [8s, 8h, 5c], turn: 3d, river: 2s }
-  - { player: [6s, 5d], flop: [Kh, Kd, 9c], turn: 9s, river: 3h }
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 1201
-allowed: [deal, check, play-1, fold]
-showEv: true
+showEV: true
 steps:
-  - say: "Hand 1: Deal, check, check. Count the dealer's outs before you look at the EV sheet: board pairs, higher cards, straights and flushes."
-    completeWhen: { best: true }
-  - say: "That was 19 outs. Hand 2: a paired board."
-    completeWhen: { best: true }
-  - say: "23 outs. Hand 3: two pair on the board, and your best card is a six."
-    completeWhen: { best: true }
-  - say: "28 outs (aces, queens, jacks, tens, eights and sevens beat your kicker, plus kings and nines for a full house): fold."
-    completeWhen: { next: true }
+  - id: h1
+    text: "Hand 1: count the dealer's outs before you look at the EV sheet: board pairs, higher cards, straights and flushes."
+    hint: "15 board-pair outs plus 4 aces: 19."
+    startAt: { street: river, deal: { player: [Jd, 8c], flop: [Kh, Qs, 4d], turn: 3c, river: 2h } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
+  - id: h2
+    text: "That was 19 outs. Hand 2: a paired board."
+    hint: "A, K, Q kickers (12) + 5s, 3s, 2s (9) + two eights: 23."
+    startAt: { street: river, deal: { player: [Jc, 9d], flop: [8s, 8h, 5c], turn: 3d, river: 2s } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
+  - id: h3
+    text: "23 outs. Hand 3: two pair on the board, and your best card is a six."
+    hint: "Every card from 7 up beats your kicker."
+    startAt: { street: river, deal: { player: [6s, 5d], flop: [Kh, Kd, 9c], turn: 9s, river: 3h } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
+  - id: wrap
+    text: "28 outs (aces, queens, jacks, tens, eights and sevens beat your kicker, plus kings and nines for a full house): fold."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
 - q: No hidden pair. The dealer has 19 outs. What's the play?
-  options: ["Play 1x", "Fold"]
+  options: ["Bet 1x", "Fold"]
   answer: 0
-  explain: "Fewer than 21 outs: play 1x."
+  explain: "Fewer than 21 outs: bet 1x."
 - q: How many outs does the dealer have here?
   hand: { hole: 8c 6d, board: Kh Qs 4d 3c 2h }
   options: ["15", "19", "27", "31"]
@@ -1542,7 +1951,7 @@ What happens over the long run when you play this way:
 |---|---|
 | Bet 4x preflop | 37.7% |
 | Bet 2x on the flop | 21.3% |
-| Play 1x on the river | 21.8% |
+| Bet 1x on the river | 21.8% |
 | Fold on the river | 19.2% |
 
 On average you'll have **4.15 antes** in action per hand, and lose **2.185% of one Ante** per hand. At a $10
@@ -1570,16 +1979,20 @@ turn/river pairs and all 990 dealer hands, with the best decision at every step.
 
 ```scene
 id: l13-s1
+version: 1
 title: Ten perfect hands
-table: { bankroll: 100000, ante: 1000, trips: 0 }
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 1301
-allowed: all
-showEv: true
+showEV: true
+ui: { showSession: true }
 steps:
-  - say: "Play 10 hands. Before you confirm each decision, check the EV sheet and choose the **Best play**."
-    completeWhen: { handsPlayed: 10 }
-  - say: "Open the **session** panel. Your decision cost vs perfect should read $0.00, and your result is just luck."
-    completeWhen: { tap: session }
+  - id: play
+    text: "Play 10 hands. Before you confirm each decision, check the EV sheet and choose the **Best play**."
+    completeWhen: { hands: 10 }
+  - id: session
+    text: "Open the **session** panel. Your decision cost vs perfect should read $0.00, and your result is just luck."
+    completeWhen: { tapped: session }
 ```
 
 ```quiz
@@ -1612,22 +2025,45 @@ to see the EV sheet agree.
 
 ```scene
 id: l14-s1
+version: 1
 title: One of each
-table: { bankroll: 100000, ante: 1000, trips: 0 }
-deals:
-  - { player: [Ks, 6d] }
-  - { player: [8h, 3c], flop: [Ah, Kd, 3s] }
-  - { player: [Jd, 8c], flop: [Kh, Qs, 4d], turn: 3c, river: 2h }
+bankroll: 100000
+bets: { ante: 1000 }
 seed: 1401
-allowed: [deal, play-4, check, play-2, play-1, fold]
-showEv: true
+showEV: true
 steps:
-  - say: "Hand 1: preflop. Choose."
-    completeWhen: { best: true }
-  - say: "Hand 2: check preflop, then make the flop decision."
-    completeWhen: { best: true }
-  - say: "Hand 3: check, check, then make the river decision."
-    completeWhen: { best: true }
+  - id: h1
+    text: "Hand 1: preflop. Choose."
+    hint: "Offsuit kings: K5 and up."
+    startAt: { street: preflop, deal: { player: [Ks, 6d] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-4, play-3, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+  - id: h1-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h2
+    text: "Hand 2: you checked preflop. Make the flop decision."
+    hint: "Your 3 pairs the board."
+    startAt: { street: flop, deal: { player: [8h, 3c], flop: [Ah, Kd, 3s] } }
+    allowedActions: [check, play]
+    allowedOptions: [play-2, check]
+    expect: [ { type: play, best: true }, { type: check, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: flop } }
+  - id: h2-finish
+    text: "Play out the hand with the EV sheet."
+    allowedActions: [check, play, fold]
+    completeWhen: { street: settled }
+  - id: h3
+    text: "Hand 3: you checked twice. Make the river decision."
+    hint: "Count the outs: 19."
+    startAt: { street: river, deal: { player: [Jd, 8c], flop: [Kh, Qs, 4d], turn: 3c, river: 2h } }
+    allowedActions: [play, fold]
+    allowedOptions: [play-1, fold]
+    expect: [ { type: play, best: true }, { type: fold, best: true } ]
+    completeWhen: { bestDecisions: { count: 1, street: river } }
 ```
 
 ```quiz
@@ -1663,12 +2099,12 @@ steps:
   explain: "King high and no pair: check, and decide on the river."
 - q: River. Best play?
   hand: { hole: Qc 7d, board: Kd Jh 9s 5c 2d }
-  options: ["Play 1x", "Fold"]
+  options: ["Bet 1x", "Fold"]
   answer: 0
   explain: "19 outs, fewer than 21."
 - q: River. Best play?
   hand: { hole: 7d 5c, board: Jh 9s 8d 3c 2h }
-  options: ["Play 1x", "Fold"]
+  options: ["Bet 1x", "Fold"]
   answer: 1
   explain: "15 board-pair outs, plus 16 cards (A, K, Q, T) that beat your J-9-8-7: 31. Fold."
 - q: Which is never the best play?
@@ -1721,8 +2157,8 @@ At the app's default of **30 hands an hour**:
 | $25 | $16.39 / hour | $17.86 / hour |
 
 Real tables run anywhere from about 20 to 40 hands an hour, depending on how many players there are and
-how fast the dealer is. Change it in **Settings → Hands per hour**, and every per-hour figure in the app
-scales with it.
+how fast the dealer is. Change it in **Settings → Hands per hour**, and every per-hour figure on the EV
+sheet, in Drill and in auto-play scales with it.
 
 :::math Exact definitions
 Expected loss per hand (perfect) L = 50643648973/2317817502000 antes.
@@ -1771,7 +2207,7 @@ strong players use, with the exact price of each version.
 * **Preflop: bet 4x** with 33+, any ace, any suited king, K5o+, Q6s+, Q8o+, J8s+, JTo. Otherwise check.
 * **Flop: bet 2x** with two pair or better (using your cards), a hidden pair (not pocket deuces), or four to
   a flush with a ten or better of that suit in hand. Otherwise check.
-* **River: play 1x** with a hidden pair or better, or fewer than 21 dealer outs. Otherwise fold.
+* **River: bet 1x** with a hidden pair or better, or fewer than 21 dealer outs. Otherwise fold.
 
 You know this already. It's what Perfect strategy I taught, minus the EV sheet's rare exceptions.
 
@@ -1789,10 +2225,11 @@ You know this already. It's what Perfect strategy I taught, minus the EV sheet's
 | Simple card | 2.708% | 0.523% | **$1.57** |
 
 **Why the river matters most.** Every shortcut that drops the outs count costs about **5% of the Ante**,
-far more than all the other simplifications put together. "Play 1x only with a pair" sounds safe, but it
-folds hands that win often enough. Even with the chart's preflop rules, a pair-only river raises the edge
-from 2.19% to **7.35%**. Simplifying preflop to "any pair or ace" costs 3.5% on its own. Keep the chart's preflop rules and
-the outs count, and you're within pennies of perfect.
+far more than all the other simplifications put together. "Bet 1x only with a pair" sounds safe, but it
+folds hands that win often enough. Even with the chart's preflop and the basic flop rule, a river rule of
+"bet 1x only with a hidden pair or better" raises the edge from 2.19% to **7.13%**. Simplifying preflop to
+"any pair or ace" costs 3.5% on its own. Keep the chart's preflop rules and the outs count, and you're within
+pennies of perfect.
 
 ```chart
 strategy: basic
@@ -1889,32 +2326,52 @@ Blind bonuses such as royal flushes.
 
 ```scene
 id: l17-s1
+version: 1
 title: 300 hands in a few seconds
-table: { bankroll: 1000000, ante: 1000, trips: 0 }
+bankroll: 1000000
+bets: { ante: 1000 }
 seed: 1701
-allowed: []
-showEv: true
-autoPlay: { hands: 300, strategy: expert, speed: fast }
+showEV: true
+allowedActions: []
+ui: { speed: fast }
+autoPlay:
+  enabled: true
+  defaultStrategy: { id: expert, ante: 1000, trips: 0 }
+  handOptions: [300]
+  sessions: [1]
 steps:
-  - say: "Tap **Auto-play 300**. The app plays near-perfectly for 10 hours of hands."
-    completeWhen: { autoPlayDone: true }
-  - say: "The dashed line is the expected result (about −$68). Your actual line wanders far above and below it. That's variance."
-    completeWhen: { next: true }
+  - id: run
+    text: "Tap **Auto-play 300**. The app plays near-perfectly for 10 hours of hands."
+    completeWhen: { autoPlayCompleted: { minHands: 300 } }
+  - id: read
+    text: "The dashed line is the expected result (about −$68). Your actual line wanders far above and below it. That's variance."
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```scene
 id: l17-s2
+version: 1
 title: Bankroll test
-table: { bankroll: 40000, ante: 1000, trips: 0 }
+bankroll: 40000
+bets: { ante: 1000 }
 seed: 1702
-allowed: []
-showEv: false
-autoPlay: { hands: 90, strategy: basic, speed: fast, sessions: 100, chart: bust-rate }
+showEV: false
+allowedActions: []
+ui: { speed: fast }
+autoPlay:
+  enabled: true
+  defaultStrategy: { id: basic, ante: 1000, trips: 0 }
+  handOptions: [90]
+  sessions: [100]
 steps:
-  - say: "Run **100 sessions** of 3 hours each, starting with $400 (40 antes)."
-    completeWhen: { autoPlayDone: true }
-  - say: "Count the red lines that hit the floor. Expect roughly a third of sessions to bust."
-    completeWhen: { next: true }
+  - id: run
+    text: "Run **100 sessions** of 3 hours (90 hands) each, starting with $400 (40 antes)."
+    completeWhen: { autoPlayCompleted: { minHands: 90 } }
+  - id: read
+    text: "Read the **survival curve**: the share of sessions still going after each hand. The **bust rate** in the summary should be roughly a third (about 37%), and the p10–p90 band shows how wide a normal evening is."
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -1959,7 +2416,7 @@ figures are exact, at a $10 Ante and 30 hands an hour.
 | Check to the river, then play perfectly | 32.03% | $96.10 | $89.55 |
 | Never fold (check, check, always 1x) | 40.70% | $122.11 | $115.56 |
 | Bet 4x on every hand | 40.70% | $122.11 | $115.56 |
-| Check to the river, play 1x only with a pair | 50.04% | $150.12 | $143.56 |
+| Check to the river, bet 1x only with a pair | 50.04% | $150.12 | $143.56 |
 
 Three lessons hide in that table.
 
@@ -1973,17 +2430,30 @@ Three lessons hide in that table.
 
 ```scene
 id: l18-s1
+version: 1
 title: Careful vs perfect
-table: { bankroll: 1000000, ante: 1000, trips: 0 }
+bankroll: 1000000
+bets: { ante: 1000 }
 seed: 1801
-allowed: []
-showEv: true
-autoPlay: { hands: 300, strategy: expert, speed: fast, compare: [expert, check-to-river] }
+showEV: true
+allowedActions: []
+ui: { speed: fast }
+autoPlay:
+  enabled: true
+  defaultStrategy: { id: expert, ante: 1000, trips: 0 }
+  handOptions: [300]
+  sessions: [1]
+  compare:
+    - { id: expert, ante: 1000, trips: 0 }
+    - { id: check-to-river, ante: 1000, trips: 0 }
 steps:
-  - say: "Run both strategies on the **same cards** for 300 hands: near-perfect play vs 'check to the river'."
-    completeWhen: { autoPlayDone: true }
-  - say: "The expected lines say it all: about −$68 vs about −$961 over 300 hands. Results wobble, but the gap is real."
-    completeWhen: { next: true }
+  - id: run
+    text: "Run both strategies on the **same cards** for 300 hands: near-perfect play vs 'check to the river'."
+    completeWhen: { autoPlayCompleted: { minHands: 300 } }
+  - id: read
+    text: "The expected lines say it all: about −$68 vs about −$961 over 300 hands. Results wobble, but the gap is real."
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -2040,7 +2510,7 @@ Trips bet: a little cheaper than the main game per Ante, and a fair price for th
 | **8 / 6 / 5 (standard)** | **1.90%** | **$2.86** | Good bet |
 | 8 / 7 / 4 | 3.50% | $5.25 | Fair |
 | 7 / 6 / 5 | 4.50% | $6.75 | Fair |
-| 8 / 6 / 4 | 6.52% | $9.79 | Costly |
+| 8 / 6 / 4 | 6.52% | $9.79 | Poor bet |
 
 Read the felt before you bet. If the straight pays 4 and the flush 6, walk to the next table.
 
@@ -2059,17 +2529,29 @@ Exact: −48987/2572780. The other tables: 9-7-4 −301629/33446140, 8-7-4 −23
 
 ```scene
 id: l19-s1
+version: 1
 title: Trips pays, the hand loses
-table: { bankroll: 50000, ante: 1000, trips: 500 }
-deals:
-  - { player: [7c, 7d], dealer: [Qh, 8s], flop: [7h, Ks, 9d], turn: Td, river: Jc }
-allowed: [deal, play-4]
-showEv: true
+bankroll: 50000
+bets: { ante: 1000, trips: 500 }
+showEV: true
 steps:
-  - say: "You have $5 on Trips. Tap **Deal**, then bet **4x** with pocket sevens."
-    completeWhen: { action: play-4 }
-  - say: "Three sevens! The dealer makes a straight and wins the hand: Ante, Blind and Play lose (−$60). But Trips pays **3 to 1: +$15**."
-    completeWhen: { next: true }
+  - id: deal
+    text: "You have $5 on Trips. Tap **Deal**."
+    deals:
+      - { player: [7c, 7d], dealer: [Qh, 8s], flop: [7h, Ks, 9d], turn: Td, river: Jc }
+    allowedActions: [deal]
+    completeWhen: { action: { type: deal } }
+  - id: bet
+    text: "Pocket sevens: **Bet 4x**."
+    allowedActions: [play]
+    allowedOptions: [play-4]
+    expect: [ { type: play, option: play-4 } ]
+    completeWhen: { street: settled }
+  - id: result
+    text: "Three sevens! The dealer makes a straight and wins the hand: Ante, Blind and Play lose (−$60). But Trips pays **3 to 1: +$15**."
+    allowedActions: []
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -2110,7 +2592,7 @@ the house edge is **8.56%**. On a 1000/200/50/20/15/10/5 table it's **19.36%**. 
 
 **Progressive jackpot.** It's usually a $1 to $5 bet on your two hole cards plus the flop. It pays a share
 of a growing meter for a royal flush (100%) or straight flush (often 10%), and fixed amounts for smaller
-hands. A royal in those five cards comes 1 time in **649,740**. On one example $1 table (royal 100%,
+hands. These awards are paid "for 1": the casino keeps your $1, so a "$300" award is $299 profit. A royal in those five cards comes 1 time in **649,740**. On one example $1 table (royal 100%,
 straight flush 10%, quads $300, full house $50, flush $40, straight $30, trips $9):
 
 | Meter | House edge | Cost per hour (30 hands) |
@@ -2155,7 +2637,7 @@ meter = (1 − 0.5306) × 6,497,400 / 19 ≈ $160,531.
 - q: Why are most progressive bets expensive?
   options: ["They pay on the dealer's hand", "Most of their value is in a jackpot you hit about once in 650,000 hands, and the meter is usually far below break-even", "They're only offered at high-limit tables", "They change the main game's strategy"]
   answer: 1
-  explain: "On the example table the bet breaks even only when the meter passes about $160,000."
+  explain: "On the example table the bet breaks even only when the meter passes about $160,500."
 ```
 
 ---
@@ -2183,7 +2665,7 @@ I buy per dollar?** Here's what each plan costs, at 30 hands an hour (exact edge
 | $10 Ante + $5 Trips | $10.00 | The "standard evening" |
 | $10 Ante + $5 Trips at an 8-7-4 table | $12.39 | Same game, worse felt |
 | $10 Ante + $1 progressive (meter $50,000) | $16.84 | A one-in-650,000 dream |
-| $10 Ante + $5 Six Card Bonus | $19.98 | Almost three times the standard cost |
+| $10 Ante + $5 Six Card Bonus | $19.99 | About twice the standard cost |
 | $25 Ante, basic card | $17.86 | Big swings |
 
 **Our recipe for the most fun per dollar:**
@@ -2192,12 +2674,12 @@ I buy per dollar?** Here's what each plan costs, at 30 hands an hour (exact edge
 2. **If you like a side bet, make it Trips at an 8-6-5 (or 9-7-4) table**, and pay for it by
    **lowering your Ante**. $5 Ante + $5 Trips costs less per hour than $10 Ante alone ($6.43 vs $7.14
    with the basic card), and you get a payout most hours.
-3. **Skip Six Card Bonus** and anything above 5%. The same $12.84 an hour buys you two more hours of the main game.
-4. **Treat progressives as a lottery ticket.** Only the meter tells you the price. Below about $160,000 on
-   the example table, every dollar costs you a third or more.
+3. **Skip Six Card Bonus** and anything above 5%. The same $12.84 an hour buys you almost two more hours of the main game.
+4. **Treat progressives as a lottery ticket.** Only the meter tells you the price. On the example table,
+   below ≈ $160,500 it loses money, and below ≈ $46,500 it loses a third or more of every dollar.
 5. **Count the memorable moments.** At 30 hands an hour you'll bet 4x about 11 times, make a straight or
-   better about 3 times, and hit Trips about 4.6 times. The price of all that is the same whatever stake you choose, so
-   choose the stake that lets you play the hours you want.
+   better about 3 times, and hit Trips about 4.6 times. The count is the same whatever stake you choose,
+   so choose the stake that lets you play the hours you want.
 
 :::math The hourly figures
 Cost per hour = 30 × (Ante × edge per Ante + Trips × Trips edge + other side bet × its edge).
@@ -2210,17 +2692,30 @@ Straight or better in seven cards: 13,967,280 of 133,784,560 = 10.44%.
 
 ```scene
 id: l21-s1
-title: Two evenings, same price
-table: { bankroll: 1000000, ante: 1000, trips: 0 }
+version: 1
+title: Two evenings, similar price
+bankroll: 1000000
+bets: { ante: 1000 }
 seed: 2101
-allowed: []
-showEv: true
-autoPlay: { hands: 120, strategy: basic, speed: fast, compare: [ { strategy: basic, ante: 1000, trips: 0 }, { strategy: basic, ante: 500, trips: 500 } ] }
+showEV: true
+allowedActions: []
+ui: { speed: fast }
+autoPlay:
+  enabled: true
+  defaultStrategy: { id: basic, ante: 1000, trips: 0 }
+  handOptions: [120]
+  sessions: [1]
+  compare:
+    - { id: basic, ante: 1000, trips: 0 }
+    - { id: basic, ante: 500, trips: 500 }
 steps:
-  - say: "Run two 4-hour evenings on the same cards: $10 Ante alone, or $5 Ante + $5 Trips."
-    completeWhen: { autoPlayDone: true }
-  - say: "The expected costs are close (about $29 vs $26). Count the green Trips payouts on the second line."
-    completeWhen: { next: true }
+  - id: run
+    text: "Run two 4-hour evenings on the same cards: $10 Ante alone, or $5 Ante + $5 Trips."
+    completeWhen: { autoPlayCompleted: { minHands: 120 } }
+  - id: read
+    text: "The expected costs are close (about $29 vs $26). The **Trips hits** line in the summary shows how often the side bet paid on the second evening."
+    completeWhen: { acknowledged: true }
+    advance: button
 ```
 
 ```quiz
@@ -2266,7 +2761,7 @@ on the river.
 
 **Signals.**
 * **Check**: tap the table with your finger.
-* **Raise**: place chips in Play. Don't say "raise" and then hesitate.
+* **Bet**: place chips in Play. Don't announce a bet and then hesitate.
 * **Fold** (river only): slide your cards face down toward the dealer.
 
 **Cards.** Keep your two cards on the table, in view of the dealer. Most casinos don't let players share
@@ -2311,16 +2806,21 @@ One last round. The scene deals five random hands. Play each with the basic card
 
 ```scene
 id: l23-s1
+version: 1
 title: Five hands for the road
-table: { bankroll: 100000, ante: 1000, trips: 500 }
+bankroll: 100000
+bets: { ante: 1000, trips: 500 }
 seed: 2301
-allowed: all
-showEv: true
+showEV: true
+practice: true
+ui: { showSession: true }
 steps:
-  - say: "Play five hands with the basic card. Look at the EV sheet only after you've decided."
-    completeWhen: { handsPlayed: 5 }
-  - say: "Open the **session** panel: your decision cost vs perfect, your Trips results and your luck."
-    completeWhen: { tap: session }
+  - id: play
+    text: "Play five hands with the basic card. The EV sheet appears only after you confirm each decision."
+    completeWhen: { hands: 5 }
+  - id: session
+    text: "Open the **session** panel: your decision cost vs perfect, your Trips results and your luck."
+    completeWhen: { tapped: session }
 ```
 
 ```quiz
@@ -2354,14 +2854,14 @@ steps:
   explain: "Straight draws are checks."
 - q: River. Best play?
   hand: { hole: Jc 9d, board: 8s 8h 5c 3d 2s }
-  options: ["Play 1x", "Fold"]
+  options: ["Bet 1x", "Fold"]
   answer: 1
   explain: "23 dealer outs: fold."
 - q: River. Best play?
   hand: { hole: Jd 8c, board: Kh Qs 4d 3c 2h }
-  options: ["Play 1x", "Fold"]
+  options: ["Bet 1x", "Fold"]
   answer: 0
-  explain: "19 dealer outs: play 1x."
+  explain: "19 dealer outs: bet 1x."
 - q: What's the element of risk of UTH under perfect play?
   options: ["0.53%", "1.09%", "2.19%", "4.15%"]
   answer: 0
@@ -2682,11 +3182,10 @@ The numbers come from math (never typed into JSON) and must equal these exact va
 * **Simple preflop**: 4x if pair ≥ 33, or high card A or K, or Q with low ≥ 8, or J with low = T.
 * **Simple flop**: (a) or (b) of the basic flop rule (no flush clause).
 
-> ⚠ The simulator draft defined `simple` as "4x any pair or any ace; 2x any hidden pair; river 1x only
-> with a hidden pair". That strategy costs **16.06%** of the Ante (exact −6205519211/38630291700), seven times
-> the game's edge, and must not be taught as practical. The definition above replaces it (sent to main).
-> If the simulator's `basic` river "hidden" test is worded differently (e.g. "a hole card makes a straight
-> or better"), decisions.md must pick one, and the pinned EV must come from that one.
+> The simulator draft's old `simple` ("4x any pair or any ace; 2x any hidden pair or two pair+; river 1x only
+> with a hidden pair") is renamed **`river-leak`** (D15). It's lesson-only and never a practical preset: it costs
+> **16.06%** of the Ante (exact −6205519211/38630291700), seven times the game's edge. The "hidden" test is
+> decisions.md §3's (the one above).
 
 ### 7.2 Costs of other habits (lesson 18; exact, not strategy-registry entries)
 
@@ -2695,9 +3194,9 @@ The numbers come from math (never typed into JSON) and must equal these exact va
 | 3x instead of 4x on every preflop raise | 9.8585% | −228501907703/2317817502000 |
 | Never bet 2x on the flop | 9.4187% | −16373139857/173836312650 |
 | 4x only with pairs and aces | 5.6472% | −196337758313/3476726253000 |
-| Chart + basic flop, river "pair only" | 7.3470% | −20851744301/283814388000 |
-| Check to the river, play 1x only with a hidden pair | 50.0392% | −1070600065/2139523848 |
-| The draft `simple` | 16.0639% | −6205519211/38630291700 |
+| Chart + basic flop, river 1x only when hidden (§3) | 7.1290% | −22532354359/316066023000 |
+| Check to the river, bet 1x only with a hidden pair | 50.0392% | −1070600065/2139523848 |
+| `river-leak` | 16.0639% | −6205519211/38630291700 |
 
 ### 7.3 What the strategy chart shows (`#/strategy`)
 
@@ -2747,8 +3246,8 @@ If two options are equal (within 1e-9 antes), both get `best`. Never show
 ### 8.3 Wager tiers (Trips)
 
 By house edge per bet (crappy's thresholds): `free` ≤ 0 "**Free bet**" · `good` ≤ 2% "**Good bet**" · `fair`
-≤ 5% "**Fair**" · `poor` < 9% "**Costly**" · `avoid` ≥ 9% "**Sucker bet**". So 9-7-4 and 8-6-5 are Good,
-8-7-4 and 7-6-5 are Fair, and 8-6-4 is Costly. For mentioned-only bets in lessons: Six Card 8.56% Costly,
+≤ 5% "**Fair**" · `poor` < 9% "**Poor bet**" · `avoid` ≥ 9% "**Sucker bet**". So 9-7-4 and 8-6-5 are Good,
+8-7-4 and 7-6-5 are Fair, and 8-6-4 is a Poor bet. For mentioned-only bets in lessons: Six Card 8.56% Poor bet,
 Six Card 19.36% Sucker bet, progressive below break-even Sucker bet.
 
 ### 8.4 Better-alternative copy
@@ -2762,9 +3261,9 @@ The alternative card is always the best option. The copy is templated by situati
 | Preflop 3x (any hand) | "**{best}** instead. 3x is never the best play: EV grows in a straight line with your bet, so it's 4x or nothing." |
 | Flop check with a hidden pair / two pair+ | "**Bet 2x**: your {pairRank}s pair the board. You're ahead of most dealer hands." |
 | Flop 2x without a qualifying hand | "**Check** and see the river. {reason: pair on the board only / straight draw / weak flush draw}." |
-| River fold with a hidden pair | "**Play 1x**: a hidden pair beats every dealer hand that missed. Folding costs exactly $ {2·ante}." |
-| River fold with < 21 outs | "**Play 1x**: only {outs} cards beat you. You need to win just 1 time in 5 to beat folding." |
-| River fold when the board plays | "**Play 1x**: the board is your hand and the dealer's. It's usually a tie, and folding costs $ {2·ante}." |
+| River fold with a hidden pair | "**Bet 1x**: a hidden pair beats every dealer hand that missed. Folding costs exactly $ {2·ante}." |
+| River fold with < 21 outs | "**Bet 1x**: only {outs} cards beat you. You need to win just 1 time in 5 to beat folding." |
+| River fold when the board plays | "**Bet 1x**: the board is your hand and the dealer's. It's usually a tie, and folding costs $ {2·ante}." |
 | River 1x with ≥ 21 outs, no pair | "**Fold**: {outs} cards beat you. Folding costs $ {2·ante}; playing costs $ {cost} on average." |
 | Any spot where the basic rule and perfect play disagree | Add: "(The basic card says {ruleAction} here, a rare exception worth {regret}.)" |
 
@@ -2849,12 +3348,12 @@ exact EV still shown). The tier comes from §8.2.
 | `flop-two-pair-plus` | "Two pair or better that uses your cards: bet 2x." |
 | `flop-board-pair` | "A pair on the board belongs to the dealer too: check." |
 | `flop-flush-draw` | "Four to a flush: 2x only with a ten or better of that suit in your hand." |
-| `flop-straight-draw` | "Straight draws: check, and play 1x on the river if it comes." |
+| `flop-straight-draw` | "Straight draws: check, and bet 1x on the river if it comes." |
 | `flop-nothing` | "No pair, no draw: check." |
 | `flop-deuces` | "Pocket deuces stay a check on the flop." |
-| `river-hidden-pair` | "Hidden pair or better: always play 1x." |
-| `river-outs-low` / `-edge` / `-high` | "Count the dealer's outs: fewer than 21, play 1x; otherwise fold. Here: {outs}." |
-| `river-board-plays` | "When the board plays, play 1x: it's usually a tie." |
+| `river-hidden-pair` | "Hidden pair or better: always bet 1x." |
+| `river-outs-low` / `-edge` / `-high` | "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}." |
+| `river-board-plays` | "When the board plays, bet 1x: it's usually a tie." |
 
 Streaks count `best` and `close` as correct. Accuracy per street is shown as a percentage, and "Review
 misses" replays `small` and worse.
@@ -2869,7 +3368,7 @@ This agrees with the simulator spike's decisions (§0 there). Here are the measu
 |---|---|---|---|
 | River 1x/fold | **990 dealer hands**. Measured 0.48 ms in Node 22 (unoptimised JS port of the evaluator); est. < 5 ms on a mid-range Android. **Use this**. | Unnecessary | Unnecessary |
 | Flop 2x/check | **1,081 turn/river pairs × 990 dealer hands = 1,070,190 showdowns**, with an optimal river inside Check. Measured **150–170 ms** in Node 22 (unoptimised); est. 0.6–1.0 s on a mid-range Android, or 0.25–0.5 s with the incremental-mask evaluator the simulator spike specifies. **Use this, in the Web Worker**, started as the flop is dealt and cached per (hole, flop). | Not viable: ≈ 1.29 M canonical (hand, flop) pairs. Even 1 bit per decision is ≈ 160 kB; EVs are megabytes. That breaks the 150 kB table budget. | Fast but approximate: 10,000 runouts gives an SE of ≈ 0.05 antes, too coarse for "close" vs "small" tiers. Reject. |
-| Preflop 4x/3x/check | ≈ 2 × 10¹⁰ showdowns per hand class, hours on a phone. Reject. | **169 classes × {EV(4x), EV(3x), EV(check)}** as exact fractions: ≈ 8–12 kB raw. **Use this**. | Reject (the chart needs exact margins down to 0.005 antes, e.g. K2s). |
+| Preflop 4x/3x/check | ≈ 2 × 10¹⁰ showdowns per hand class, hours on a phone. Reject. | **169 classes × {EV(4x), EV(3x), EV(check)}** as exact fractions: ≈ 11 kB raw. **Use this**. | Reject (the chart needs exact margins down to 0.005 antes, e.g. K2s). |
 | Trips, paytables | Constant per paytable | Constants in `paytables.ts` / `edges.ts` | — |
 | Strategy EVs (§7) | — | Constants from the offline solve | Simulations only for bankroll paths, percentiles and bust rates (labelled "≈ simulated") |
 
@@ -2913,7 +3412,8 @@ check-to-river −111371309107/347672625300
 never-fold     −6432686411/15803301150
 always-max     −6432686411/15803301150
 perfect but 3x −228501907703/2317817502000
-draft simple   −6205519211/38630291700
+river-leak     −6205519211/38630291700
+chart + basic flop + hidden-only river  −22532354359/316066023000
 
 # preflop (EV in antes, perfect continuation)
 AA   4x 472094411/131098275   check 38331809/17479770
@@ -2994,7 +3494,8 @@ perfect $10: 6.555 ; basic $10: 7.144 ; simple $10: 8.123 ; Trips $5 8-6-5: 2.85
   (−0.02385 ± 0.0009 vs exact −0.023814) and AKs 4x (1.650 ± 0.006 vs 1.6583).
 * River rule vs perfect: 34 disagreements in 3,000 random river spots (`dis2.mjs`).
 * Every scene's forced deal (9 distinct, valid cards) and every outcome a step describes, plus every
-  quiz with a `hand:` whose answer is a decision, were checked against the engine math (`check_doc.py`).
+  quiz with a `hand:` whose answer is a decision, were checked against the engine math (`check_doc2.py`,
+  `run_jobs.mjs`). Each flop or river `startAt` is reachable under perfect play.
 
 **Cited, not computed**:
 * The rules and the Blind table: casino rack cards and game guides (Crown Sydney, Tulalip, Sun International,
@@ -3035,19 +3536,23 @@ that casino guides leave out.
 
 ## 13. Assumptions and open points for decisions.md
 
-1. **`simple` redefinition** (§7.1): the draft's `simple` costs 16.06%. The proposed definition costs 0.52% more
-   than perfect. Sent to main. Lessons 16 and 18 depend on it.
-2. **The basic river "hidden pair or better" test** = category(7 cards) ≥ pair and > category(board). The
-   simulator's wording may differ in rare spots, and decisions.md should fix one definition for both the code
-   and the pinned value (−54758439/2299422125 under this definition).
-3. **Decision tiers** use the simulator's thresholds (0.02 / 0.10 / 0.50 antes). K4o 4x (0.023) is therefore
-   "Small mistake", and the lesson copy says so.
-4. **Hands per hour = 30** (D10), and **bust** = bankroll below 6 antes (can't cover a full 4x hand).
-5. **Scene schema** (§1.2) is a proposal. `simulator.md` owns `SceneConfig`, and the content WPs adapt field
-   names if they differ. This file needs: forced deals per hand, `startAt`, `best: true` with **Try again**
-   (replay the same forced deal when a `best` step is missed), `tap` targets, `autoPlay` with `compare`
-   specs (strategy, ante, trips) and `sessions` with a `bust-rate` chart.
-6. **Mentioned-only side bets**: the Six Card description is "your 2 hole cards plus 4 more". The
-   progressive example table is illustrative. Bad Beat has no single edge, so the app gives the probabilities.
-7. **Chart cells** marked "close" use margin < 0.03 antes.
-8. **Hand-ranking teaching** is one refresher lesson (D8). Its table of "how often in 7 cards" comes from the evaluator test counts.
+Resolved in decisions.md: the `simple` redefinition (D15/D16; the old one is `river-leak`), the "hidden" and
+dealer-outs definitions (§3), the scene format (D25–D27a), the tiers (D24) and the button labels (D31).
+Still open or assumed:
+
+1. **"Check to the river, bet 1x only with a hidden pair" = −1070600065/2139523848 (50.0392%).** The design
+   reviewer reported 50.0358%. I recomputed it two independent ways with §3's "hidden": the flop-centric
+   solver (mode 3), and a separate board-centric enumeration over all 134,459 canonical boards (`bb3.c`).
+   Both give exactly −1070600065/2139523848, and the same program reproduces never-fold (−6432686411/15803301150)
+   exactly. Plausible alternative definitions don't give 50.0358% either: "hidden or any pocket pair or a
+   hole card matching the board" gives 47.81%, "any pair" gives 38.33%. Lesson 18 keeps 50.04% ("about 50%").
+   The reviewer's 7.129% figure matches mine exactly (−22532354359/316066023000), and the old 7.35% was
+   the source of that difference: it used the draft's flop rule (any hidden pair including 22, no flush
+   clause), not the basic flop.
+2. **Hands per hour = 30** (D10). **Bust** = equity below 6 × Ante + Trips (D32).
+3. **Mentioned-only side bets**: the Six Card description is "your 2 hole cards plus 4 more". The progressive
+   example table is illustrative, with awards paid "for 1". Bad Beat has no single edge; the app gives the
+   probabilities instead.
+4. **Chart cells** marked "close" use margin < 0.03 antes.
+5. **Hand-ranking teaching** is one refresher lesson (D8). Its "how often in 7 cards" table comes from the
+   evaluator test counts.

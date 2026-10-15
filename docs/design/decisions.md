@@ -141,3 +141,6 @@ The phone target is ~1 s per flop decision. The CI hard-fail is 1.5 s at 4× CPU
 - S9: lesson 21: "below ≈$160,500 it loses money; below ≈$46,500 it loses a third or more"; "about twice the standard cost"; $19.99.
 - S10: lesson 20 says the progressive's awards are "for 1" with the $1 kept.
 - Nits: §4 count is 21 lessons + 1 checkpoint (14) + exam (23); EV sheet starts at lesson 5; $6.55/h; preflop table ≈ 11 kB; `riverLeak` → `river-leak`; Trips wager tier `poor` label is "Poor bet"; lesson 12's "1 in 90" is labelled "≈ sampled"; inline `{{cards}}` render in quiz text, options and explanations; lesson 21 rec. 5 says "the count".
+
+### D36 Disputed lesson-only figure
+"Check to the river, bet 1x only with a hidden pair": the curriculum's two solvers give −1070600065/2139523848 (50.0392%); the design reviewer's gives 50.0358%. Both round to the 50.04% shown in lesson prose. This fraction is **not** pinned in unit tests until the strategy work package's exact engine settles it (tracked in `docs/chips.md`). Every other pinned value in curriculum.md §11 stands.
