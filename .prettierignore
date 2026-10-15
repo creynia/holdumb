@@ -15,5 +15,3 @@ src/sim/math/types.ts
 src/sim/strategy/types.ts
 src/sim/scene/types.ts
 src/sim/worker/protocol.ts
-src/env.d.ts
-src/main.tsx

@@ -20,6 +20,5 @@
     "paths": { "#ev-worker": ["./src/sim/worker/transport-url.ts"] },
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests/**/*.ts", "tests/**/*.tsx"],
-  "exclude": ["tests/e2e"]
+  "include": ["src", "tests/**/*.ts", "tests/**/*.tsx"]
 }

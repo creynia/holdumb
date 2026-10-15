@@ -21,7 +21,14 @@ const ALLOWED = {
   ui: ['engine', 'math', 'strategy', 'scene', 'worker'],
 };
 const NO_DOM = ['document', 'window', 'localStorage', 'sessionStorage', 'navigator'];
-const PURE_GLOBALS = [...NO_DOM, 'requestAnimationFrame'];
+const PURE_GLOBALS = [
+  ...NO_DOM,
+  'requestAnimationFrame',
+  'self',
+  'location',
+  'fetch',
+  'postMessage',
+];
 const WORKER_GLOBALS = ['document', 'window', 'localStorage', 'sessionStorage'];
 
 const noGlobals = (names, why) =>
@@ -40,6 +47,20 @@ function layerRules(layer, depth) {
     `${sibling}**`,
     ...allowedSiblings,
   ];
+  if (layer === 'ui') {
+    // ui talks to the worker through its public surface only (EvClient + protocol types).
+    group.push(
+      `${sibling}worker/*`,
+      `${sibling}worker/**`,
+      `!${sibling}worker/index`,
+      `!${sibling}worker/client`,
+      `!${sibling}worker/protocol`,
+      '**/sim/worker/*',
+      '!**/sim/worker/index',
+      '!**/sim/worker/client',
+      '!**/sim/worker/protocol',
+    );
+  }
   const aliasGroup = [
     '**/app/**',
     '**/content/**',
@@ -49,7 +70,12 @@ function layerRules(layer, depth) {
       (l) => `**/sim/${l}/**`,
     ),
   ];
-  const bare = layer === 'worker' || layer === 'ui' ? [] : ['preact', 'preact/*', '\\#ev-worker'];
+  const bare =
+    layer === 'worker'
+      ? []
+      : layer === 'ui'
+        ? ['\\#ev-worker']
+        : ['preact', 'preact/*', '\\#ev-worker'];
   return {
     files: [`src/sim/${layer}/${'*/'.repeat(depth)}*.{ts,tsx}`],
     ignores: ['**/*.test.{ts,tsx}'],
@@ -57,6 +83,11 @@ function layerRules(layer, depth) {
       'no-restricted-imports': [
         'error',
         {
+          // Exact specifiers: the src/sim barrel reached as '..' / '../..' (globs can't express it).
+          paths: [up(depth + 1).slice(0, -1), up(depth + 1), `${sibling}index`].map((name) => ({
+            name,
+            message: `src/sim/${layer} must not import the src/sim barrel.`,
+          })),
           patterns: [
             {
               group: [...group, ...aliasGroup, ...bare],
@@ -125,7 +156,7 @@ export default tseslint.config(
   ...layeringBlocks,
   // No DOM in the pure modules; the worker may use self/postMessage but not the page's globals.
   {
-    files: ['src/sim/{engine,math,strategy,scene}/**/*.ts'],
+    files: ['src/sim/{engine,math,strategy,scene}/**/*.{ts,tsx}'],
     ignores: ['**/*.test.ts'],
     rules: { 'no-restricted-globals': ['error', ...noGlobals(PURE_GLOBALS, 'Pure sim modules')] },
   },
@@ -143,7 +174,17 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['../app/**', '../app', '../sim/**', '../sim', '../content/**', '../content'],
+              group: [
+                '../app/**',
+                '../app',
+                '../sim/**',
+                '../sim',
+                '../content/**',
+                '../content',
+                '../../app/**',
+                '../../sim/**',
+                '../../content/**',
+              ],
               message: 'src/pwa imports nothing app specific.',
             },
           ],
@@ -159,9 +200,22 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: ['../sim', '../sim/index', '../sim/worker', '#ev-worker'].map((name) => ({
+            name,
+            message:
+              'src/content uses the sim sub-barrels (engine, scene, strategy), not the root barrel or the worker.',
+          })),
           patterns: [
             {
-              group: ['../app', '../app/**', '../sim/ui', '../sim/ui/**', '../sim/worker/**'],
+              group: [
+                '../app',
+                '../app/**',
+                '../sim/ui',
+                '../sim/ui/**',
+                '../sim/worker/**',
+                '../../*',
+                '../../**',
+              ],
               message: 'src/content imports from the sim only (types, parseCards, validateScene).',
             },
           ],

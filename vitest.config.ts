@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import preact from '@preact/preset-vite';
-import { contentPlugin } from './build/vite-plugin-content';
+import { contentPlugin } from './build/vite-plugin-content.ts';
 
 const shared = {
   plugins: [preact(), contentPlugin()],
