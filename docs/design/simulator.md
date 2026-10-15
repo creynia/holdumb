@@ -1066,7 +1066,22 @@ URL params from architecture §2.1 (`?seed ?hole ?board ?dealer ?street
 
 ### 5.1 Presets (exact EV per hand, Trips excluded, from the C precompute)
 
-@@STRAT_TABLE@@
+| Strategy | Lens | EV per hand (antes, exact) | Edge per Ante | vs perfect | $/hour at $10 ante, 30 hands | How |
+|---|---|---|---|---|---|---|
+| `perfect` | perfect | −50643648973/2317817502000 | 2.1850% | — | $6.55 | exact table + enumeration |
+| `expert` | perfect (sims) | −106357031/4682459600 | 2.2714% | +0.0864 pp | $6.81 | table + basic flop + exact river |
+| `basic` | practical | −54758439/2299422125 | 2.3814% | +0.1964 pp | $7.14 | rules (D15) |
+| `simple` | practical | −47068162901/1738363126500 | 2.7076% | +0.5226 pp | $8.12 | rules (D16) |
+| `check-to-river` | fun / teaching | −111371309107/347672625300 | 32.0334% | +29.8484 pp | $96.10 | check, check, perfect river |
+| `never-fold` | fun / myth | −6432686411/15803301150 | 40.7047% | +38.5197 pp | $122.11 | check, check, always 1x |
+| `always-max` | fun / maniac | −6432686411/15803301150 | 40.7047% | +38.5197 pp | $122.11 | 4x every hand |
+| `riverLeak` | lesson-only | −6205519211/38630291700 | 16.0639% | +13.8789 pp | $48.19 | old "simple": folds without a hidden pair |
+
+All values come from the independent C enumeration (`strat.c`, `strat2.c`)
+and match curriculum.md's solver exactly (D15, D16). They are pinned as tests,
+and `strategy.ev` returns them (no runtime computation). Adding $5 Trips (8-6-5) to
+any strategy adds 30 × $5 × 1.904% = **$2.86/hour**. Element of risk under
+perfect play is 0.52622% (§2.3).
 
 Preset ladder (D16): **perfect → basic → simple** for the perfect and practical
 lenses. `expert` is the fast stand-in for `perfect` in long simulations. The
