@@ -144,3 +144,6 @@ The phone target is ~1 s per flop decision. The CI hard-fail is 1.5 s at 4× CPU
 
 ### D36 Disputed lesson-only figure
 "Check to the river, bet 1x only with a hidden pair": the curriculum's two solvers give −1070600065/2139523848 (50.0392%); the design reviewer's gives 50.0358%. Both round to the 50.04% shown in lesson prose. This fraction is **not** pinned in unit tests until the strategy work package's exact engine settles it (tracked in `docs/chips.md`). Every other pinned value in curriculum.md §11 stands.
+
+### D37 WP0 contract placements
+`Progress` and `Job` live in `src/sim/engine/job.ts` (re-exported by `worker/protocol.ts`) so math can use them without importing the worker. `EvClient` is declared in `worker/protocol.ts`. `CircleId` is defined in `src/sim/scene/types.ts`; table-ui imports it rather than redefining it. `@playwright/test` and `playwright-core` are pinned to 1.56.1 via `overrides`.
