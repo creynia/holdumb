@@ -1,4 +1,11 @@
-import type { BlindPaytableId, Paytable, PaytablePresetId, TripsPaytableId } from './types';
+import type {
+  BlindPaytableId,
+  Cents,
+  HandCategory,
+  Paytable,
+  PaytablePresetId,
+  TripsPaytableId,
+} from './types';
 
 /** Blind: pays on a win with a straight or better; lesser winning hands push. */
 export const BLIND_PAYTABLES: Readonly<Record<BlindPaytableId, Paytable>> = {
@@ -47,3 +54,20 @@ export const PAYTABLE_PRESET_IDS: readonly PaytablePresetId[] = [
   'trips-8-6-4',
 ];
 export const DEFAULT_PAYTABLE_PRESET: PaytablePresetId = 'trips-8-6-5';
+
+/** All Trips presets as a list (Settings menu order). */
+export const PAYTABLE_PRESETS: readonly Paytable[] = PAYTABLE_PRESET_IDS.map(
+  (id) => TRIPS_PAYTABLES[id],
+);
+
+/** Profit for a winning Blind of `amount` (0 when the hand is below a straight: a push). */
+export function blindPay(table: Paytable, category: HandCategory, amount: Cents): number {
+  const odds = table.pays[category];
+  return odds ? Math.round((amount * odds[0]) / odds[1]) : 0;
+}
+
+/** Profit for a Trips bet of `amount`, or -amount when the hand is below trips. */
+export function tripsPay(table: Paytable, category: HandCategory, amount: Cents): number {
+  const odds = table.pays[category];
+  return odds ? Math.round((amount * odds[0]) / odds[1]) : -amount;
+}

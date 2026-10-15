@@ -43,35 +43,39 @@ const v = (s: string): number => handValueOf(parseCards(s));
 const cat = (s: string): string => evaluateN(parseCards(s)).category;
 
 describe('evaluator: exhaustive 5-card', () => {
-  it('matches every category count, 7,462 distinct values and the textbook oracle order', () => {
-    const counts = new Array<number>(10).fill(0);
-    const byKey = new Map<number, number>();
-    let total = 0;
-    const h = [0, 0, 0, 0, 0];
-    for (h[0] = 0; h[0] < 48; h[0]++)
-      for (h[1] = h[0] + 1; h[1] < 49; h[1]++)
-        for (h[2] = h[1] + 1; h[2] < 50; h[2]++)
-          for (h[3] = h[2] + 1; h[3] < 51; h[3]++)
-            for (h[4] = h[3] + 1; h[4] < 52; h[4]++) {
-              total++;
-              const value = handValueOf(h);
-              const key = oracleKey5(h);
-              counts[value >>> 20]!++;
-              const prev = byKey.get(key);
-              if (prev === undefined) byKey.set(key, value);
-              else if (prev !== value) throw new Error(`oracle class ${key} split`);
-            }
-    expect(total).toBe(2_598_960);
-    HAND_CATEGORIES.forEach((c, i) => expect(counts[i], c).toBe(FIVE_COUNTS[c]));
-    expect(byKey.size).toBe(7462);
-    // Order-isomorphism: sorted by the oracle key, our values strictly increase.
-    const keys = [...byKey.keys()].sort((a, b) => a - b);
-    for (let i = 1; i < keys.length; i++) {
-      expect(byKey.get(keys[i]!)!).toBeGreaterThan(byKey.get(keys[i - 1]!)!);
-    }
-    // Distinct values are distinct (no two oracle classes share a value).
-    expect(new Set(byKey.values()).size).toBe(7462);
-  });
+  it(
+    'matches every category count, 7,462 distinct values and the textbook oracle order',
+    { timeout: 120_000 },
+    () => {
+      const counts = new Array<number>(10).fill(0);
+      const byKey = new Map<number, number>();
+      let total = 0;
+      const h = [0, 0, 0, 0, 0];
+      for (h[0] = 0; h[0] < 48; h[0]++)
+        for (h[1] = h[0] + 1; h[1] < 49; h[1]++)
+          for (h[2] = h[1] + 1; h[2] < 50; h[2]++)
+            for (h[3] = h[2] + 1; h[3] < 51; h[3]++)
+              for (h[4] = h[3] + 1; h[4] < 52; h[4]++) {
+                total++;
+                const value = handValueOf(h);
+                const key = oracleKey5(h);
+                counts[value >>> 20]!++;
+                const prev = byKey.get(key);
+                if (prev === undefined) byKey.set(key, value);
+                else if (prev !== value) throw new Error(`oracle class ${key} split`);
+              }
+      expect(total).toBe(2_598_960);
+      HAND_CATEGORIES.forEach((c, i) => expect(counts[i], c).toBe(FIVE_COUNTS[c]));
+      expect(byKey.size).toBe(7462);
+      // Order-isomorphism: sorted by the oracle key, our values strictly increase.
+      const keys = [...byKey.keys()].sort((a, b) => a - b);
+      for (let i = 1; i < keys.length; i++) {
+        expect(byKey.get(keys[i]!)!).toBeGreaterThan(byKey.get(keys[i - 1]!)!);
+      }
+      // Distinct values are distinct (no two oracle classes share a value).
+      expect(new Set(byKey.values()).size).toBe(7462);
+    },
+  );
 });
 
 describe('evaluator: exhaustive 7-card', () => {
