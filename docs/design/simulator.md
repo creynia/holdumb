@@ -44,7 +44,7 @@ and/or exact rationals in Python. The scratch code is in
 | Rendering | SVG felt, data-driven layouts for portrait (390×844) and landscape (844×390), HTML action bar and EV sheet. Every target is at least 44 px. |
 | Fold reveal | When you fold, the dealer's cards are revealed with "You would have won $X / lost $Y" (D7). |
 | Practice mode | A sandbox toggle, off by default, that hides EV until you confirm and then grades the move (D11). |
-| Strategies | `perfect`, `expert`, `basic`, `simple`, `check-to-river`, `never-fold`, `always-max`, each with an **exact** EV per hand and a Trips amount. Multi-session sims with charts. |
+| Strategies | Ladder `perfect` → `basic` → `simple` (D16), plus `expert` (fast perfect for sims), `check-to-river`, `never-fold`, `always-max`, and lesson-only `riverLeak`, each with an **exact** EV per hand and a Trips amount. Multi-session sims with charts. |
 
 ---
 
@@ -504,7 +504,7 @@ export interface DecisionPreview {
   street: DecisionStreet;
   /** Display order: preflop [4x, 3x, check]; flop [2x, check]; river [1x, fold]. */
   options: DecisionOption[];
-  bestIndex: number;               // ties go to the more aggressive option
+  bestIndex: number;               // exact EV tie → the option with the smaller total wager (check / fold)
   exact: true;                     // every decision preview is exact (see §2.6)
   source: 'table' | 'enumeration';
   /** Showdowns enumerated (0 for the table): river 990, flop 1,070,190. */
@@ -571,14 +571,14 @@ Two consequences used everywhere:
   P̄ ≤ 0 then "check and always play 1x on the river" is already ≥ 3x. The sheet
   still shows 3x with its exact EV (from the same A, P).
 - The engine counts all values in **half-antes** (×2) so the 3:2 flush is an
-  integer. Every sum is an integer over a fixed power-free denominator.
+  integer. Every sum is an integer over a fixed denominator.
 
 | Street | Unseen | Enumeration | Showdowns | Exact denominator (half-antes) | Where | Budget |
 |---|---|---|---|---|---|---|
 | River | 45 | C(45,2) = 990 dealer hands | 990 | 2·990 | worker or in-thread | **< 5 ms**; < 100 ms at 4× throttle |
 | Flop | 47 | C(47,2) = 1,081 runouts × C(45,2) = 990 | 1,070,190 | 2·990·1,081 | **worker**, starts on `board-dealt flop` | **≤ 600 ms** at 4× throttle (target), 1.5 s hard (architecture §4.5) |
 | Preflop, Raise | 50 | C(50,5) = 2,118,760 boards × 990 | 2,097,572,400 | 2·990·2,118,760 | table | < 1 ms lookup |
-| Preflop, Check | 50 | C(50,3) = 19,600 flops × the flop computation | 22,682,724,000 (per class) | 2·990·21,187,600 | table | < 1 ms lookup |
+| Preflop, Check | 50 | C(50,3) = 19,600 flops × the flop computation | 20,975,724,000 (per class) | 2·990·21,187,600 | table | < 1 ms lookup |
 
 **River.** Count W, Wq, L, Lq over 990 dealer hands; Play 1x = A + P, Fold = −2.
 
@@ -611,7 +611,7 @@ slower and inexact. §2.7 has the format, generator and verification.
   `WagerTier` and in the EV sheet header as "Trips: −1.90% of the Trips bet, any decision".
 - The game: EV per hand under perfect play = **−50643648973/2317817502000 ≈ −0.0218497** antes, so the house
   edge is **2.18497% of the Ante**. Expected total wagered per hand is
-  29164125301/7023689400 ≈ 4.15225 antes, so the element of risk (loss / total wagered) is **50643648973/9624161349330 ≈ 0.52621%**.
+  29163830173/7023689400 ≈ 4.15221 antes (ties → smaller wager), so the element of risk (loss / total wagered) is **50643648973/9624063957090 ≈ 0.52622%**.
   Both are exact fractions in `edges.ts` (Appendix A).
 
 ### 2.4 Tiers
@@ -742,6 +742,12 @@ budget (architecture §4.6).
   value from the flop enumerator lies within the class's range (sanity), and
   the table's Check EV vs a 2 k-flop sampled mean of the exact flop job
   within 4σ (slow-tagged, `SLOW=1`, run nightly or by reviewers).
+- **Tie rule**: on an exact EV tie, choose the smaller total wager (check, or
+  fold at the river), as in curriculum.md. EVs and `SC` don't depend on it, but
+  the counts `fr`, `cp`, `cf` and the expected wager do. The scratch C run broke
+  ties the other way, which explains its E[wager] 29164125301/7023689400 vs the
+  canonical **29163830173/7023689400** (difference 295128/7023689400 ≈ 0.00004 ante,
+  i.e. exact river ties where Raise 1x = Fold = −2). Pin the canonical value.
 - Adding a Blind preset = add a `BlindPaytableId`, run the generator, add the
   pinned row set. The registry test fails if any Blind preset lacks a table.
 
@@ -1062,28 +1068,65 @@ URL params from architecture §2.1 (`?seed ?hole ?board ?dealer ?street
 
 @@STRAT_TABLE@@
 
-Definitions (the rules are code, copy lives in `content/strategy.json`):
+Preset ladder (D16): **perfect → basic → simple** for the perfect and practical
+lenses. `expert` is the fast stand-in for `perfect` in long simulations. The
+rest are teaching and fun presets. `riverLeak` is **lesson-only** (not in the
+auto-play picker): it is the old "simple" rule, whose river folds without a
+hidden pair.
+
+Canonical definitions (curriculum.md, canonical via decisions.md; the
+rule-based presets are **data**, see `RuleStrategyDef` below):
+- **hidden** (river) = category(best of 7) ≥ pair **and** category(best of 7) >
+  category(the board's 5 cards).
+- **dealer outs** (river) = the number of the 45 unseen cards c with
+  value(board + c, best 5 of 6) > value(your 7).
+- **flop (a)** = category of best5(hole + flop) ≥ two pair **and** > the flop's
+  own category. **(b) hidden pair** = a pocket pair other than 22, or a hole card
+  matching a flop rank. **(c)** some suit has ≥ 4 cards among hole + flop and a
+  hole card of that suit is T or higher.
+
 - **`perfect`** (lowest-edge lens): preflop from the table, flop and river
-  by exact enumeration. Too slow for long simulations (a flop decision costs
-  ~0.1–0.5 s), so auto-play offers it only for "Watch" (≤ 30 hands) and Drill.
-  Multi-hand runs use `expert`, which costs only 0.0864 percentage points of the Ante (−2.2714% vs −2.1850%) more.
-- **`expert`**: perfect preflop (table) + the **basic flop rule** + exact
-  river (990 showdowns, ~0.1 ms). The default for simulations under the perfect lens.
-- **`basic`** (practical lens, the classic chart): preflop raise 4x with
-  any pair 33+, any ace, any suited king, K5o+, Q6s+, Q8o+, J8s+, JTo; otherwise
-  check. Flop: raise 2x with two pair or better (a hole card must play), a hidden
-  pair (except pocket deuces), or four to a flush including a hole card of 10
-  or higher of that suit. River: raise 1x with a hidden pair or better (a hole
-  card pairs the board or is a pocket pair, or a hole card makes a straight or
-  better), or when the **dealer outs** (unseen cards c that make board + c beat
-  you) are fewer than 21. Otherwise fold.
-- **`simple`** (practical, easiest to remember): raise 4x with any pair or any
-  ace; flop 2x with any hidden pair or better; river 1x with a hidden pair or
-  better, otherwise fold.
-- **`check-to-river`** (fun/teaching: "the cautious player"): never raise early, then
-  play the river perfectly.
+  by exact enumeration. A flop decision costs ~0.1–0.5 s, which is too slow for
+  long simulations, so auto-play offers it only for "Watch" (≤ 30 hands) and Drill.
+  Multi-hand runs use `expert`, which costs only 0.0864 percentage points of
+  the Ante more (−2.2714% vs −2.1850%).
+- **`expert`**: perfect preflop (table) + the basic flop rule + exact river
+  (990 showdowns, ~0.1 ms). The default for simulations under the perfect lens.
+- **`basic`** (practical lens). Preflop: raise 4x with 33+, any ace, any
+  suited king, K5o+, Q6s+, Q8o+, J8s+, JTo, which is **exactly the optimal
+  preflop set** (69 classes, §2.4). Otherwise check. Flop: 2x if (a), (b) or (c).
+  River: 1x if hidden, or if dealer outs < 21. Otherwise fold.
+- **`simple`** (practical, D16). Preflop: 4x with 33+, any ace, any king, Q8+
+  (suited or not), JT (suited or not). Flop: 2x if (a) or (b). River: as `basic`.
+- **`check-to-river`** (teaching: "the cautious player"): never raise early,
+  then play the river perfectly.
 - **`never-fold`** (myth demo): check, check, always raise 1x on the river.
-- **`always-max`** (fun/maniac): raise 4x on every hand.
+- **`always-max`** (fun/maniac): raise 4x on every hand. It has *exactly* the
+  same EV as `never-fold`, because averaged over all deals P(win) − P(lose) = 0
+  by symmetry, so the Play size doesn't matter on average. Only the swings grow.
+- **`riverLeak`** (lesson-only): preflop any pair or any ace; flop (a) or (b)
+  with 22 allowed; river 1x only if hidden, otherwise fold.
+
+```ts
+// strategy/types.ts (part of §5.2): declarative practical strategies
+export type HandPredicate =
+  | { flopMade: 'two-pair-plus-hole-plays' }               // flop (a)
+  | { hiddenPair: { exceptPocket?: Rank[] } }              // flop (b); basic/simple exclude [0] (22)
+  | { flushDraw: { minCards: 4; minHoleRank: Rank } }      // flop (c): T = 8
+  | { hidden: true }                                       // river
+  | { dealerOutsBelow: number }                            // river: 21
+  | { any: HandPredicate[] };
+export interface RuleStrategyDef {
+  id: StrategyId;
+  preflop4x: readonly string[];      // class list ('33'…'AA','AKs',…); others check (3x never)
+  flop2x: readonly HandPredicate[];  // any match → raise 2x, else check
+  river1x: readonly HandPredicate[] | 'always' | 'perfect';
+}
+```
+`StrategyChart` renders the preflop grid from `preflop4x` (or from the table
+for `perfect`), and the flop/river rule lists from the predicates (copy per
+predicate in `content/strategy.json`). Drill's practical lens grades against
+these predicates. `dealerOuts(hole, board)` costs 45 six-card evaluations.
 
 `StrategySpec` adds `trips: Cents` (0 = no Trips) and `ante: Cents`. For any
 spec, `strategyMetrics(spec, rules)` returns the exact edge per Ante, the element
@@ -1099,7 +1142,8 @@ import type { Fraction, DecisionPreview } from '../math/types';
 
 export type StrategyLens = 'perfect' | 'practical' | 'fun';
 export type StrategyId =
-  | 'perfect' | 'expert' | 'basic' | 'simple' | 'check-to-river' | 'never-fold' | 'always-max';
+  | 'perfect' | 'expert' | 'basic' | 'simple' | 'check-to-river' | 'never-fold' | 'always-max'
+  | 'riverLeak';                     // lesson-only
 export interface StrategySpec { id: StrategyId; ante: Cents; trips: Cents }
 export interface Strategy {
   id: StrategyId; name: string; lens: StrategyLens;
@@ -1338,7 +1382,7 @@ columns later), so math and UI are never blocked.
 
 Assumptions (no user input needed): single seat (no other players' cards
 removed); dealer qualifies with a pair or better (D9); ties at a decision go to
-the more aggressive option; Trips stays in action on a fold; the Blind/Ante are
+the option with the **smaller total wager** (check over raise, fold over a 1x raise, matching curriculum.md); Trips stays in action on a fold; the Blind/Ante are
 always equal; the bankroll can't go negative (a Play you can't afford is
 rejected, the `cant-afford-max-raise` warning at deal). Chips for
 `docs/chips.md`: progressive partial-enumeration estimates during a flop
@@ -1359,8 +1403,8 @@ Example: AA Raise 4x = (3292247168 + 4·2953693496)/4195144800 ≈ +3.60107;
 Check = 91996341600/41951448000 ≈ +2.19292.
 
 Totals: perfect-play EV per hand = **−50643648973/2317817502000** (house edge
-2.18497% of the Ante); E[wager] = 29164125301/7023689400; element of risk
-50643648973/9624161349330 (0.52621%). The optimal 4x set is 69 classes: 33+,
+2.18497% of the Ante); E[wager] = 29163830173/7023689400 with the canonical tie rule (the C run, which
+broke ties toward raising, got 29164125301/7023689400); element of risk 50643648973/9624063957090 ≈ 0.52622%. The optimal 4x set is 69 classes: 33+,
 any ace, any suited king, K5o+, Q6s+, Q8o+, J8s+, JTo. Raise 3x is never best.
 
 ```text
