@@ -35,7 +35,7 @@ The architecture map is in [`docs/design/architecture.md`](docs/design/architect
 
 ## Writing a lesson
 
-Lessons are Markdown files under `content/`. See [`docs/authoring.md`](docs/authoring.md).
+Lessons are Markdown files under `content/`. (format: `docs/design/architecture.md` §3; a full guide, `docs/authoring.md`, is coming).
 
 ## End-to-end tests locally
 

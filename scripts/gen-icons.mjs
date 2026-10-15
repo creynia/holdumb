@@ -163,7 +163,7 @@ const icons = {
   'icon-192.png': [192, {}],
   'icon-512.png': [512, {}],
   // Maskable: full-bleed navy, design inside the 80% safe zone, no ring.
-  'icon-maskable-512.png': [512, { rounded: false, ring: false, scale: 0.7 }],
+  'icon-maskable-512.png': [512, { rounded: false, ring: false, scale: 0.95 }],
   // iOS applies its own mask and dislikes transparency: full-bleed.
   'apple-touch-icon.png': [180, { rounded: false, ring: false, scale: 0.9 }],
 };
