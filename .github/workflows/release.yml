@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:single
+
+      - name: Publish versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist-single/holdumb.html --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist-single/holdumb.html --verify-tag --generate-notes
+          fi
+
+      - name: Update rolling latest-build prerelease
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag -f latest-build "$GITHUB_SHA"
+          git push -f origin refs/tags/latest-build
+          NOTES="Rolling build of main at $GITHUB_SHA. Download holdumb.html and open it in Chrome; it works offline."
+          if gh release view latest-build >/dev/null 2>&1; then
+            gh release upload latest-build dist-single/holdumb.html --clobber
+            gh release edit latest-build --prerelease --title "Latest build" --notes "$NOTES"
+          else
+            gh release create latest-build dist-single/holdumb.html \
+              --verify-tag --prerelease --title "Latest build" --notes "$NOTES"
+          fi

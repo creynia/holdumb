@@ -5,16 +5,16 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
-const GREEN = [0x0b, 0x2e, 0x4a];
+const NAVY = [0x0b, 0x2e, 0x4a];
 const CREAM = [0xf8, 0xf5, 0xec];
 const GOLD = [0xd4, 0xaf, 0x37];
-const PIPS = [
-  [170, 170],
-  [342, 170],
-  [256, 256],
-  [170, 342],
-  [342, 342],
-];
+const RED = [0xc0, 0x39, 0x2b];
+
+// Two overlapping playing cards on navy felt: a back card (red diamond) tilted left and a front
+// card (navy spade) tilted right, inside a gold ring. Mirrors assets/icon.svg.
+const CARD = { w: 196, h: 280, r: 26 };
+const BACK = { cx: 214, cy: 262, deg: -14 };
+const FRONT = { cx: 300, cy: 256, deg: 10 };
 
 /** Signed-distance style test: point inside rounded rect (x,y,w,h,r)? */
 function inRoundRect(px, py, x, y, w, h, r) {
@@ -25,18 +25,57 @@ function inRoundRect(px, py, x, y, w, h, r) {
   );
 }
 
+/** Point relative to a card centre, in the card's own (unrotated) frame. */
+function local(px, py, { cx, cy, deg }) {
+  const t = (-deg * Math.PI) / 180;
+  const dx = px - cx;
+  const dy = py - cy;
+  return [dx * Math.cos(t) - dy * Math.sin(t), dx * Math.sin(t) + dy * Math.cos(t)];
+}
+
+function inCard(px, py, pose, grow = 0) {
+  const [x, y] = local(px, py, pose);
+  const { w, h, r } = CARD;
+  return inRoundRect(x, y, -w / 2 - grow, -h / 2 - grow, w + 2 * grow, h + 2 * grow, r + grow);
+}
+
+function inTriangle(x, y, [ax, ay], [bx, by], [cx, cy]) {
+  const d = (x1, y1, x2, y2) => (x - x2) * (y1 - y2) - (x1 - x2) * (y - y2);
+  const d1 = d(ax, ay, bx, by);
+  const d2 = d(bx, by, cx, cy);
+  const d3 = d(cx, cy, ax, ay);
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+}
+
+/** A spade: a tip triangle, two lobes and a stem. (x,y) is relative to the pip centre. */
+function inSpade(x, y) {
+  return (
+    inTriangle(x, y, [0, -74], [-66, 14], [66, 14]) ||
+    Math.hypot(x + 33, y - 14) <= 35 ||
+    Math.hypot(x - 33, y - 14) <= 35 ||
+    inTriangle(x, y, [0, 10], [-20, 76], [20, 76])
+  );
+}
+
 /**
  * Colour of the design at point (px,py) in 512-space, or null when transparent.
- * rounded: clip the green tile to rx=96 (else full-bleed square).
+ * rounded: clip the navy tile to rx=96 (else full-bleed square).
  * ring: draw the gold ring (skipped for maskable, it would be cropped).
  */
 function sample(px, py, { rounded, ring }) {
   if (rounded ? !inRoundRect(px, py, 0, 0, 512, 512, 96) : false) return null;
-  const d = Math.hypot(px - 256, py - 256);
-  if (ring && Math.abs(d - 236) <= 4) return GOLD;
-  for (const [cx, cy] of PIPS) if (Math.hypot(px - cx, py - cy) <= 34) return GREEN;
-  if (inRoundRect(px, py, 96, 96, 320, 320, 56)) return CREAM;
-  return GREEN;
+  if (ring && Math.abs(Math.hypot(px - 256, py - 256) - 236) <= 4) return GOLD;
+  if (inCard(px, py, FRONT)) {
+    const [x, y] = local(px, py, FRONT);
+    return inSpade(x, y + 6) ? NAVY : CREAM;
+  }
+  // Navy outline around the front card separates it from the back card.
+  if (inCard(px, py, FRONT, 7)) return NAVY;
+  if (inCard(px, py, BACK)) {
+    const [x, y] = local(px, py, BACK);
+    return Math.abs(x + 44) / 32 + Math.abs(y + 40) / 46 <= 1 ? RED : CREAM;
+  }
+  return NAVY;
 }
 
 /** @returns {Uint8Array} RGBA pixels */
@@ -57,7 +96,7 @@ function render(size, { rounded = true, ring = true, scale = 1 } = {}) {
           const px = 256 + (ux - 256) / scale;
           const py = 256 + (uy - 256) / scale;
           let c;
-          if (scale < 1 && (px < 0 || px > 512 || py < 0 || py > 512)) c = GREEN;
+          if (scale < 1 && (px < 0 || px > 512 || py < 0 || py > 512)) c = NAVY;
           else c = sample(px, py, { rounded, ring });
           if (c) {
             r += c[0];
@@ -123,8 +162,8 @@ mkdirSync(outDir, { recursive: true });
 const icons = {
   'icon-192.png': [192, {}],
   'icon-512.png': [512, {}],
-  // Maskable: full-bleed green, design inside the 80% safe zone, no ring.
-  'icon-maskable-512.png': [512, { rounded: false, ring: false, scale: 0.7 }],
+  // Maskable: full-bleed navy, design inside the 80% safe zone, no ring.
+  'icon-maskable-512.png': [512, { rounded: false, ring: false, scale: 0.95 }],
   // iOS applies its own mask and dislikes transparency: full-bleed.
   'apple-touch-icon.png': [180, { rounded: false, ring: false, scale: 0.9 }],
 };
