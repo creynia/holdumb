@@ -7,6 +7,7 @@ export * from './scene';
 export * from './worker';
 export { Simulator } from './ui/Simulator';
 export { EvSheet } from './ui/EvSheet';
+export { optionKeyOf } from './ui/text';
 export { StrategyChart } from './ui/StrategyChart';
 export { DEFAULT_SIM_SETTINGS } from './ui/types';
 export type { SimSettings, SimulatorProps, SimulatorEvent } from './ui/types';

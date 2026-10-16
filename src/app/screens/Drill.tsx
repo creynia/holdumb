@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EvSheet, cardCode, formatMoney, nextSpot } from '../../sim';
+import { EvSheet, cardCode, formatMoney, nextSpot, optionKeyOf } from '../../sim';
 import type {
   DecisionAction,
   DecisionPreview,
@@ -233,7 +233,12 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
                   ),
                 )} per hand).`}
           </p>
-          <EvSheet preview={answer.preview} />
+          <EvSheet
+            preview={answer.preview}
+            variant="inline"
+            detail="full"
+            selected={optionKeyOf(chosenOpt.action)}
+          />
           <div class="row">
             <button type="button" class="btn" onClick={deal}>
               Next hand
