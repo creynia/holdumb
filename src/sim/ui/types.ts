@@ -57,4 +57,8 @@ export interface SimulatorProps {
   evClient: EvClient;
   onEvent?: (e: SimulatorEvent) => void;
   persistKey?: string;
+  /** Sandbox only: a saved snapshot to restore (the app keeps it in PersistedV1.sandbox). */
+  snapshot?: unknown;
+  /** Sandbox only: called with a JSON-safe snapshot after every action. */
+  onSnapshot?: (snapshot: unknown) => void;
 }

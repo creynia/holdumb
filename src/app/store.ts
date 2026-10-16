@@ -61,6 +61,10 @@ export class Store {
   get drill(): DrillStats {
     return this.data.drill;
   }
+  /** The sim's opaque sandbox snapshot (PersistedV1.sandbox); included in export/import. */
+  get sandbox(): unknown {
+    return this.data.sandbox;
+  }
   get drillStreak(): number {
     return this.streak;
   }
@@ -192,6 +196,17 @@ export class Store {
   resetDrill() {
     this.streak = 0;
     this.commit({ ...this.data, drill: emptyDrill() });
+  }
+
+  /**
+   * Store the sandbox snapshot. Saved with the debounce but does not notify subscribers: it changes
+   * on every table action and nothing in the app renders it.
+   */
+  setSandbox(snap: unknown) {
+    const { sandbox: _old, ...rest } = this.data;
+    this.data = snap === undefined ? rest : { ...rest, sandbox: snap };
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.flush(), this.debounceMs);
   }
 
   updateSettings(patch: Partial<Settings>) {
