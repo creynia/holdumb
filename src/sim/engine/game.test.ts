@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { cardCode, parseCards } from './cards';
-import { applyAction, createGame, equity, legalActions, replay, visibleView } from './game';
+import {
+  applyAction,
+  createGame,
+  equity,
+  legalActions,
+  replay,
+  startHand,
+  visibleView,
+} from './game';
+import { resolveRules } from './rules';
 import { applyLogged, replayLog } from './log';
 import { validateAction } from './validate';
 import type { Action, GameEvent, GameState, LogEntry, ValidationCode } from './types';
@@ -274,7 +283,7 @@ describe('createGame', () => {
       },
     });
     expect(r.street).toBe('river');
-    expect(r.hand!.decisions).toHaveLength(2);
+    expect(r.hand!.decisions).toHaveLength(0);
     const p = createGame({ startAt: { street: 'preflop', deal: { player: ['Ac', '3d'] } } });
     expect(p.street).toBe('preflop');
     const played = createGame({
@@ -369,5 +378,66 @@ describe('replay and log', () => {
     const b = A(createGame({ seed: 123, bets: { ante: 1000 } }), { type: 'deal' }).state;
     expect(a).toEqual(b);
     expect(parseCards('As').length).toBe(1);
+  });
+});
+
+describe('startHand (mid-session)', () => {
+  it('keeps stats and the RNG stream, and records no fake decisions', () => {
+    let s = createGame({ seed: 4, bankroll: 5_000_000, bets: { ante: 1000 } });
+    s = A(A(s, { type: 'deal' }).state, { type: 'play', multiple: 4 }).state;
+    const stats = s.stats;
+    const r = startHand(s, {
+      street: 'river',
+      deal: { player: ['Td', '4c'], flop: ['Kh', '7d', '3s'], turn: 'Ts', river: '2c' },
+    });
+    if (!r.ok) throw new Error('startHand');
+    expect(r.state.stats).toEqual(stats);
+    expect(r.state.rng).not.toEqual(s.rng); // dealHand advanced the same stream
+    expect(r.state.handCount).toBe(2);
+    expect(r.state.street).toBe('river');
+    expect(r.state.hand!.decisions).toEqual([]);
+    expect(r.state.hand!.boardShown).toBe(5);
+    expect(equity(r.state)).toBe(equity(s));
+    expect(types(r.events)).toEqual([
+      'hand-started',
+      'player-dealt',
+      'dealer-dealt',
+      'board-dealt',
+      'board-dealt',
+    ]);
+  });
+  it('with play: emits hand-settled and records only the play decision', () => {
+    const s = createGame({ seed: 4, bets: { ante: 1000 } });
+    const r = startHand(s, {
+      street: 'flop',
+      deal: { player: ['Ah', '7c'], flop: ['7d', 'Ks', '2c'] },
+      play: 2,
+    });
+    if (!r.ok) throw new Error('startHand');
+    expect(types(r.events)).toContain('hand-settled');
+    expect(r.state.street).toBe('settled');
+    expect(r.state.hand!.decisions).toEqual([
+      { street: 'flop', action: { type: 'play', multiple: 2 } },
+    ]);
+    expect(r.state.stats.hands).toBe(1);
+  });
+  it('fails cleanly when the deal is not affordable or incomplete', () => {
+    const s = createGame({ bankroll: 1000 });
+    const r = startHand(s, { street: 'preflop', deal: { player: ['Ah', '7c'] } });
+    expect(r.ok).toBe(false);
+    expect(() => startHand(s, { street: 'flop', deal: { player: ['Ah', '7c'] } })).toThrow();
+  });
+});
+
+describe('resolveRules', () => {
+  it('rejects an odd or non-positive betUnit and keeps the default ante floor', () => {
+    expect(() => resolveRules({ betUnit: 101 })).toThrow(/even/);
+    expect(() => resolveRules({ betUnit: 0 })).toThrow();
+    expect(resolveRules({ betUnit: 200 }).betUnit).toBe(200);
+    const g = createGame({
+      rules: { anteMin: 2500 },
+      startAt: { street: 'preflop', deal: { player: ['Ac', '3d'] } },
+    });
+    expect(g.bets.ante).toBe(2500);
   });
 });
