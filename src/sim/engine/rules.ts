@@ -13,5 +13,11 @@ export const DEFAULT_RULES: TableRules = {
 };
 
 export function resolveRules(partial?: Partial<TableRules>): TableRules {
-  return { ...DEFAULT_RULES, ...partial };
+  const rules = { ...DEFAULT_RULES, ...partial };
+  // The Blind flush pays 3:2 on an ante that is a multiple of betUnit; an even unit keeps every payout whole cents.
+  if (!Number.isInteger(rules.betUnit) || rules.betUnit <= 0 || rules.betUnit % 2 !== 0)
+    throw new Error(
+      `resolveRules: betUnit must be a positive even number of cents, got ${rules.betUnit}`,
+    );
+  return rules;
 }
