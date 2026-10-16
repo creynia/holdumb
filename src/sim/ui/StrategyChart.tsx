@@ -1,5 +1,5 @@
 import './sim.css';
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { StrategyId } from '../strategy/types';
 
 /** Rank characters high to low, as the chart's rows and columns run. */
@@ -89,6 +89,8 @@ export function StrategyChart({
   onSelect,
 }: StrategyChartProps) {
   const [picked, setPicked] = useState<string | null>(null);
+  const [focus, setFocus] = useState<string | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   if (view === 'flop' || view === 'river') {
     const rules =
       view === 'river' ? RIVER_RULES : FLOP_RULES[strategy === 'simple' ? 'simple' : 'basic'];
@@ -108,10 +110,32 @@ export function StrategyChart({
     setPicked(cls);
     onSelect?.(cls);
   };
+  // The 169 cells are 24 px (a 13x13 grid cannot be 44 px on a phone), so they are not buttons:
+  // one tab stop, arrow keys move, Enter/Space pick.
+  const onCellKey = (e: KeyboardEvent, r: string, c: string, cls: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      pick(cls);
+      return;
+    }
+    const d: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0],
+      ArrowDown: [1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+    };
+    const mv = d[e.key];
+    if (!mv) return;
+    e.preventDefault();
+    const nr = Math.min(12, Math.max(0, rankIdx(r) + mv[0]));
+    const nc = Math.min(12, Math.max(0, rankIdx(c) + mv[1]));
+    const next = cellClass(RANKS[nr]!, RANKS[nc]!);
+    gridRef.current?.querySelector<HTMLElement>(`[data-class="${next}"]`)?.focus();
+  };
   const count = chartClasses().filter((c) => set.has(c)).length;
   return (
     <div class="sim-chart" data-testid="strategy-chart">
-      <div class="sim-chart-grid" role="grid" aria-label="Preflop strategy chart">
+      <div ref={gridRef} class="sim-chart-grid" role="grid" aria-label="Preflop strategy chart">
         <div class="sim-chart-row" role="row">
           <span class="sim-chart-corner" role="presentation" />
           {[...RANKS].map((c) => (
@@ -129,16 +153,19 @@ export function StrategyChart({
               const cls = cellClass(r, c);
               const bet = set.has(cls);
               return (
-                <span key={cls} role="gridcell" class="sim-chart-td">
-                  <button
-                    type="button"
-                    class={`sim-chart-cell ${bet ? 'is-bet' : 'is-check'}${highlight.includes(cls) ? ' is-hl' : ''}${picked === cls ? ' is-picked' : ''}`}
-                    aria-label={`${cls}: ${bet ? 'Bet 4x' : 'Check'}`}
-                    data-class={cls}
-                    onClick={() => pick(cls)}
-                  >
-                    <span aria-hidden="true">{bet ? '4x' : '–'}</span>
-                  </button>
+                <span
+                  key={cls}
+                  role="gridcell"
+                  class={`sim-chart-cell ${bet ? 'is-bet' : 'is-check'}${highlight.includes(cls) ? ' is-hl' : ''}${picked === cls ? ' is-picked' : ''}`}
+                  aria-label={`${cls}: ${bet ? 'Bet 4x' : 'Check'}`}
+                  aria-selected={picked === cls}
+                  tabIndex={cls === (focus ?? 'AA') ? 0 : -1}
+                  data-class={cls}
+                  onClick={() => pick(cls)}
+                  onFocus={() => setFocus(cls)}
+                  onKeyDown={(e: KeyboardEvent) => onCellKey(e, r, c, cls)}
+                >
+                  <span aria-hidden="true">{bet ? '4x' : '–'}</span>
                 </span>
               );
             })}
