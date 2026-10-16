@@ -4,7 +4,7 @@
 //   &view=portrait|landscape   &theme=dark|light   &four=1   &speed=normal|fast|instant   &why=1
 import { render } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { applyAction, createGame } from '../engine';
+import { applyAction, createGame, equity } from '../engine';
 import type { Action, CreateGameOptions, GameEvent, GameState, HandResult } from '../engine';
 import { createEvClient } from '../worker';
 import type { DecisionPreview } from '../math';
@@ -203,7 +203,9 @@ function Demo({ id }: { id: string }) {
         whyOpen={q.get('why') === '1'}
       />
     ) : null;
-  const onFelt = Object.values(state.bets).reduce((a, b) => a + b, 0);
+  // D38: once settled, show equity(), not bankroll plus felt.
+  const settled = state.street === 'settled';
+  const onFelt = settled ? 0 : Object.values(state.bets).reduce((a, b) => a + b, 0);
   const playBet = state.bets.play;
   return (
     <Table
@@ -213,7 +215,7 @@ function Demo({ id }: { id: string }) {
       }
       status={
         <StatusBar
-          bankroll={state.bankroll}
+          bankroll={settled ? equity(state) : state.bankroll}
           onFelt={onFelt}
           sessionNet={state.stats.hands ? 0 : undefined}
         />
