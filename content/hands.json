@@ -1,0 +1,52 @@
+{
+  "high-card": {
+    "name": "High card",
+    "example": "Ah Qd 9s 6c 3d",
+    "summary": "No pair or better. The highest card decides, then the next, and so on."
+  },
+  "pair": {
+    "name": "Pair",
+    "example": "Ts Th Ad 8c 3h",
+    "summary": "Two cards of the same rank. The most common made hand."
+  },
+  "two-pair": {
+    "name": "Two pair",
+    "example": "Jc Jd 4h 4s Ac",
+    "summary": "Two different pairs. The higher pair decides first."
+  },
+  "trips": {
+    "name": "Three of a kind",
+    "example": "7d 7h 7s Kc 2d",
+    "summary": "Three cards of the same rank. Called trips."
+  },
+  "straight": {
+    "name": "Straight",
+    "example": "Tc 9d 8h 7s 6c",
+    "summary": "Five cards in a row, any suits. The ace is high or low, and a straight cannot wrap around."
+  },
+  "flush": {
+    "name": "Flush",
+    "example": "Ad Jd 9d 6d 2d",
+    "summary": "Five cards of one suit, not in a row."
+  },
+  "full-house": {
+    "name": "Full house",
+    "example": "8s 8d 8c Kh Kd",
+    "summary": "Three of one rank and two of another."
+  },
+  "quads": {
+    "name": "Four of a kind",
+    "example": "Qc Qd Qh Qs 4d",
+    "summary": "Four cards of the same rank. Called quads."
+  },
+  "straight-flush": {
+    "name": "Straight flush",
+    "example": "9h 8h 7h 6h 5h",
+    "summary": "Five cards in a row, all of one suit."
+  },
+  "royal-flush": {
+    "name": "Royal flush",
+    "example": "As Ks Qs Js Ts",
+    "summary": "Ten to ace, all of one suit. The best hand."
+  }
+}
