@@ -108,6 +108,7 @@ const COND_KEYS = [
 ];
 
 type Obj = Record<string, unknown>;
+const show = (v: unknown): string => (typeof v === 'string' ? v : JSON.stringify(v));
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 const isOption = (v: unknown): v is OptionKey =>
@@ -192,7 +193,7 @@ function checkStartAt(e: Errs, path: string, v: unknown): void {
       (street === 'preflop' && (v.play === 3 || v.play === 4)) ||
       (street === 'flop' && v.play === 2) ||
       (street === 'river' && v.play === 1);
-    if (!ok) e.add(`${path}.play`, `${String(v.play)}x is not a ${street} play`);
+    if (!ok) e.add(`${path}.play`, `${show(v.play)}x is not a ${street} play`);
   }
 }
 
@@ -265,7 +266,7 @@ function checkCondition(e: Errs, path: string, c: unknown): void {
           v.outcome !== undefined &&
           !['win', 'lose', 'tie', 'fold'].includes(v.outcome as string)
         )
-          e.add(p, `unknown outcome "${String(v.outcome)}"`);
+          e.add(p, `unknown outcome "${show(v.outcome)}"`);
         if (v.minNet !== undefined && !isInt(v.minNet)) e.add(p, 'minNet must be integer cents');
       }
       break;
@@ -286,7 +287,7 @@ function checkCondition(e: Errs, path: string, c: unknown): void {
       else {
         keysOnly(e, p, v, new Set(['option', 'whyOpened']));
         if (v.option !== undefined && !isOption(v.option))
-          e.add(p, `unknown option "${String(v.option)}"`);
+          e.add(p, `unknown option "${show(v.option)}"`);
         if (v.whyOpened !== undefined && typeof v.whyOpened !== 'boolean')
           e.add(p, 'whyOpened must be a boolean');
       }
@@ -307,7 +308,7 @@ function checkCondition(e: Errs, path: string, c: unknown): void {
         if (v.minHands !== undefined && (!isInt(v.minHands) || v.minHands < 1))
           e.add(p, 'minHands must be a positive integer');
         if (v.strategy !== undefined && !(STRATEGY_IDS as readonly unknown[]).includes(v.strategy))
-          e.add(p, `unknown strategy "${String(v.strategy)}"`);
+          e.add(p, `unknown strategy "${show(v.strategy)}"`);
       }
       break;
     case 'acknowledged':

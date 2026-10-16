@@ -1,7 +1,7 @@
 // Scene runner (simulator.md 4.1, decisions D26/D27): pure functions over a SceneRuntime.
 // The container (driver.ts) owns the engine state and applies each step's `deals` / `startAt`;
 // this file decides gating, counts inputs and says when a step is complete.
-import type { Action, Cents, DecisionStreet, HandResult, Street, WagerId } from '../engine/types';
+import type { Action, Cents, HandResult, Street, WagerId } from '../engine/types';
 import { effectiveGate, gateAllows, matchAction } from './gate';
 import type { Gate } from './gate';
 import type { Condition, SceneConfig, SceneInput, SceneRuntime, SceneStep } from './types';
@@ -132,7 +132,7 @@ function countInto(
         (ctx.streetBefore === 'preflop' ||
           ctx.streetBefore === 'flop' ||
           ctx.streetBefore === 'river') &&
-        (want === undefined || want === (ctx.streetBefore as DecisionStreet))
+        (want === undefined || want === ctx.streetBefore)
       )
         bump(c, key('best', want ?? '*'));
     } else if ('handResult' in leaf) {

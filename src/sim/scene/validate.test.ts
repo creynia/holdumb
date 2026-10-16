@@ -16,7 +16,9 @@ describe('validateScene', () => {
   });
   it('accepts every real lesson scene', () => {
     const b = buildContent(process.cwd());
-    const scenes = b.lessons.flatMap((l) => l.blocks.flatMap((x) => (x.kind === 'scene' ? [x.scene] : [])));
+    const scenes = b.lessons.flatMap((l) =>
+      l.blocks.flatMap((x) => (x.kind === 'scene' ? [x.scene] : [])),
+    );
     expect(scenes.length).toBe(30);
     for (const s of scenes) expect(errs(s), s.id).toEqual([]);
   });
@@ -24,23 +26,63 @@ describe('validateScene', () => {
     expect(errs(null)[0]).toMatch(/object/);
     expect(errs({ id: '', version: 2 })).toHaveLength(2);
     expect(errs({ ...base, allowed: [] }).join()).toMatch(/unknown key "allowed"/);
-    expect(errs({ ...base, steps: [{ id: 'a' }] }).join()).toMatch(/text.*completeWhen|completeWhen/s);
+    expect(errs({ ...base, steps: [{ id: 'a' }] }).join()).toMatch(
+      /text.*completeWhen|completeWhen/s,
+    );
   });
   it('rejects bad and duplicate cards in forced deals (D25)', () => {
-    expect(errs({ ...base, steps: [step({ deals: [{ player: ['As', 'As'] }] })] }).join()).toMatch(/Duplicate card "As"/);
-    expect(errs({ ...base, steps: [step({ deals: [{ player: ['As', 'Kd'], flop: ['Kd', '2c', '3c'] }] })] }).join()).toMatch(/Duplicate/);
-    expect(errs({ ...base, steps: [step({ deals: [{ player: ['Zs', 'Kd'] }] })] }).join()).toMatch(/bad card code/);
-    expect(errs({ ...base, steps: [step({ deals: [{ player: ['As'] }] })] }).join()).toMatch(/2 cards/);
+    expect(errs({ ...base, steps: [step({ deals: [{ player: ['As', 'As'] }] })] }).join()).toMatch(
+      /Duplicate card "As"/,
+    );
+    expect(
+      errs({
+        ...base,
+        steps: [step({ deals: [{ player: ['As', 'Kd'], flop: ['Kd', '2c', '3c'] }] })],
+      }).join(),
+    ).toMatch(/Duplicate/);
+    expect(errs({ ...base, steps: [step({ deals: [{ player: ['Zs', 'Kd'] }] })] }).join()).toMatch(
+      /bad card code/,
+    );
+    expect(errs({ ...base, steps: [step({ deals: [{ player: ['As'] }] })] }).join()).toMatch(
+      /2 cards/,
+    );
   });
   it('checks startAt coverage and string form', () => {
     expect(errs({ ...base, steps: [step({ startAt: 'preflop' })] }).join()).toMatch(/startAt/);
-    expect(errs({ ...base, steps: [step({ startAt: { street: 'flop', deal: { player: ['As', 'Kd'] } } })] }).join()).toMatch(/needs deal.flop/);
-    expect(errs({ ...base, steps: [step({ startAt: { street: 'river', deal: { player: ['As', 'Kd'], flop: ['2c', '3c', '4c'], turn: '9d', river: '9h' }, play: 2 } })] }).join()).toMatch(/not a river play/);
+    expect(
+      errs({
+        ...base,
+        steps: [step({ startAt: { street: 'flop', deal: { player: ['As', 'Kd'] } } })],
+      }).join(),
+    ).toMatch(/needs deal.flop/);
+    expect(
+      errs({
+        ...base,
+        steps: [
+          step({
+            startAt: {
+              street: 'river',
+              deal: { player: ['As', 'Kd'], flop: ['2c', '3c', '4c'], turn: '9d', river: '9h' },
+              play: 2,
+            },
+          }),
+        ],
+      }).join(),
+    ).toMatch(/not a river play/);
   });
   it('rejects unknown conditions, strategies and bad money', () => {
-    expect(errs({ ...base, steps: [step({ completeWhen: { next: true } })] }).join()).toMatch(/unknown completeWhen kind "next"/);
-    expect(errs({ ...base, steps: [step({ completeWhen: { tapped: 'moon' } })] }).join()).toMatch(/tap target/);
-    expect(errs({ ...base, autoPlay: { enabled: true, defaultStrategy: { id: 'nope', ante: 1000, trips: 0 } } }).join()).toMatch(/unknown strategy/);
+    expect(errs({ ...base, steps: [step({ completeWhen: { next: true } })] }).join()).toMatch(
+      /unknown completeWhen kind "next"/,
+    );
+    expect(errs({ ...base, steps: [step({ completeWhen: { tapped: 'moon' } })] }).join()).toMatch(
+      /tap target/,
+    );
+    expect(
+      errs({
+        ...base,
+        autoPlay: { enabled: true, defaultStrategy: { id: 'nope', ante: 1000, trips: 0 } },
+      }).join(),
+    ).toMatch(/unknown strategy/);
     expect(errs({ ...base, bets: { ante: 1050 } }).join()).toMatch(/multiple of 100/);
     expect(errs({ ...base, bankroll: 1000.5 }).join()).toMatch(/integer/);
   });
@@ -62,7 +104,10 @@ describe('validateScene', () => {
       ],
     };
     expect(errs(s).join()).toMatch(/dead end: the river/);
-    const fixed = { ...s, steps: [s.steps[0], { ...s.steps[1], allowedActions: ['check', 'play', 'fold'] }] };
+    const fixed = {
+      ...s,
+      steps: [s.steps[0], { ...s.steps[1], allowedActions: ['check', 'play', 'fold'] }],
+    };
     expect(errs(fixed)).toEqual([]);
   });
   it('fails a bestDecisions street the step never reaches', () => {
@@ -83,7 +128,13 @@ describe('validateScene', () => {
     const s = {
       ...base,
       showEV: false,
-      steps: [step({ expect: [{ type: 'play', best: true }], completeWhen: { street: 'settled' }, startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } } })],
+      steps: [
+        step({
+          expect: [{ type: 'play', best: true }],
+          completeWhen: { street: 'settled' },
+          startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } },
+        }),
+      ],
     };
     expect(errs(s).join()).toMatch(/needs showEV/);
     expect(errs({ ...s, practice: true })).toEqual([]);
@@ -106,6 +157,8 @@ describe('validateScene', () => {
     expect(errs(s).join()).toMatch(/can never complete/);
   });
   it('flags a sandbox scene whose options leave a street empty', () => {
-    expect(errs({ ...base, allowedOptions: ['play-4', 'check'] }).join()).toMatch(/dead end: the river/);
+    expect(errs({ ...base, allowedOptions: ['play-4', 'check'] }).join()).toMatch(
+      /dead end: the river/,
+    );
   });
 });
