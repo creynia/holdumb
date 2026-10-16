@@ -26,6 +26,9 @@ export class MemoryStorage implements StorageLike {
   removeItem(k: string) {
     this.m.delete(k);
   }
+  keys(): string[] {
+    return [...this.m.keys()];
+  }
 }
 
 export interface StorageHandle {
@@ -113,6 +116,13 @@ const wholeDollars = (x: unknown, lo: number, hi: number, d: number) => {
   return n === undefined ? d : Math.min(Math.max(Math.round(n / 100), lo), hi) * 100;
 };
 
+/** Bounds shared by sanitizing and the Settings inputs (dollars, except handsPerHour). */
+export const LIMITS = {
+  anteUnitDollars: { min: 1, max: 500 },
+  bankrollDollars: { min: 1, max: 1_000_000 },
+  handsPerHour: { min: 1, max: 500 },
+} as const;
+
 export function sanitizeSettings(raw: unknown): Settings {
   const d = DEFAULT_SETTINGS;
   const o = isObj(raw) ? raw : {};
@@ -125,8 +135,18 @@ export function sanitizeSettings(raw: unknown): Settings {
     practice: bool(o.practice, d.practice),
     confirmCostlyMoves: bool(o.confirmCostlyMoves, d.confirmCostlyMoves),
     skipPreview: bool(o.skipPreview, d.skipPreview),
-    anteUnitCents: wholeDollars(o.anteUnitCents, 1, 500, d.anteUnitCents),
-    handsPerHour: clampInt(o.handsPerHour, 1, 500, d.handsPerHour),
+    anteUnitCents: wholeDollars(
+      o.anteUnitCents,
+      LIMITS.anteUnitDollars.min,
+      LIMITS.anteUnitDollars.max,
+      d.anteUnitCents,
+    ),
+    handsPerHour: clampInt(
+      o.handsPerHour,
+      LIMITS.handsPerHour.min,
+      LIMITS.handsPerHour.max,
+      d.handsPerHour,
+    ),
     defaultBankrollCents: wholeDollars(
       o.defaultBankrollCents,
       1,
@@ -160,6 +180,21 @@ function sanitizeDrill(raw: unknown): DrillStats {
 /** Validates arbitrary parsed JSON into PersistedV1; malformed parts fall back to defaults. */
 export function sanitize(raw: unknown): PersistedV1 | null {
   if (!isObj(raw) || raw.version !== 1) return null;
+  return sanitizeV1(raw);
+}
+
+/** Upgrades any known stored version to the current shape. v1 is the identity (then sanitized). */
+export function migrate(raw: unknown): PersistedV1 | null {
+  if (!isObj(raw)) return null;
+  switch (raw.version) {
+    case 1:
+      return sanitizeV1(raw);
+    default:
+      return null;
+  }
+}
+
+function sanitizeV1(raw: Record<string, unknown>): PersistedV1 {
   const lessons: Record<string, LessonProgress> = {};
   if (isObj(raw.lessons)) {
     for (const [id, v] of safeEntries(raw.lessons)) {
@@ -196,15 +231,48 @@ export function sanitize(raw: unknown): PersistedV1 | null {
   };
 }
 
-/** Never throws; anything unreadable gives defaults. */
-export function load(storage: StorageLike): PersistedV1 {
+export interface LoadResult {
+  data: PersistedV1;
+  /** true when the stored data came from a newer app: never overwrite it */
+  readOnly: boolean;
+}
+
+function backUp(storage: StorageLike, text: string, now: number) {
   try {
-    const text = storage.getItem(STORAGE_KEY);
-    if (text) return sanitize(JSON.parse(text)) ?? defaultPersisted();
+    storage.setItem(`${STORAGE_KEY}:backup-${now}`, text);
   } catch {
-    /* fall through */
+    /* best effort */
   }
-  return defaultPersisted();
+}
+
+/**
+ * Never throws. Unreadable or unknown-version data is copied to `holdumb:v1:backup-<ts>` before
+ * defaults are used; data from a newer version (version > 1) is also left untouched (readOnly).
+ */
+export function loadDetailed(storage: StorageLike, now = Date.now()): LoadResult {
+  let text: string | null;
+  try {
+    text = storage.getItem(STORAGE_KEY);
+  } catch {
+    return { data: defaultPersisted(), readOnly: false };
+  }
+  if (!text) return { data: defaultPersisted(), readOnly: false };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    backUp(storage, text, now);
+    return { data: defaultPersisted(), readOnly: false };
+  }
+  const data = migrate(parsed);
+  if (data) return { data, readOnly: false };
+  backUp(storage, text, now);
+  const newer = isObj(parsed) && typeof parsed.version === 'number' && parsed.version > 1;
+  return { data: defaultPersisted(), readOnly: newer };
+}
+
+export function load(storage: StorageLike): PersistedV1 {
+  return loadDetailed(storage).data;
 }
 
 export function save(storage: StorageLike, data: PersistedV1): boolean {

@@ -142,6 +142,21 @@ describe('chart and scene validation (build fails)', () => {
   });
 });
 
+describe('scene card validation (needs the strict validateScene)', () => {
+  // The WP0 validateScene is shape-only. When the integration WP's strict validator lands this
+  // starts passing, `it.fails` flips to a failure, and it should become a plain `it`.
+  it.fails('rejects a forced deal that repeats a card', () => {
+    const dup =
+      '```scene\nid: dup\nversion: 1\nsteps:\n  - id: a\n    text: hi\n    deals: [{ player: [As, As] }]\n    completeWhen: { acknowledged: true }\n```\n';
+    expect(() => compileLesson(head + dup, 'd.md')).toThrow(/invalid scene "dup"/);
+  });
+  it('prefixes scene errors with the scene id', () => {
+    expect(() => compileLesson(head + '```scene\nid: named\nversion: 2\n```\n', 'a.md')).toThrow(
+      /invalid scene "named"/,
+    );
+  });
+});
+
 describe('structure errors', () => {
   it('names the file in the message', () => {
     expect(() => compileLesson(head + ':::math\nbody\n:::\n', 'a.md')).toThrow(/a\.md.*title/);

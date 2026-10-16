@@ -787,3 +787,10 @@ textarea {
     gap: 6px;
   }
 }
+
+#main:focus:not(:focus-visible) {
+  outline: none;
+}
+.check input {
+  flex: none;
+}

@@ -302,7 +302,9 @@ export function compileLesson(
       } else if (seg.lang === 'scene') {
         const json: unknown = parseYaml(seg.text);
         const res = validateScene(json);
-        if (!res.ok) throw new Error(`invalid scene: ${res.errors.join('; ')}`);
+        if (!res.ok) throw new Error(
+            `invalid scene${isObj(json) && typeof json.id === 'string' ? ` "${json.id}"` : ''}: ${res.errors.join('; ')}`,
+          );
         checkSceneText(json);
         blocks.push({ kind: 'scene', scene: res.scene });
       } else if (seg.lang === 'chart') {

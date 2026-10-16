@@ -23,6 +23,8 @@ import type {
   WagerId,
 } from './types';
 
+export type StartAt = { street: DecisionStreet; deal: ForcedDeal; play?: PlayMultiple };
+
 export interface CreateGameOptions {
   rules?: Partial<TableRules>;
   /** Money in the rack BEFORE any bets in `bets`/`startAt` are placed (they are taken from it). */
@@ -31,7 +33,7 @@ export interface CreateGameOptions {
   bets?: { ante?: Cents; trips?: Cents };
   forcedDeals?: ForcedDeal[];
   /** Start mid-hand (lessons, drill "play it out", ?street= URLs). Deal must cover the visible cards. */
-  startAt?: { street: DecisionStreet; deal: ForcedDeal; play?: PlayMultiple };
+  startAt?: StartAt;
 }
 
 const ZERO_WAGERS: Record<WagerId, Cents> = { ante: 0, blind: 0, play: 0, trips: 0 };
@@ -76,30 +78,58 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
     if (!r.ok) boom(state, a);
     else state = r.state;
   };
-  const ante = opts.bets?.ante ?? (opts.startAt ? 1000 : 0);
+  const ante = opts.bets?.ante ?? (opts.startAt ? Math.max(1000, rules.anteMin) : 0);
   if (ante > 0) step({ type: 'set-bet', wager: 'ante', amount: ante });
   if ((opts.bets?.trips ?? 0) > 0)
     step({ type: 'set-bet', wager: 'trips', amount: opts.bets!.trips! });
-  const start = opts.startAt;
-  if (start) {
-    const d = start.deal;
-    const need =
-      start.street === 'preflop'
-        ? !d.player
-        : start.street === 'flop'
-          ? !d.player || !d.flop
-          : !d.player || !d.flop || !d.turn || !d.river;
-    if (need)
-      throw new Error(`createGame: startAt ${start.street} needs the visible cards in deal`);
-    const v = validateAction(state, { type: 'deal' });
-    if (!v.ok) throw new Error(`createGame: ${v.message}`);
-    const [deal, rng] = dealHand(state.rng, d);
-    state = beginHand({ ...state, rng }, deal).state;
-    if (start.street !== 'preflop') step({ type: 'check' });
-    if (start.street === 'river') step({ type: 'check' });
-    if (start.play !== undefined) step({ type: 'play', multiple: start.play });
+  if (opts.startAt) {
+    const r = startHand(state, opts.startAt);
+    if (!r.ok) throw new Error(`createGame: ${r.error.message}`);
+    state = r.state;
   }
   return state;
+}
+
+/**
+ * Starts a hand directly at a decision street (lessons, drill, `?street=`). Callable from
+ * `betting` or `settled` in a game already in progress: session stats and the RNG stream carry
+ * on, chips are re-bet like `deal`, and no fake earlier decisions are recorded. Events:
+ * hand-started, player-dealt, dealer-dealt, board-dealt for the visible street(s), and with
+ * `play` the played + settlement events including hand-settled. Throws on a deal that does not
+ * cover the visible cards or has bad or duplicate codes.
+ */
+export function startHand(state: GameState, startAt: StartAt): ApplyResult {
+  const d = startAt.deal;
+  const missing =
+    startAt.street === 'preflop'
+      ? !d.player
+      : startAt.street === 'flop'
+        ? !d.player || !d.flop
+        : !d.player || !d.flop || !d.turn || !d.river;
+  if (missing) throw new Error(`startHand: ${startAt.street} needs the visible cards in deal`);
+  const v = validateAction(state, { type: 'deal' });
+  if (!v.ok) return { ok: false, state, error: v };
+  const [deal, rng] = dealHand(state.rng, d);
+  const begun = beginHand({ ...state, rng }, deal);
+  const shown = startAt.street === 'preflop' ? 0 : startAt.street === 'flop' ? 3 : 5;
+  const events = [...begun.events];
+  if (shown >= 3)
+    events.push({ type: 'board-dealt', street: 'flop', cards: deal.board.slice(0, 3) });
+  if (shown === 5)
+    events.push({ type: 'board-dealt', street: 'turn-river', cards: deal.board.slice(3, 5) });
+  let next: GameState = {
+    ...begun.state,
+    street: startAt.street,
+    hand: { ...begun.state.hand!, boardShown: shown },
+  };
+  if (startAt.play !== undefined) {
+    const pv = validateAction(next, { type: 'play', multiple: startAt.play });
+    if (!pv.ok) return { ok: false, state, error: pv };
+    const r = decide(next, { type: 'play', multiple: startAt.play });
+    next = r.state;
+    events.push(...r.events);
+  }
+  return { ok: true, state: next, events, warnings: v.warnings };
 }
 
 function beginHand(state: GameState, deal: Deal): { state: GameState; events: GameEvent[] } {

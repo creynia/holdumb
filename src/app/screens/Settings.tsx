@@ -4,7 +4,7 @@ import type { PaytablePresetId } from '../../sim';
 import { TRIPS_EDGE } from '../bets';
 import { Link } from '../components/Link';
 import { useStore } from '../context';
-import { decodeImport } from '../storage';
+import { LIMITS, decodeImport } from '../storage';
 import type { Settings as SettingsData } from '../settings';
 import { effectiveSpeed } from '../theme';
 
@@ -24,11 +24,12 @@ function Check(props: { label: string; checked: boolean; onChange: (v: boolean) 
   );
 }
 
-/** A whole-number field that only commits valid values. */
+/** A whole-number field: clamps to [min, max] on commit and re-syncs the input when it differs. */
 function NumberField(props: {
   label: string;
   value: number;
   min: number;
+  max: number;
   step?: number;
   onCommit: (n: number) => void;
 }) {
@@ -39,11 +40,19 @@ function NumberField(props: {
         type="number"
         inputMode="numeric"
         min={props.min}
+        max={props.max}
         step={props.step ?? 1}
         value={props.value}
         onChange={(e) => {
-          const v = Number(e.currentTarget.value);
-          if (Number.isFinite(v) && v >= props.min) props.onCommit(Math.round(v));
+          const input = e.currentTarget;
+          const v = Number(input.value);
+          if (input.value.trim() === '' || !Number.isFinite(v)) {
+            input.value = String(props.value);
+            return;
+          }
+          const n = Math.min(Math.max(Math.round(v), props.min), props.max);
+          if (String(n) !== input.value) input.value = String(n);
+          props.onCommit(n);
         }}
       />
     </label>
@@ -89,21 +98,24 @@ export function Settings() {
         <NumberField
           label="Ante unit ($)"
           value={Math.round(s.anteUnitCents / 100)}
-          min={1}
+          min={LIMITS.anteUnitDollars.min}
+          max={LIMITS.anteUnitDollars.max}
           step={5}
           onCommit={(n) => set({ anteUnitCents: n * 100 })}
         />
         <NumberField
           label="Default bankroll ($)"
           value={Math.round(s.defaultBankrollCents / 100)}
-          min={1}
+          min={LIMITS.bankrollDollars.min}
+          max={LIMITS.bankrollDollars.max}
           step={50}
           onCommit={(n) => set({ defaultBankrollCents: n * 100 })}
         />
         <NumberField
           label="Hands per hour"
           value={s.handsPerHour}
-          min={1}
+          min={LIMITS.handsPerHour.min}
+          max={LIMITS.handsPerHour.max}
           step={5}
           onCommit={(n) => set({ handsPerHour: n })}
         />

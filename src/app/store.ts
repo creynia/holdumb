@@ -5,7 +5,7 @@ import {
   defaultPersisted,
   emptyDrill,
   encodeExport,
-  load,
+  loadDetailed,
   save,
   type DrillStats,
   type DrillStreet,
@@ -26,8 +26,14 @@ export class Store {
   private timer: ReturnType<typeof setTimeout> | null = null;
   /** consecutive correct Drill answers this visit (not persisted; the best is) */
   private streak = 0;
-  /** false when progress cannot be saved (localStorage unavailable) */
-  readonly persistent: boolean;
+  private unavailable = false; // localStorage missing: memory only
+  private readOnly = false; // stored data is from a newer app: never overwrite it
+  private saveFailed = false; // a write was refused (quota)
+
+  /** false when progress cannot be saved; the app shows a banner. Observable via subscribe(). */
+  get persistent(): boolean {
+    return !this.unavailable && !this.readOnly && !this.saveFailed;
+  }
 
   constructor(
     storage?: StorageLike,
@@ -35,13 +41,14 @@ export class Store {
   ) {
     if (storage) {
       this.storage = storage;
-      this.persistent = true;
     } else {
       const h = createStorage();
       this.storage = h.storage;
-      this.persistent = h.persistent;
+      this.unavailable = !h.persistent;
     }
-    this.data = load(this.storage);
+    const loaded = loadDetailed(this.storage);
+    this.data = loaded.data;
+    this.readOnly = loaded.readOnly;
   }
   private storage: StorageLike;
 
@@ -76,7 +83,12 @@ export class Store {
   flush() {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
-    save(this.storage, this.data);
+    if (this.readOnly || this.unavailable) return;
+    const ok = save(this.storage, this.data);
+    if (ok === this.saveFailed) {
+      this.saveFailed = !ok;
+      this.listeners.forEach((l) => l());
+    }
   }
 
   private patchLesson(id: string, fn: (p: LessonProgress) => LessonProgress) {
