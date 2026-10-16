@@ -29,7 +29,7 @@ hand. Chances of busting (≈ simulated, basic card, 30 hands an hour):
 | 40 antes | 11% | 37% |
 | 60 antes | 1.1% | 16% |
 | 80 antes | 0.05% | 5.5% |
-| 100 antes ($1,000 at $10) | ≈ 0% | 1.5% |
+| 100 antes ($1,000 at $10) | ≈ 0% | 1.4% |
 
 A good rule of thumb: **60 antes for an hour, 100 antes for an evening**. If that's more than you want to
 risk, play a smaller Ante. Halving the Ante halves the cost and the swings.
@@ -66,7 +66,7 @@ autoPlay:
   sessions: [1]
 steps:
   - id: run
-    text: "Tap **Auto-play 300**. The app plays near-perfectly for 10 hours of hands."
+    text: "Start auto-play (300 hands). The app plays near-perfectly for 10 hours of hands."
     completeWhen: { autoPlayCompleted: { minHands: 300 } }
   - id: read
     text: "The dashed line is the expected result (about −$68). Your actual line wanders far above and below it. That's variance."
@@ -104,7 +104,7 @@ steps:
   options: ["About 0.5", "About 2", "About 5", "About 27"]
   answer: 2
   explain: "About 4.94 antes per hand; about 27 per 30-hand hour."
-- q: You play an hour at $10 with perfect strategy. Which result is most typical?
+- q: You play an hour at $10 with the basic card. Which result is most typical?
   options: ["Exactly −$6.55", "Somewhere between about −$300 and +$280", "Always a small loss", "Always a small win"]
   answer: 1
   explain: "The expected loss is $6.55, but 80% of hours land between about −30 and +28 antes."

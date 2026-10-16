@@ -11,7 +11,7 @@ Some UTH tables offer more side bets. The app doesn't deal them, but here's what
 **Six Card Bonus.** It pays on the best five cards out of six: your two hole cards plus four more. On the
 common 1000/200/100/20/15/10/7 table (royal, straight flush, quads, full house, flush, straight, trips),
 the house edge is **8.56%**. On a 1000/200/50/20/15/10/5 table it's **19.36%**. A $5 Six Card bet costs about
-**$12.84 an hour** at the better table, four times what $5 on Trips costs.
+**$12.84 an hour** at the better table, about four and a half times what $5 on Trips costs.
 
 **Progressive jackpot.** It's usually a $1 to $5 bet on your two hole cards plus the flop. It pays a share
 of a growing meter for a royal flush (100%) or straight flush (often 10%), and fixed amounts for smaller

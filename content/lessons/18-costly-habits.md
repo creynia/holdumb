@@ -20,7 +20,7 @@ figures are exact, at a $10 Ante and 30 hands an hour.
 | Check to the river, then play perfectly | 32.03% | $96.10 | $89.55 |
 | Never fold (check, check, always 1x) | 40.70% | $122.11 | $115.56 |
 | Bet 4x on every hand | 40.70% | $122.11 | $115.56 |
-| Check to the river, bet 1x only with a pair | 50.04% | $150.12 | $143.56 |
+| Check to the river, bet 1x only with a hidden pair | 50.04% | $150.11 | $143.55 |
 
 Three lessons hide in that table.
 
@@ -62,7 +62,7 @@ steps:
 
 ```quiz
 - q: Which habit costs the most?
-  options: ["Betting 3x instead of 4x", "Checking every hand to the river and playing only with a pair", "Using the basic card", "Never betting the flop"]
+  options: ["Betting 3x instead of 4x", "Checking every hand to the river and playing only with a hidden pair", "Using the basic card", "Never betting the flop"]
   answer: 1
   explain: "50% of the Ante: about $150 an hour at $10."
 - q: Why do "never fold" and "bet 4x every hand" cost exactly the same?

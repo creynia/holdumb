@@ -10,8 +10,8 @@ Any single hand is luck. But every decision has an **expected value**: the avera
 loses, over all the ways the remaining cards could fall. EV is how we compare decisions fairly, without
 being fooled by how one hand happened to turn out.
 
-In UTH it's easiest to measure EV in **Ante units**. "+1.17 antes" means that on average this
-decision wins 1.17 times your Ante over the whole hand (Ante, Blind and Play together). At a $10 Ante that's
+In UTH it's easiest to measure EV in **Ante units**. "+1.172 antes" means that on average this
+decision wins 1.172 times your Ante over the whole hand (Ante, Blind and Play together). At a $10 Ante that's
 **+$11.72**. At $25 it's +$29.30. The ranking of the choices doesn't change with your bet size.
 
 Two examples from the first decision of a hand:
@@ -46,7 +46,7 @@ If you always bet 1x at the river, the Play bet is a pure coin flip. You win and
 Total: −6432686411/15803301150 ≈ **−0.4070** antes per hand.
 
 Under perfect play the EV is −50643648973/2317817502000 ≈ **−0.021850** antes. These are exact
-enumerations over every deal (§12).
+enumerations over every deal.
 :::
 
 ```scene

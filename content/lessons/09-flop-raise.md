@@ -66,6 +66,7 @@ steps:
     completeWhen: { action: { type: deal } }
   - id: preflop
     text: "Nine-seven offsuit isn't a 4x hand: **Check**."
+    hint: "Nine-seven offsuit is below the chart: check."
     allowedActions: [check, play]
     allowedOptions: [play-4, play-3, check]
     expect: [ { type: play, best: true }, { type: check, best: true } ]

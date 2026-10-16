@@ -9,7 +9,9 @@ minutes: 7
 Whenever you have a decision, the EV sheet lists every option:
 
 > **Bet 4x**: +$36.01 · **Best play**
+>
 > **Bet 3x**: +$28.97 · −$7.04 vs best · **Big mistake**
+>
 > **Check**: +$21.93 · −$14.08 vs best · **Big mistake**
 
 That's pocket aces at a $10 Ante. Every line is the average result for the whole hand, assuming you play
@@ -65,14 +67,14 @@ steps:
     allowedActions: [check, play]
     allowedOptions: [play-4, play-3, check]
     expect: [ { type: play, option: play-4 } ]
-    completeWhen: { all: [ { previewed: { option: play-3 } }, { previewed: { option: check } } ] }
+    completeWhen: { any: [ { all: [ { previewed: { option: play-3 } }, { previewed: { option: check } } ] }, { street: settled } ] }
   - id: decide
     text: "4x is +$36.01, 3x +$28.97, check +$21.93. Confirm the **Best play**."
     hint: "3x is never the best play."
     allowedActions: [check, play]
     allowedOptions: [play-4, play-3, check]
     expect: [ { type: play, best: true }, { type: check, best: true } ]
-    completeWhen: { bestDecisions: { count: 1, street: preflop } }
+    completeWhen: { any: [ { bestDecisions: { count: 1, street: preflop } }, { street: settled } ] }
   - id: finish
     text: "The hand plays out."
     allowedActions: [check, play, fold]

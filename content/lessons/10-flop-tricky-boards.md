@@ -13,7 +13,7 @@ for checking against **−0.964** for 2x. Any dealer pair beats them.
 
 **"Two pair" made from the board's pair.** {{2c 2d}} on {{9s 9h 5c}} is technically two pair, nines and
 deuces. But the nines belong to everyone, and your deuces are the lowest pair there is. Perfect play
-**checks** (−0.131 vs −0.284 for 2x). The simple rule says "two pair, bet 2x" here, which is one of its
+**checks** (−0.131 vs −0.284 for 2x). The basic rule says "two pair, bet 2x" here, which is one of its
 rare mistakes.
 
 **Straight draws.** An open-ended draw like {{9c 8d}} on {{Ts 7h 2c}} is a **check** (−0.140 vs −0.235).
@@ -21,7 +21,7 @@ A straight comes only about 1 time in 3 by the river, and you can wait and bet 1
 higher draw like {{Tc 8d}} on {{Js 9c 4h}}, the two options are dead even (−0.1526 vs −0.1532). Either is fine.
 
 **Flush draw plus straight draw.** {{7h 6h}} on {{8h 5c 2h}} has a flush draw (no high heart in hand) and an
-open-ended straight draw. Perfect play bets **2x** (+1.123 vs +1.044), but the simple rule checks because
+open-ended straight draw. Perfect play bets **2x** (+1.123 vs +1.044), but the basic rule checks because
 your best heart is only a seven. It's a small slip.
 
 **Overcards.** {{Kc 3d}} on {{8s 5h 2c}}: king high with no pair. **Check** (−1.108 vs −1.373), and decide on

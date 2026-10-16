@@ -83,7 +83,7 @@ steps:
     allowedOptions: [check]
     completeWhen: { street: river }
   - id: river
-    text: "The river gave you a pair of jacks. **Bet 1x**."
+    text: "The board gave you a pair of jacks. **Bet 1x**."
     allowedActions: [play]
     allowedOptions: [play-1]
     expect: [ { type: play, option: play-1 } ]
