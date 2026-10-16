@@ -23,7 +23,7 @@ ahead of every dealer hand that missed.
 
 | You | Flop | Bet 2x | Check | Best |
 |---|---|---|---|---|
-| {{9s 7d}} | {{9h Kc 2s}} | **+0.866** | +0.429 | 2x (hidden pair) |
+| {{9s 7d}} | {{9h Kc 2s}} | **+0.865** | +0.429 | 2x (hidden pair) |
 | {{7c 6d}} | {{Kh 7s 2d}} | **+0.641** | +0.267 | 2x (hidden pair) |
 | {{8h 3c}} | {{Ah Kd 3s}} | **−0.180** | −0.315 | 2x (even bottom pair) |
 | {{Qc 5d}} | {{Qs 5h 9d}} | **+2.517** | +1.726 | 2x (two pair) |
