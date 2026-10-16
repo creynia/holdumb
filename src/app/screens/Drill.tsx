@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EvSheet, cardCode, formatMoney, nextSpot } from '../../sim';
+import { EvSheet, cardCode, formatMoney, nextSpot, optionKeyOf } from '../../sim';
 import type {
   DecisionAction,
   DecisionPreview,
@@ -7,7 +7,6 @@ import type {
   DrillFilter,
   DrillSpot,
   PreviewRequest,
-  OptionKey,
   RngState,
 } from '../../sim';
 import { Cards } from '../components/Cards';
@@ -47,9 +46,6 @@ export const CHOICES: Record<DecisionStreet, Choice[]> = {
     { label: 'Fold', action: { type: 'fold' } },
   ],
 };
-
-const optionKey = (a: DecisionAction): OptionKey =>
-  a.type === 'check' ? 'check' : a.type === 'fold' ? 'fold' : (`play-${a.multiple}` as OptionKey);
 
 const sameAction = (a: DecisionAction, b: DecisionAction) =>
   a.type === b.type && (a.type !== 'play' || (b.type === 'play' && a.multiple === b.multiple));
@@ -240,14 +236,13 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
           <EvSheet
             preview={answer.preview}
             variant="inline"
-            selected={optionKey(CHOICES[spot.street][answer.chosen]!.action)}
-            chosen={optionKey(CHOICES[spot.street][answer.chosen]!.action)}
-            onConfirm={() => undefined}
-            onCancel={deal}
-            onContinue={deal}
-            handsPerHour={store.settings.handsPerHour}
+            detail="full"
+            selected={optionKeyOf(chosenOpt.action)}
           />
           <div class="row">
+            <button type="button" class="btn" onClick={deal}>
+              Next hand
+            </button>
             <Link
               to={`/strategy?highlight=${answer.preview.handClass ?? ''}`}
               class="btn btn-ghost"

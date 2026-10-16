@@ -25,8 +25,9 @@ export interface EvSheetProps {
   /** The option the player tapped. */
   selected: OptionKey;
   onSelect?: (k: OptionKey) => void;
-  onConfirm: (k: OptionKey) => void;
-  onCancel: () => void;
+  /** Omit for a read-only result sheet: no Confirm/Cancel, rows not selectable. */
+  onConfirm?: (k: OptionKey) => void;
+  onCancel?: () => void;
   /** `error`: the EV could not be computed. Shows "EV not available"; Confirm still works. */
   error?: boolean;
   /** 0..1 progress of a running preview. */
@@ -101,6 +102,7 @@ export function EvSheet({
   const [why, setWhy] = useState(!!whyOpen);
   useEffect(() => setArmed(false), [selected]);
   useEffect(() => setWhy(!!whyOpen), [whyOpen]);
+  const readOnly = !onConfirm && !onCancel;
   const modal = variant === 'sheet';
   useEffect(() => {
     if (modal) rootRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
@@ -121,12 +123,12 @@ export function EvSheet({
       setArmed(true);
       return;
     }
-    onConfirm(selected);
+    onConfirm?.(selected);
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.stopPropagation();
-      onCancel();
+      onCancel?.();
       return;
     }
     if (modal && e.key === 'Tab' && rootRef.current) {
@@ -202,7 +204,7 @@ export function EvSheet({
           <EvOptionList
             preview={preview}
             selected={selected}
-            onSelect={confirmed ? undefined : onSelect}
+            onSelect={confirmed || readOnly ? undefined : onSelect}
             hideEv={hidden}
             allowed={allowed}
           />
@@ -271,27 +273,29 @@ export function EvSheet({
         </p>
       ) : null}
 
-      <div class="sim-evsheet-actions">
-        {confirmed ? (
-          <button type="button" class="sim-btn sim-btn-primary" onClick={onContinue ?? onCancel}>
-            Continue
-          </button>
-        ) : (
-          <>
-            <button type="button" class="sim-btn sim-btn-secondary" onClick={onCancel}>
-              Cancel
+      {readOnly ? null : (
+        <div class="sim-evsheet-actions">
+          {confirmed ? (
+            <button type="button" class="sim-btn sim-btn-primary" onClick={onContinue ?? onCancel}>
+              Continue
             </button>
-            <button
-              type="button"
-              class={`sim-btn ${needsSecondTap && armed ? 'sim-btn-danger' : 'sim-btn-primary'}`}
-              onClick={confirm}
-              data-testid="confirm"
-            >
-              {needsSecondTap && armed ? 'Do it anyway' : `Confirm ${label}`}
-            </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <button type="button" class="sim-btn sim-btn-secondary" onClick={onCancel}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                class={`sim-btn ${needsSecondTap && armed ? 'sim-btn-danger' : 'sim-btn-primary'}`}
+                onClick={confirm}
+                data-testid="confirm"
+              >
+                {needsSecondTap && armed ? 'Do it anyway' : `Confirm ${label}`}
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
   return modal ? (

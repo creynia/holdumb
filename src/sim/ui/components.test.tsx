@@ -447,7 +447,7 @@ describe('StrategyChart', () => {
   it('names each cell and shows the answer on tap, text not colour', () => {
     const onSelect = vi.fn();
     render(<StrategyChart strategy="basic" view="preflop" onSelect={onSelect} />);
-    fireEvent.click(screen.getByRole('button', { name: 'K4o: Check' }));
+    fireEvent.click(screen.getByRole('gridcell', { name: 'K4o: Check' }));
     expect(onSelect).toHaveBeenCalledWith('K4o');
     expect(document.querySelector('.sim-chart-legend')!.textContent).toBe('K4o: Check.');
   });
@@ -555,5 +555,38 @@ describe('session net and next-hand chips (D38)', () => {
     );
     expect(container.querySelectorAll('.is-ghost')).toHaveLength(0);
     expect(container.textContent).not.toContain('Next hand');
+  });
+});
+
+describe('EvSheet read-only mode', () => {
+  it('shows no Confirm/Cancel and no selectable rows without handlers', () => {
+    render(<EvSheet preview={PREFLOP_AA.preview} selected="play-4" variant="inline" />);
+    expect(screen.queryByTestId('confirm')).toBeNull();
+    expect(screen.queryByText('Cancel')).toBeNull();
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+  });
+  it('a preview missing fields shows "EV not available" instead of crashing', () => {
+    const bad = {
+      ...PREFLOP_AA.preview,
+      options: [{ label: 'Bet 4x', action: { type: 'check' } }],
+    };
+    render(
+      <EvSheet preview={bad as unknown as DecisionPreview} selected="check" variant="inline" />,
+    );
+    expect(screen.getByTestId('ev-unavailable')).toBeTruthy();
+  });
+});
+
+describe('StrategyChart keyboard', () => {
+  it('has one tab stop and arrow keys move between cells', () => {
+    const { container } = render(<StrategyChart strategy="basic" view="preflop" />);
+    expect(container.querySelectorAll('.sim-chart-cell[tabindex="0"]')).toHaveLength(1);
+    expect(container.querySelectorAll('button')).toHaveLength(0);
+    const aa = container.querySelector<HTMLElement>('[data-class="AA"]')!;
+    aa.focus();
+    fireEvent.keyDown(aa, { key: 'ArrowRight' });
+    expect(document.activeElement?.getAttribute('data-class')).toBe('AKs');
+    fireEvent.keyDown(document.activeElement!, { key: 'Enter' });
+    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe('AKs: Bet 4x.');
   });
 });

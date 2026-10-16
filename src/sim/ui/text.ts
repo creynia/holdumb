@@ -259,6 +259,8 @@ export type EvStatus = 'pending' | 'ready' | 'error';
  */
 export function isUsablePreview(p: DecisionPreview | null | undefined): p is DecisionPreview {
   if (!p || p.options.length === 0) return false;
-  if (p.options.some((o) => o.ev.den === 0n)) return false;
+  const frac = (f: unknown): boolean =>
+    !!f && typeof (f as Fraction).num === 'bigint' && (f as Fraction).den !== 0n;
+  if (p.options.some((o) => !frac(o.ev) || !frac(o.evCents) || !o.label || !o.tier)) return false;
   return !p.options.every((o) => o.ev.num === 0n);
 }
