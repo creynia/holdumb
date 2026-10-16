@@ -22,6 +22,9 @@ export interface AutoPlayPanelProps {
   defaultStrategy?: StrategySpec;
   /** Strategies to run alongside (compare mode). */
   compare?: StrategySpec[];
+  /** A scene may offer fewer choices (scene.autoPlay.handOptions / sessions). */
+  handOptions?: number[];
+  sessionOptions?: number[];
   onEvent?: (e: SimulatorEvent) => void;
 }
 
@@ -30,13 +33,21 @@ export function AutoPlayPanel({
   settings,
   defaultStrategy,
   compare,
+  handOptions,
+  sessionOptions,
   onEvent,
 }: AutoPlayPanelProps) {
+  const handChoices: readonly number[] = handOptions?.length
+    ? handOptions
+    : [...HAND_CHOICES, 10000];
+  const sessionChoices: readonly number[] = sessionOptions?.length ? sessionOptions : [1, 100];
   const [id, setId] = useState<StrategyId>(defaultStrategy?.id ?? 'expert');
   const [anteDollars, setAnte] = useState((defaultStrategy?.ante ?? settings.anteUnitCents) / 100);
   const [tripsDollars, setTrips] = useState((defaultStrategy?.trips ?? 0) / 100);
-  const [hands, setHands] = useState<number>(settings.handsPerHour);
-  const [sessions, setSessions] = useState(1);
+  const [hands, setHands] = useState<number>(
+    handOptions?.length ? handOptions[0]! : settings.handsPerHour,
+  );
+  const [sessions, setSessions] = useState(sessionOptions?.length ? sessionOptions[0]! : 1);
   const [seed, setSeed] = useState(1);
   const [cmp, setCmp] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -142,12 +153,11 @@ export function AutoPlayPanel({
         <label style={field}>
           Hands{hands === settings.handsPerHour ? ' (one hour)' : ''}
           <select value={String(hands)} onChange={(e) => setHands(Number(e.currentTarget.value))}>
-            {HAND_CHOICES.map((n) => (
+            {handChoices.map((n) => (
               <option key={n} value={n}>
                 {n.toLocaleString('en-US')}
               </option>
             ))}
-            <option value={10000}>10,000</option>
           </select>
         </label>
         <label style={field}>
@@ -156,8 +166,11 @@ export function AutoPlayPanel({
             value={String(sessions)}
             onChange={(e) => setSessions(Number(e.currentTarget.value))}
           >
-            <option value="1">1</option>
-            <option value="100">100</option>
+            {sessionChoices.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
         </label>
         <label style={field}>

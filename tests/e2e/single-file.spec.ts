@@ -28,6 +28,7 @@ test('single-file build opens from file:// with no failed requests or errors', a
   const out = await page.evaluate(smoke);
   expect(out, 'window.__holdumb test hook missing').toBeDefined();
   expect(out!.mode).toBe('worker');
+  expect(out!.settled).toBe('resolved');
 
   // No service worker is registered by the offline copy.
   const sw = await page.evaluate(
@@ -42,4 +43,5 @@ test('hosted build uses a real worker', async ({ page }) => {
   const out = await page.evaluate(smoke);
   expect(out, 'window.__holdumb test hook missing').toBeDefined();
   expect(out!.mode).toBe('worker');
+  expect(out!.settled).toBe('resolved');
 });

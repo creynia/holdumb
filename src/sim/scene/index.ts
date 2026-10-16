@@ -4,3 +4,4 @@ export type { SceneValidation } from './validate';
 export * from './gate';
 export * from './runner';
 export * from './driver';
+export * from './params';

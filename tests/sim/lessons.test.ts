@@ -10,10 +10,9 @@ import {
   leaves,
   validateScene,
 } from '../../src/sim/scene';
-import type { Condition, DriverEvent, SceneConfig } from '../../src/sim/scene';
+import type { DriverEvent, SceneConfig } from '../../src/sim/scene';
 import { createEvClient } from '../../src/sim/worker';
 import { optionKeyOfAction } from '../../src/sim/scene';
-import type { DecisionStreet } from '../../src/sim/engine';
 
 const client = createEvClient({ mode: 'inthread' });
 afterAll(() => client.dispose());
@@ -44,7 +43,7 @@ async function script(scene: SceneConfig): Promise<DriverEvent[]> {
     const before = v.version;
     // 1. things the learner does besides playing: previews, taps, auto-play runs
     let did = false;
-    const meta = leaves(step.completeWhen as Condition);
+    const meta = leaves(step.completeWhen);
     for (const l of meta) {
       const k = `${v.rt.stepIndex}:${JSON.stringify(l)}`;
       if (fired.has(k) && !('tapped' in l)) continue;
@@ -85,7 +84,7 @@ async function script(scene: SceneConfig): Promise<DriverEvent[]> {
         if (r.ok) continue;
       }
     } else {
-      const street = st as DecisionStreet;
+      const street = st;
       const pv = await d.currentPreview();
       const keys = gatedOptions(gate, street);
       const ranked = [...keys].sort((a, b) => {
