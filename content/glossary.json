@@ -1,0 +1,259 @@
+[
+  {
+    "term": "Ante",
+    "definition": "The first required bet, placed before the cards are dealt. It wins or loses against the dealer's hand, but **pushes** if the dealer does not [[qualify]].",
+    "seeAlso": "welcome",
+    "see": [
+      "blind"
+    ]
+  },
+  {
+    "term": "Blind",
+    "definition": "The second required bet, always equal to the [[Ante]]. It loses whenever you lose, but pays only when you win with a straight or better.",
+    "seeAlso": "welcome",
+    "see": [
+      "ante"
+    ]
+  },
+  {
+    "term": "Play bet",
+    "definition": "The one raise you are allowed per hand: **4×** or **3×** the Ante before the flop, **2×** after the flop, or **1×** after the river. It pays 1 to 1 and ignores whether the dealer qualifies.",
+    "seeAlso": "welcome"
+  },
+  {
+    "term": "Trips",
+    "definition": "An optional side bet on your own best five of seven cards. It pays for three of a kind or better, win or lose against the dealer, and even if you [[fold]].",
+    "seeAlso": "trips-bet"
+  },
+  {
+    "term": "Hole cards",
+    "definition": "The two private cards each player gets. You and the dealer each have two.",
+    "seeAlso": "welcome"
+  },
+  {
+    "term": "Community cards",
+    "definition": "The five shared cards: three on the [[flop]], then the [[turn]] and [[river]] together. Also called the board.",
+    "seeAlso": "welcome"
+  },
+  {
+    "term": "Flop",
+    "definition": "The first three community cards. If you checked before the flop, you may bet **2×** here or [[check]] again.",
+    "seeAlso": "a-full-hand"
+  },
+  {
+    "term": "Turn",
+    "definition": "The fourth community card. In UTH it is dealt together with the [[river]]."
+  },
+  {
+    "term": "River",
+    "definition": "The fifth community card. If you checked twice, you must now bet **1×** or [[fold]].",
+    "seeAlso": "river-call-or-fold"
+  },
+  {
+    "term": "Preflop",
+    "definition": "The first decision, made after seeing only your two cards: **Bet 4x**, **Bet 3x** or **Check**.",
+    "seeAlso": "preflop-raise"
+  },
+  {
+    "term": "Check",
+    "definition": "Make no Play bet for now. It is free, and it lets you see the next cards. Checking is how you wait for more information.",
+    "seeAlso": "a-full-hand"
+  },
+  {
+    "term": "Fold",
+    "definition": "Give up your [[Ante]] and [[Blind]] (exactly 2 Antes), and stop. You can only fold at the river, instead of betting 1×.",
+    "seeAlso": "a-full-hand"
+  },
+  {
+    "term": "Showdown",
+    "definition": "The moment both hands are turned over and compared. Your best five of seven cards against the dealer's.",
+    "seeAlso": "settling-bets"
+  },
+  {
+    "term": "Qualify",
+    "definition": "The dealer qualifies with **a pair or better** (best five of seven). If not, the [[Ante]] pushes.",
+    "seeAlso": "settling-bets"
+  },
+  {
+    "term": "Push",
+    "definition": "A bet that is returned to you unchanged: no win, no loss. Ties push everything.",
+    "seeAlso": "settling-bets"
+  },
+  {
+    "term": "Tie",
+    "definition": "Both hands rank exactly the same, five cards for five cards. The Ante, Blind and Play all [[push]]. Suits never break ties.",
+    "seeAlso": "settling-bets"
+  },
+  {
+    "term": "Kicker",
+    "definition": "A leftover card used to break a tie between hands of the same kind. A pair of kings with an ace beats a pair of kings with a queen.",
+    "seeAlso": "hand-rankings"
+  },
+  {
+    "term": "Best five of seven",
+    "definition": "Your hand is the best five-card poker hand you can make from your two hole cards and the five community cards, using both, one or none of your own cards.",
+    "seeAlso": "hand-rankings"
+  },
+  {
+    "term": "Board plays",
+    "definition": "When the best five cards are all on the board, for both players. Neither hole card counts, and the hand is a tie.",
+    "seeAlso": "hand-rankings"
+  },
+  {
+    "term": "Wheel",
+    "definition": "The lowest straight, A-2-3-4-5. The ace counts low here. A straight cannot wrap around, so Q-K-A-2-3 is not a straight.",
+    "seeAlso": "hand-rankings"
+  },
+  {
+    "term": "Hidden pair",
+    "definition": "A pair that uses one of your hole cards: a pocket pair, or a hole card matching a board rank. A pair that sits on the board belongs to the dealer just as much as to you.",
+    "seeAlso": "flop-raise"
+  },
+  {
+    "term": "Pocket pair",
+    "definition": "Two hole cards of the same rank, such as {{Qs Qd}}.",
+    "seeAlso": "preflop-raise"
+  },
+  {
+    "term": "Suited",
+    "definition": "Two hole cards of the same suit. Written with an s, as in AKs.",
+    "seeAlso": "preflop-raise"
+  },
+  {
+    "term": "Offsuit",
+    "definition": "Two hole cards of different suits. Written with an o, as in AKo.",
+    "seeAlso": "preflop-raise"
+  },
+  {
+    "term": "Hand class",
+    "definition": "One of the 169 distinct starting hands, ignoring exact suits: 13 pairs (77), 78 suited hands (AKs) and 78 offsuit hands (T9o).",
+    "seeAlso": "preflop-raise"
+  },
+  {
+    "term": "Dealer outs",
+    "definition": "On the river, the number of unseen cards that would give the dealer a better hand than yours. It decides the close river calls.",
+    "seeAlso": "counting-dealer-outs"
+  },
+  {
+    "term": "Expected value",
+    "definition": "The average result of a decision if you could face the same spot millions of times. Short form: **EV**.",
+    "seeAlso": "expected-value"
+  },
+  {
+    "term": "EV",
+    "definition": "Short for [[expected value]]: the average result of a decision, measured here for the whole hand (Ante, Blind and Play together).",
+    "seeAlso": "expected-value",
+    "see": [
+      "expected-value"
+    ]
+  },
+  {
+    "term": "Ante unit",
+    "definition": "One Ante. EV is measured in Ante units, so \"+1.17 antes\" scales with your bet: at a $10 Ante it is $11.70.",
+    "seeAlso": "expected-value"
+  },
+  {
+    "term": "House edge",
+    "definition": "The average share of each Ante the casino keeps in the long run with perfect play. Per hand, it is the expected loss divided by the Ante.",
+    "seeAlso": "expected-value"
+  },
+  {
+    "term": "Element of risk",
+    "definition": "The expected loss divided by the total amount you put on the felt. It is smaller than the house edge per Ante, because it counts every Play bet.",
+    "seeAlso": "edge-vs-risk"
+  },
+  {
+    "term": "EV sheet",
+    "definition": "The list of every option at a decision, with its average result for the whole hand, its cost against the best option and a tier badge.",
+    "seeAlso": "reading-the-ev-sheet"
+  },
+  {
+    "term": "Cost vs best",
+    "definition": "The average amount a choice gives up compared with the best option. Also called regret. It is never called a house edge.",
+    "seeAlso": "reading-the-ev-sheet"
+  },
+  {
+    "term": "Best play",
+    "definition": "The badge for the option with the highest EV. Equal options both get it.",
+    "seeAlso": "reading-the-ev-sheet"
+  },
+  {
+    "term": "Close",
+    "definition": "The tier for a choice that costs up to 0.02 antes against the best option.",
+    "seeAlso": "reading-the-ev-sheet"
+  },
+  {
+    "term": "Small mistake",
+    "definition": "The tier for a choice that costs up to 0.10 antes against the best option.",
+    "seeAlso": "reading-the-ev-sheet"
+  },
+  {
+    "term": "Mistake",
+    "definition": "The tier for a choice that costs up to 0.50 antes against the best option. The EV sheet shows a better alternative.",
+    "seeAlso": "reading-the-ev-sheet"
+  },
+  {
+    "term": "Big mistake",
+    "definition": "The tier for a choice that costs more than 0.50 antes against the best option. It asks for a second tap before it goes through.",
+    "seeAlso": "reading-the-ev-sheet"
+  },
+  {
+    "term": "Paytable",
+    "definition": "The list of what a bet pays for each hand. The Blind and Trips have their own paytables.",
+    "seeAlso": "settling-bets"
+  },
+  {
+    "term": "Perfect strategy",
+    "definition": "The play that gives the lowest possible house edge: the exact best option at every decision.",
+    "seeAlso": "strategy-lowest-edge"
+  },
+  {
+    "term": "Basic strategy",
+    "definition": "A practical strategy with a short chart: the preflop chart, a simple flop rule and a simple river rule. It costs only a little more than perfect play.",
+    "seeAlso": "strategy-practical"
+  },
+  {
+    "term": "Simple strategy",
+    "definition": "The lightest practical strategy, with easier preflop and flop rules at a slightly higher cost.",
+    "seeAlso": "strategy-practical"
+  },
+  {
+    "term": "Variance",
+    "definition": "How far real results swing around the average. A good decision can lose, and a bad one can win, on any single hand.",
+    "seeAlso": "variance-and-bankroll"
+  },
+  {
+    "term": "Bankroll",
+    "definition": "The money you set aside for playing. It should cover many bad swings.",
+    "seeAlso": "variance-and-bankroll"
+  },
+  {
+    "term": "Session",
+    "definition": "One sitting at the table, a number of hands played in a row.",
+    "seeAlso": "variance-and-bankroll"
+  },
+  {
+    "term": "Standard deviation",
+    "definition": "A measure of the typical size of the swings in a single hand's result, in Antes.",
+    "seeAlso": "variance-and-bankroll"
+  },
+  {
+    "term": "Six Card Bonus",
+    "definition": "An optional side bet that pays on the best five of six cards: your two hole cards plus four community cards. Tables vary.",
+    "seeAlso": "other-side-bets"
+  },
+  {
+    "term": "Progressive",
+    "definition": "An optional side bet that pays on your two hole cards plus the flop, with top prizes taken from a growing jackpot meter.",
+    "seeAlso": "other-side-bets"
+  },
+  {
+    "term": "Bad Beat",
+    "definition": "An optional side bet that pays when your hand loses at showdown with a big hand. Tables vary widely.",
+    "seeAlso": "other-side-bets"
+  },
+  {
+    "term": "Drill",
+    "definition": "Quick-fire practice that deals one decision at a time and grades it against the exact best option."
+  }
+]
