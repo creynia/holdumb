@@ -361,7 +361,7 @@ export function Simulator(props: SimulatorProps) {
       data-mode={mode}
       data-ev={pv.status}
       data-equity={eq}
-      style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 82px)' : undefined}
+      style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
     >
       {orientation === 'portrait' ? stepPanel : null}
       {autoOnly ? null : table}
