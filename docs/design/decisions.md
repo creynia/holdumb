@@ -147,3 +147,9 @@ The phone target is ~1 s per flop decision. The CI hard-fail is 1.5 s at 4× CPU
 
 ### D37 WP0 contract placements
 `Progress` and `Job` live in `src/sim/engine/job.ts` (re-exported by `worker/protocol.ts`) so math can use them without importing the worker. `EvClient` is declared in `worker/protocol.ts`. `CircleId` is defined in `src/sim/scene/types.ts`; table-ui imports it rather than redefining it. `@playwright/test` and `playwright-core` are pinned to 1.56.1 via `overrides`.
+
+### D38 Engine money model and evaluator API
+- In `settled`, `GameState.bets` is the **next hand's intent**; those chips are still counted in `bankroll` until `deal` re-bets them. `equity()` is the invariant total.
+- The UI shows `equity()`, and scene bankroll conditions test equity. When a runner rebuilds a game it must pass `equity(prev)` as `bankroll` (bets are taken out of it).
+- `evaluate7` returns `EvaluatedHand`; `handValueOf` / `evalMasks` are the hot paths returning a packed `HandValue`.
+- Mid-hand starts in a running game use `startHand(state, startAt)`; `createGame` calls it. It re-bets like `deal`, keeps stats and the RNG stream, and records no fake earlier decisions.

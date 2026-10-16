@@ -1,0 +1,58 @@
+{
+  "perfect": {
+    "title": "perfect",
+    "summary": "Placeholder: perfect.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  },
+  "expert": {
+    "title": "expert",
+    "summary": "Placeholder: expert.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  },
+  "basic": {
+    "title": "basic",
+    "summary": "Placeholder: basic.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  },
+  "simple": {
+    "title": "simple",
+    "summary": "Placeholder: simple.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  },
+  "check-to-river": {
+    "title": "check-to-river",
+    "summary": "Placeholder: check-to-river.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  },
+  "never-fold": {
+    "title": "never-fold",
+    "summary": "Placeholder: never-fold.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  },
+  "always-max": {
+    "title": "always-max",
+    "summary": "Placeholder: always-max.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  },
+  "river-leak": {
+    "title": "river-leak",
+    "summary": "Placeholder: river-leak.",
+    "rules": [
+      "Placeholder rule."
+    ]
+  }
+}

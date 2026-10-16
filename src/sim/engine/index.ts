@@ -24,8 +24,16 @@ export type { SettleBets } from './wagers';
 export { dealHand } from './deck';
 export { applyLogged, replayLog } from './log';
 export { formatMoney, formatPct } from './money';
-export { createGame, applyAction, replay, visibleView, equity, legalActions } from './game';
-export type { CreateGameOptions } from './game';
+export {
+  startHand,
+  createGame,
+  applyAction,
+  replay,
+  visibleView,
+  equity,
+  legalActions,
+} from './game';
+export type { CreateGameOptions, StartAt } from './game';
 export { validateAction, maxAnte } from './validate';
 export {
   evaluate7,

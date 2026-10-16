@@ -10,21 +10,20 @@ import { PREFLOP_BLIND_STANDARD } from '../../src/sim/math/tables/preflop-blind-
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const CSV = here('./precompute/preflop-blind-standard.csv');
 const OUT = here('../../src/sim/math/tables/preflop-blind-standard.ts');
-const COLS = [
-  'SW',
-  'SL',
-  'Wq',
-  'Lq',
-  'bb2q',
-  'bb2nq',
-  'S2x',
-  'Scp',
-  'F2',
-  'Cf',
-  'SAs',
-  'SPs',
-  'SCs',
-];
+const COLS = ['SW', 'SL', 'Wq', 'Lq', 'bb2q', 'bb2nq', 'S2x', 'Scp', 'F2', 'Cf'];
+
+/** AA, AKs, AKo, AQs … 22 (the order of the C program's class list). */
+const ORDER: string[] = (() => {
+  const R = '23456789TJQKA';
+  const out: string[] = [];
+  for (let h = 12; h >= 0; h--) {
+    for (let l = h; l >= 0; l--) {
+      if (h === l) out.push(R[h]! + R[l]!);
+      else out.push(`${R[h]}${R[l]}s`, `${R[h]}${R[l]}o`);
+    }
+  }
+  return out;
+})();
 
 export function encodeRows(csv: string): string {
   const lines = csv.trim().split('\n');
@@ -34,8 +33,10 @@ export function encodeRows(csv: string): string {
     if (i < 0) throw new Error(`CSV lacks column ${c}`);
     return i;
   });
-  return lines
-    .slice(1)
+  const byName = new Map(lines.slice(1).map((l) => [l.split(',')[0]!, l]));
+  if (byName.size !== 169)
+    throw new Error(`CSV has ${byName.size} classes, need 169 (still running?)`);
+  return ORDER.map((n) => byName.get(n)!)
     .map((line) => {
       const f = line.split(',');
       return `${f[0]}:${idx.map((i) => BigInt(f[i]!).toString(36)).join(',')}`;

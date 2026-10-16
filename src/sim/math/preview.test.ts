@@ -148,6 +148,19 @@ describe('contract', () => {
 });
 
 describe('better alternatives', () => {
+  it('flop check of a made straight or flush uses flop-check-made', () => {
+    let r = req('flop', '6h 5d', '7c 8s 9d');
+    let p = runPreview(r);
+    let a = betterAlternative(r, p, 1);
+    expect(a?.copyKey).toBe('flop-check-made');
+    expect(a?.vars).toEqual({ made: 'straight' });
+    r = req('flop', 'Ah Th', '2h 7h Kh');
+    p = runPreview(r);
+    a = betterAlternative(r, p, 1);
+    expect(a?.copyKey).toBe('flop-check-made');
+    expect(a?.vars.made).toBe('flush');
+    expect(a?.vars.flopReason).toBeUndefined();
+  });
   it('river fold with a hidden pair', () => {
     const r = req('river', 'Td 4c', 'Ts Kh 7d 3s 2c');
     const p = runPreview(r);
