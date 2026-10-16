@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { HAND_CATEGORIES, WAGER_IDS } from '../../src/sim/engine';
 import { STRATEGY_IDS } from '../../src/sim/strategy';
-import { compileLesson } from '../../src/content/compile';
-import { buildContent, readSources } from '../../src/content/load';
+import { buildContent } from '../../src/content/load';
 
 const root = process.cwd();
 const bundle = buildContent(root);
-const src = readSources(root);
 const lessonIds = new Set(bundle.lessons.map((l) => l.id));
 
 describe('content bundle', () => {
@@ -41,19 +39,5 @@ describe('content bundle', () => {
   it('quiz ids are unique across the course', () => {
     const ids = bundle.lessons.flatMap((l) => l.blocks.flatMap((b) => (b.kind === 'quiz' ? [b.quiz.id] : [])));
     expect(new Set(ids).size).toBe(ids.length);
-  });
-});
-
-describe('placeholder samples stay valid', () => {
-  it('every _sample-* lesson compiles', () => {
-    const all = readSources(root, true).lessonFiles.filter((f) => f.file.startsWith('_sample-'));
-    expect(all.length).toBeGreaterThan(0);
-    for (const f of all) {
-      const l = compileLesson(f.source, f.file);
-      expect(l.id).toBe(`sample-${f.slug}`);
-    }
-  });
-  it('real files, when present, replace the samples', () => {
-    expect(src.samplesActive).toBe(!src.chapters.some((c) => !c.id.startsWith('sample-')));
   });
 });

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "foundations",
+    "title": "Foundations",
+    "summary": "The table, the hands, a full deal and how every bet is settled.",
+    "lessons": ["welcome", "hand-rankings", "a-full-hand", "settling-bets"]
+  },
+  {
+    "id": "ev-basics",
+    "title": "EV basics",
+    "summary": "What a decision is worth, and how the EV sheet shows it.",
+    "lessons": ["expected-value", "reading-the-ev-sheet"]
+  },
+  {
+    "id": "perfect-lowest-edge",
+    "title": "Perfect strategy I: lowest edge",
+    "summary": "Every decision, played to the exact optimum: 2.19% of the Ante.",
+    "lessons": [
+      "preflop-raise",
+      "preflop-close-calls",
+      "flop-raise",
+      "flop-tricky-boards",
+      "river-call-or-fold",
+      "counting-dealer-outs",
+      "strategy-lowest-edge",
+      "checkpoint-strategy"
+    ]
+  },
+  {
+    "id": "perfect-practical",
+    "title": "Perfect strategy II: practical",
+    "summary": "A strategy you can remember, what it costs, and how to plan a session.",
+    "lessons": ["edge-vs-risk", "strategy-practical", "variance-and-bankroll", "costly-habits"]
+  },
+  {
+    "id": "perfect-fun",
+    "title": "Perfect strategy III: fun per dollar",
+    "summary": "Side bets and table choices, priced per hour.",
+    "lessons": ["trips-bet", "other-side-bets", "strategy-fun-per-dollar"]
+  },
+  {
+    "id": "real-casino",
+    "title": "The real casino",
+    "summary": "Etiquette, signals and the final exam.",
+    "lessons": ["at-the-casino", "final-exam"]
+  }
+]

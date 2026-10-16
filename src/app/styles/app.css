@@ -322,11 +322,22 @@ main {
   display: block;
   overflow-x: auto;
   max-width: 100%;
+  font-size: 0.875rem;
+  /* Scroll cue: edge shadows appear only when the table overflows. */
+  background:
+    linear-gradient(to right, var(--surface, #fff) 30%, transparent) left / 2rem 100% no-repeat
+      local,
+    linear-gradient(to left, var(--surface, #fff) 30%, transparent) right / 2rem 100% no-repeat
+      local,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.25), transparent) left / 0.75rem 100%
+      no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.25), transparent) right / 0.75rem 100%
+      no-repeat scroll;
 }
 .prose th,
 .prose td {
   border: 1px solid var(--border);
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.45rem;
   text-align: left;
 }
 .prose code {
@@ -793,4 +804,14 @@ textarea {
 }
 .check input {
   flex: none;
+}
+
+/* Compact inline cards inside lesson tables so wide tables fit a phone. */
+.prose table .cards {
+  gap: 1px;
+}
+.prose table .pc {
+  min-width: 1.5em;
+  padding: 0 0.15em;
+  font-size: 0.85em;
 }

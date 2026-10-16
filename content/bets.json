@@ -1,0 +1,30 @@
+{
+  "ante": {
+    "name": "Ante",
+    "summary": "The first required bet. It plays against the dealer, but only if the dealer qualifies.",
+    "howItWorks": "You place the Ante before the cards are dealt. At showdown it wins 1 to 1 if you beat a dealer who **qualifies** (a pair or better) and loses if a qualifying dealer beats you.\n\nIf the dealer does **not** qualify, the Ante **pushes**, whether you won or lost the hand. A tie pushes too. If you fold, the Ante is lost.",
+    "tip": "The Ante is the only bet that cares about qualifying.",
+    "lessonId": "settling-bets"
+  },
+  "blind": {
+    "name": "Blind",
+    "summary": "The second required bet, always equal to the Ante. It pays a bonus on big hands and loses whenever you lose.",
+    "howItWorks": "The Blind always equals the Ante, and both are required. If you win the hand, the Blind pays by its own paytable for a straight or better, and **pushes** with anything less. If the dealer beats you, or you fold, the Blind loses. A tie pushes.\n\nWhether the dealer qualifies does not matter to the Blind.",
+    "tip": "Winning with a pair does not pay the Blind: it pushes.",
+    "lessonId": "settling-bets"
+  },
+  "play": {
+    "name": "Play",
+    "summary": "Your one raise: bigger the earlier you make it. Even money, whether or not the dealer qualifies.",
+    "howItWorks": "You may make exactly one Play bet: **4×** (or 3×) the Ante before the flop, **2×** after the flop, or **1×** after the river. It pays 1 to 1 if you win, loses if the dealer wins and pushes on a tie. Qualifying does not matter.\n\nThe moment you make it, your decisions are over. At the river the alternative is to **fold**, which gives up the Ante and Blind and puts nothing in Play.",
+    "tip": "Betting 3x preflop is never the best play: it is 4x or check.",
+    "lessonId": "a-full-hand"
+  },
+  "trips": {
+    "name": "Trips",
+    "summary": "An optional side bet on your own hand. It does not depend on the dealer, and it still pays if you fold.",
+    "howItWorks": "Placed before the deal and needs an Ante. It pays by its paytable when your best five of seven cards is three of a kind or better, and loses with anything less. The dealer's hand and your decisions do not matter.\n\nThe Trips bet never changes how you should play the hand. Its house edge depends on the paytable your casino uses, so check the table before you bet.",
+    "tip": "Compare the paytable on the felt with the variants in Settings before you bet.",
+    "lessonId": "trips-bet"
+  }
+}
