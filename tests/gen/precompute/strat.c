@@ -1,5 +1,6 @@
 // Exact UTH preflop precompute (independent of the TS code). Build: gcc -O2 -pthread -o strat strat.c
-// Run:  ./strat > preflop-blind-standard.csv   (about 30 min on 4 cores)
+// Run:  nohup ./strat preflop-blind-standard.csv &   (about 30 min on 4 idle cores). Rows are appended
+// and flushed per class; on restart, classes already in the file are skipped (rows come in any order).
 // Derived from the simulator spike's strat2.c with: canonical tie rule (smaller wager wins ties:
 // check over 2x, fold over 1x), and the extra columns the "Why?" rows need.
 // Slice columns SAs/SPs/SCs: the same sums restricted to boards with sorted index idx[0] >= 36 (of the
@@ -15,9 +16,10 @@
 static long long C[60][8];
 static const int BP2[10] = {0, 0, 0, 0, 2, 3, 6, 20, 100, 1000}; // 2*blind pay by category
 
-typedef struct { int c1, c2, weight; char name[4]; long long SAs, SPs, SCs, SA, SP, SC, Wq, Lq, bb2q, bb2nq, S2x, Scp; long long flops2x, flopsCheck; long long riverFold; long long Sleak, Sexp, Wexp, SW, SL, Scr, Snf, Sbasic, Ssimple, Wopt, Wbasic, Wsimple, Wcr; } Cls;
+typedef struct { int done; int c1, c2, weight; char name[4]; long long SAs, SPs, SCs, SA, SP, SC, Wq, Lq, bb2q, bb2nq, S2x, Scp; long long flops2x, flopsCheck; long long riverFold; long long Sleak, Sexp, Wexp, SW, SL, Scr, Snf, Sbasic, Ssimple, Wopt, Wbasic, Wsimple, Wcr; } Cls;
 static Cls cls[169];
 static int ncls = 0, next_cls = 0;
+static FILE *out;
 static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 
 static void *worker(void *arg) {
@@ -29,6 +31,7 @@ static void *worker(void *arg) {
     pthread_mutex_lock(&mu); int ci = next_cls++; pthread_mutex_unlock(&mu);
     if (ci >= ncls) break;
     Cls *k = &cls[ci];
+    if (k->done) continue;
     int rem[50], n = 0;
     for (int c = 0; c < 52; c++) if (c != k->c1 && c != k->c2) rem[n++] = c;
     long long SA = 0, SP = 0, SWc = 0, SLc = 0, SWq = 0, SLq = 0, BBq = 0, BBnq = 0, SAs = 0, SPs = 0, SCs = 0;
@@ -139,13 +142,17 @@ static void *worker(void *arg) {
     k->SAs = SAs; k->SPs = SPs; k->SCs = SCs; k->SA = SA; k->SP = SP; k->Wq = SWq; k->Lq = SLq; k->bb2q = BBq; k->bb2nq = BBnq; k->S2x = S2x; k->Scp = Scp; k->SC = SC; k->flops2x = f2; k->flopsCheck = fc; k->riverFold = rf;
     k->Sleak = Sleak; k->Sexp = Sexp; k->Wexp = Wexp; k->SW = SWc; k->SL = SLc; k->Scr = Scr; k->Snf = Snf; k->Sbasic = Sbasic; k->Ssimple = Ssimple;
     k->Wopt = Wopt; k->Wbasic = Wbasic; k->Wsimple = Wsimple; k->Wcr = Wcr;
+    pthread_mutex_lock(&mu);
+    fprintf(out, "%s,%d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld\n", k->name, k->weight, k->SA, k->SP, k->SC, k->SW, k->SL, k->Wq, k->Lq, k->bb2q, k->bb2nq, k->S2x, k->Scp, k->flops2x, k->flopsCheck, k->riverFold, k->Wopt, k->SAs, k->SPs, k->SCs);
+    fflush(out);
+    pthread_mutex_unlock(&mu);
     fprintf(stderr, "done %s\n", k->name);
   }
   free(A2); free(P2); free(FL);
   return NULL;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
   for (int i = 0; i < 60; i++) { C[i][0] = 1; for (int j = 1; j < 8; j++) C[i][j] = i == 0 ? 0 : C[i - 1][j - 1] + C[i - 1][j]; }
   const char *R = "23456789TJQKA";
   for (int h = 12; h >= 0; h--) for (int l = h; l >= 0; l--) {
@@ -153,11 +160,26 @@ int main(void) {
     Cls *k = &cls[ncls++]; k->c1 = h * 4; k->c2 = l * 4; k->weight = 4; sprintf(k->name, "%c%cs", R[h], R[l]);
     k = &cls[ncls++]; k->c1 = h * 4; k->c2 = l * 4 + 1; k->weight = 12; sprintf(k->name, "%c%co", R[h], R[l]);
   }
+  const char *path = argc > 1 ? argv[1] : "preflop-blind-standard.csv";
+  FILE *in = fopen(path, "r");
+  if (in) {
+    char line[1024]; int first = 1;
+    while (fgets(line, sizeof line, in)) {
+      if (first) { first = 0; continue; }
+      char *comma = strchr(line, ',');
+      if (!comma || !strchr(line, '\n')) continue; /* ignore a torn last line */
+      *comma = 0;
+      for (int i = 0; i < ncls; i++) if (!strcmp(cls[i].name, line)) cls[i].done = 1;
+    }
+    fclose(in);
+  }
+  int fresh = 1;
+  { FILE *t = fopen(path, "r"); if (t) { fseek(t, 0, SEEK_END); fresh = ftell(t) == 0; fclose(t); } }
+  out = fopen(path, "a");
+  if (fresh) { fprintf(out, "class,weight,SA,SP,SC,SW,SL,Wq,Lq,bb2q,bb2nq,S2x,Scp,F2,Fc,Cf,Wopt,SAs,SPs,SCs\n"); fflush(out); }
   pthread_t th[4];
   for (int i = 0; i < 4; i++) pthread_create(&th[i], NULL, worker, NULL);
   for (int i = 0; i < 4; i++) pthread_join(th[i], NULL);
-  // DR = 2*990*NB ; DC = 2*990*1081*19600
-  printf("class,weight,SA,SP,SC,SW,SL,Wq,Lq,bb2q,bb2nq,S2x,Scp,F2,Fc,Cf,Wopt,SAs,SPs,SCs\n");
-  for (int i = 0; i < ncls; i++) { Cls *k = &cls[i]; printf("%s,%d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld\n", k->name, k->weight, k->SA, k->SP, k->SC, k->SW, k->SL, k->Wq, k->Lq, k->bb2q, k->bb2nq, k->S2x, k->Scp, k->flops2x, k->flopsCheck, k->riverFold, k->Wopt, k->SAs, k->SPs, k->SCs); }
+  fclose(out);
   return 0;
 }
