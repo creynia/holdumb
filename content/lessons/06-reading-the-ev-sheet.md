@@ -66,7 +66,8 @@ steps:
     text: "Tap **Bet 3x** and **Check** to see their lines on the EV sheet. Don't confirm yet."
     allowedActions: [check, play]
     allowedOptions: [play-4, play-3, check]
-    expect: [ { type: play, option: play-4 } ]
+    hint: "Not yet: this step is for reading. Tap Bet 3x and Check to see their lines; you confirm on the next step."
+    expect: [ { type: fold } ] # nothing can be confirmed here (no fold exists preflop), previewing is the point
     completeWhen: { any: [ { all: [ { previewed: { option: play-3 } }, { previewed: { option: check } } ] }, { street: settled } ] }
   - id: decide
     text: "4x is +$36.01, 3x +$28.97, check +$21.93. Confirm the **Best play**."

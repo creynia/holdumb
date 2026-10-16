@@ -47,6 +47,7 @@ export function Play({ query }: { query: URLSearchParams }) {
         persistKey="holdumb:sandbox"
         snapshot={preset ? undefined : store.sandbox}
         onSnapshot={preset ? undefined : (snap) => store.setSandbox(snap)}
+        onPracticeChange={(on) => store.updateSettings({ practice: on })}
       />
       <p class="muted">
         <a href="#/hands" class="inline-link">

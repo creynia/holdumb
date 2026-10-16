@@ -44,13 +44,12 @@ function makeDriver(
   const { settings, evClient } = props;
   let scene: SceneConfig = props.scene ?? { id: 'sandbox', version: 1 };
   const sandbox = mode === 'sandbox';
-  let practice = resolvePractice(settings, scene);
+  const practice = resolvePractice(settings, scene);
   let restore: ConstructorParameters<typeof SimDriver>[0]['restore'];
   if (sandbox && props.snapshot !== undefined && !scene.startAt) {
     const dec = decodeSnapshot(props.snapshot, settings.paytable);
     if (dec) {
       restore = dec.restore;
-      practice = dec.practice;
     }
   }
   if (sandbox && !restore && !scene.bets && !scene.startAt) {
@@ -64,7 +63,6 @@ function makeDriver(
     seed: sandbox ? randomSeed() : 1,
     paytable: settings.paytable,
     practice,
-    speculate: true,
     restore,
     onEvent,
     preview: (req, o) => evClient.run('preview', req, o),
@@ -118,7 +116,9 @@ export function Simulator(props: SimulatorProps) {
   const decision = isDecisionStreet(street);
   const settled = street === 'settled';
   const evShown = (step?.showEV ?? scene.showEV) !== false;
-  const practice = view.practice;
+  // The app's settings are the source of truth for practice mode; the table follows them at once.
+  const practice =
+    sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
   const pv = view.preview;
 
   const [open, setOpen] = useState<OptionKey | null>(null);
@@ -141,7 +141,12 @@ export function Simulator(props: SimulatorProps) {
   const persistable = sandbox && !baseScene.startAt && !!props.onSnapshot;
   useEffect(() => {
     if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d));
-  }, [view.eventSeq, view.practice, persistable, d]);
+  }, [view.eventSeq, persistable, d]);
+
+  // Settings are the source of truth for practice mode: the table follows them live.
+  useEffect(() => {
+    if (sandbox) d.setPractice(resolvePractice(settings, baseScene));
+  }, [settings.practice, sandbox, d]);
 
   const timeline = buildTimeline(view.lastEvents, speed);
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
@@ -273,8 +278,14 @@ export function Simulator(props: SimulatorProps) {
         }}
         onConfirm={(k) => void confirm(k)}
         onCancel={() => {
+          const k = sheetKey;
           setOpen(null);
           setReveal(null);
+          // Give focus back to the button that opened the sheet.
+          setTimeout(
+            () => document.querySelector<HTMLElement>(`button[data-option="${k}"]`)?.focus(),
+            0,
+          );
         }}
         confirmCostlyMoves={settings.confirmCostlyMoves}
         hideEv={practice}
@@ -304,6 +315,8 @@ export function Simulator(props: SimulatorProps) {
         settings={settings}
         defaultStrategy={ap?.defaultStrategy}
         compare={ap?.compare}
+        bankroll={scene.bankroll}
+        seed={scene.seed}
         handOptions={ap?.handOptions}
         sessionOptions={ap?.sessions}
         onEvent={(e) => {
@@ -361,6 +374,7 @@ export function Simulator(props: SimulatorProps) {
             highlight={optionHl}
             bets={{ ante: state.bets.ante, trips: state.bets.trips }}
             canDeal={!view.dealLocked && state.bets.ante > 0}
+            canClear={!view.clearLocked}
             disabled={(settled && view.dealLocked) || view.pendingStart}
             onOption={onOption}
             onDeal={() => void act({ type: 'deal' })}
@@ -392,7 +406,7 @@ export function Simulator(props: SimulatorProps) {
       data-equity={eq}
       style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
     >
-      {orientation === 'portrait' ? stepPanel : null}
+      {orientation === 'portrait' || autoOnly ? stepPanel : null}
       {autoOnly ? null : table}
       {sandbox && scene.ui?.showSettings ? (
         <div class="sim-tools">
@@ -400,7 +414,11 @@ export function Simulator(props: SimulatorProps) {
             <input
               type="checkbox"
               checked={practice}
-              onChange={(e) => d.setPractice(e.currentTarget.checked)}
+              onChange={(e) =>
+                props.onPracticeChange
+                  ? props.onPracticeChange(e.currentTarget.checked)
+                  : d.setPractice(e.currentTarget.checked)
+              }
               data-testid="practice-toggle"
             />
             Practice mode (hide EV until I confirm)

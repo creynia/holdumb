@@ -29,6 +29,9 @@ export interface AutoPlayPanelProps {
   /** A scene may offer fewer choices (scene.autoPlay.handOptions / sessions). */
   handOptions?: number[];
   sessionOptions?: number[];
+  /** A scene's starting stake and seed (the lesson copy quotes results for these). */
+  bankroll?: number;
+  seed?: number;
   onEvent?: (e: SimulatorEvent) => void;
 }
 
@@ -39,6 +42,8 @@ export function AutoPlayPanel({
   compare,
   handOptions,
   sessionOptions,
+  bankroll: sceneBankroll,
+  seed: sceneSeed,
   onEvent,
 }: AutoPlayPanelProps) {
   const handChoices: readonly number[] = handOptions?.length
@@ -54,7 +59,7 @@ export function AutoPlayPanel({
     handOptions?.length ? handOptions[0]! : settings.handsPerHour,
   );
   const [sessions, setSessions] = useState(sessionOptions?.length ? sessionOptions[0]! : 1);
-  const [seed, setSeed] = useState(1);
+  const [seed, setSeed] = useState(sceneSeed ?? 1);
   const [cmp, setCmp] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [result, setResult] = useState<SimulateResult | null>(null);
@@ -65,7 +70,7 @@ export function AutoPlayPanel({
   const ante = Math.max(100, Math.round(anteDollars) * 100);
   const trips = Math.max(0, Math.round(tripsDollars) * 100);
   const spec: StrategySpec = { id, ante, trips };
-  const bankroll = ante * 100 + trips * 50;
+  const bankroll = sceneBankroll ?? ante * 100 + trips * 50;
   const metrics = strategyMetrics(
     spec,
     { tripsPaytable: settings.paytable },

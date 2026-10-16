@@ -28,10 +28,7 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const cents = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
 
-/**
- * A mid-hand snapshot restores as a fresh betting table with the chips back on the rack; a
- * settled or betting one restores as it was. The paytable follows the current setting.
- */
+/** Restores the saved table as it was. The paytable follows the current setting. */
 export function decodeSnapshot(
   raw: unknown,
   paytable: TripsPaytableId,
@@ -49,16 +46,22 @@ export function decodeSnapshot(
       if (!cents(st.bets[w])) return null;
     if (!Array.isArray(st.rng?.s) || st.rng.s.length !== 4) return null;
     if (!['betting', 'preflop', 'flop', 'river', 'settled'].includes(st.street)) return null;
-    let state: GameState = { ...st, rules: { ...st.rules, tripsPaytable: paytable } };
+    // Mid-hand snapshots restore exactly (reloading is not an escape from a bad river).
+    const state: GameState = { ...st, rules: { ...st.rules, tripsPaytable: paytable } };
     if (state.street === 'preflop' || state.street === 'flop' || state.street === 'river') {
-      const onFelt = state.bets.ante + state.bets.blind + state.bets.trips + state.bets.play;
-      state = {
-        ...state,
-        street: 'betting',
-        hand: null,
-        bankroll: state.bankroll + onFelt,
-        bets: { ante: 0, blind: 0, play: 0, trips: 0 },
-      };
+      const d = state.hand?.deal;
+      const ok =
+        !!d &&
+        Array.isArray(d.player) &&
+        d.player.length === 2 &&
+        Array.isArray(d.dealer) &&
+        d.dealer.length === 2 &&
+        Array.isArray(d.board) &&
+        d.board.length === 5 &&
+        [...d.player, ...d.dealer, ...d.board].every(
+          (c) => Number.isInteger(c) && c >= 0 && c < 52,
+        );
+      if (!ok) return null;
     }
     const totals: SessionTotals = { ...EMPTY_TOTALS };
     for (const k of Object.keys(EMPTY_TOTALS) as (keyof SessionTotals)[]) {

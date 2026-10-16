@@ -219,15 +219,23 @@ function describeSettlement(s: WagerSettlement): string {
   return `${name} ${formatMoney(s.profit, { sign: true })}`;
 }
 
+/** "a pair of kings", "two pair", "three queens", "ace high": the right article for a hand name. */
+export function withArticle(name: string): string {
+  return /^(pair|straight|flush|full house|royal flush)/.test(name) ? `a ${name}` : name;
+}
+/** Hands named in the plural ("three aces", "two pair") take "beat", not "beats". */
+const plural = (name: string): boolean => /^(two pair|three |four )/.test(name);
+
 /** The result toast: "Your pair of kings beats the dealer's pair of nines. Ante +$10, ... Net +$50." */
 export function describeResult(r: HandResult): string {
   const p = handName(r.player);
   const d = handName(r.dealer);
   let lead: string;
-  if (r.outcome === 'win') lead = `Your ${p} beats the dealer's ${d}.`;
-  else if (r.outcome === 'lose') lead = `The dealer's ${d} beats your ${p}.`;
-  else if (r.outcome === 'tie') lead = `Tie: you and the dealer both have a ${p}.`;
-  else lead = `You folded. The dealer had a ${d}.`;
+  if (r.outcome === 'win') lead = `Your ${p} ${plural(p) ? 'beat' : 'beats'} the dealer's ${d}.`;
+  else if (r.outcome === 'lose')
+    lead = `The dealer's ${d} ${plural(d) ? 'beat' : 'beats'} your ${p}.`;
+  else if (r.outcome === 'tie') lead = `Tie: you and the dealer both have ${withArticle(p)}.`;
+  else lead = `You folded. The dealer had ${withArticle(d)}.`;
   const parts = r.wagers.map(describeSettlement).join(', ');
   return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
 }
@@ -236,7 +244,7 @@ export function describeResult(r: HandResult): string {
 export function foldRevealText(r: HandResult): string {
   const d = handName(r.dealer);
   const q = r.dealerQualifies ? 'qualifies' : "doesn't qualify";
-  const had = `The dealer had a ${d} (${q}).`;
+  const had = `The dealer had ${withArticle(d)} (${q}).`;
   if (!r.ifPlayed) return had;
   const { outcome, net } = r.ifPlayed;
   const would =

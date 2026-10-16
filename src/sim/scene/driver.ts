@@ -125,6 +125,8 @@ export interface DriverView {
   allowedOptions: OptionKey[] | undefined;
   dealLocked: boolean;
   betsLocked: boolean;
+  /** Clear (betting) / Change bets (settled) is gated by the scene. */
+  clearLocked: boolean;
   preview: PreviewState;
   practice: boolean;
   rejection: Rejection | null;
@@ -141,8 +143,6 @@ export interface DriverOptions {
   /** Trips paytable for the sandbox (scenes use their own `rules.trips`, default 8-6-5). */
   paytable?: TripsPaytableId;
   practice?: boolean;
-  /** Compute the next street's EV while the learner thinks (D18). */
-  speculate?: boolean;
   onEvent?: (e: DriverEvent) => void;
   restore?: { state: GameState; startEquity: Cents; totals: SessionTotals };
 }
@@ -192,9 +192,6 @@ export class SimDriver {
   private pv: PreviewState = { key: null, status: 'idle', value: null, progress: 0 };
   private pvPromise: Promise<DecisionPreview | null> = Promise.resolve(null);
   private pvAbort: AbortController | null = null;
-  private specAbort: AbortController | null = null;
-  private specs = new Map<string, Promise<DecisionPreview>>();
-  private specHand = -1;
   private pendingStart: SceneStep['startAt'] | null = null;
   private rejection: Rejection | null = null;
   private practice: boolean;
@@ -214,6 +211,11 @@ export class SimDriver {
       this.game = opts.restore.state;
       this.startEq = opts.restore.startEquity;
       this.totals = { ...EMPTY_TOTALS, ...opts.restore.totals };
+      // A restored hand has no earlier previews: it stays out of the luck split.
+      if (this.game.hand && !this.game.hand.result) {
+        this.beginHandTrack();
+        this.hand!.scored = false;
+      }
     } else {
       const { trips, ...rest } = sc.rules ?? {};
       const rules: Partial<TableRules> = {
@@ -286,6 +288,10 @@ export class SimDriver {
       allowedOptions,
       dealLocked: !gateAllows(gate, { type: 'deal' }) || !!this.pendingStart,
       betsLocked: !gateAllows(gate, { type: 'set-bet', wager: 'ante', amount: 0 }),
+      clearLocked:
+        st === 'settled'
+          ? !gateAllows(gate, { type: 'clear' })
+          : !gateAllows(gate, { type: 'set-bet', wager: 'ante', amount: 0 }),
       preview: this.pv,
       practice: this.practice,
       rejection: this.rejection,
@@ -322,7 +328,6 @@ export class SimDriver {
   dispose(): void {
     this.disposed = true;
     this.pvAbort?.abort();
-    this.specAbort?.abort();
     this.listeners.clear();
   }
 
@@ -352,9 +357,6 @@ export class SimDriver {
       ante: state.bets.ante,
     };
   }
-  private reqKey(r: PreviewRequest): string {
-    return JSON.stringify([r.street, r.hole, r.board, r.ante]);
-  }
 
   private beginPreview(): void {
     const st = this.game;
@@ -365,7 +367,6 @@ export class SimDriver {
         this.pv = { key: null, status: 'idle', value: null, progress: 0 };
         this.pvPromise = Promise.resolve(null);
       }
-      if (st.street === 'settled' || st.street === 'betting') this.dropSpeculation();
       return;
     }
     const key = `${st.hand!.n}:${st.street}`;
@@ -374,18 +375,15 @@ export class SimDriver {
     const ac = new AbortController();
     this.pvAbort = ac;
     this.pv = { key, status: 'pending', value: null, progress: 0 };
-    const spec = this.specs.get(this.reqKey(req));
-    const run =
-      spec ??
-      this.opts.preview(req, {
-        key: 'preview',
-        signal: ac.signal,
-        onProgress: (p) => {
-          if (this.pv.key !== key || this.pv.status !== 'pending') return;
-          this.pv = { ...this.pv, progress: p.total ? p.done / p.total : 0 };
-          this.notify();
-        },
-      });
+    const run = this.opts.preview(req, {
+      key: 'preview',
+      signal: ac.signal,
+      onProgress: (p) => {
+        if (this.pv.key !== key || this.pv.status !== 'pending') return;
+        this.pv = { ...this.pv, progress: p.total ? p.done / p.total : 0 };
+        this.notify();
+      },
+    });
     this.pvPromise = run.then(
       (value) => {
         if (this.pv.key === key && !this.disposed) {
@@ -402,39 +400,6 @@ export class SimDriver {
         return null;
       },
     );
-    if (this.opts.speculate) this.speculate();
-  }
-
-  /** While the learner thinks, compute the next street's EV for the cards that will be dealt. */
-  private speculate(): void {
-    const st = this.game;
-    const h = st.hand;
-    if (!h || (st.street !== 'preflop' && st.street !== 'flop')) return;
-    if (this.specHand !== h.n) {
-      this.dropSpeculation();
-      this.specHand = h.n;
-    }
-    const next: DecisionStreet = st.street === 'preflop' ? 'flop' : 'river';
-    const board = h.deal.board.slice(0, next === 'flop' ? 3 : 5);
-    const req: PreviewRequest = {
-      street: next,
-      hole: h.deal.player,
-      board,
-      blindPaytable: st.rules.blindPaytable,
-      ante: st.bets.ante,
-    };
-    const k = this.reqKey(req);
-    if (this.specs.has(k)) return;
-    if (!this.specAbort) this.specAbort = new AbortController();
-    const p = this.opts.preview(req, { key: `spec:${next}`, signal: this.specAbort.signal });
-    p.catch(() => undefined);
-    this.specs.set(k, p);
-  }
-  private dropSpeculation(): void {
-    this.specAbort?.abort();
-    this.specAbort = null;
-    this.specs.clear();
-    this.specHand = -1;
   }
 
   /** Resolves with the current decision's preview (null when it failed). */
@@ -651,7 +616,6 @@ export class SimDriver {
   newSession(bankroll: Cents): void {
     const ante = this.game.bets.ante || this.scene.bets?.ante || 1000;
     this.pvAbort?.abort();
-    this.dropSpeculation();
     this.game = createGame({
       rules: this.game.rules,
       bankroll,

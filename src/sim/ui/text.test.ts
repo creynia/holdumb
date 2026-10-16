@@ -8,6 +8,7 @@ import {
   frac,
 } from './fixtures';
 import {
+  withArticle,
   OPTION_LABELS,
   OPTION_ORDER,
   actionOfKey,
@@ -85,5 +86,18 @@ describe('prose', () => {
     expect(foldRevealText(won)).toContain('You would have won $25.');
     const tie = { ...FOLDED_RESULT, ifPlayed: { outcome: 'tie' as const, net: 0 } };
     expect(foldRevealText(tie)).toContain('You would have pushed.');
+  });
+  it('uses the right article and verb for every kind of hand name', () => {
+    expect(withArticle('pair of kings')).toBe('a pair of kings');
+    expect(withArticle('full house')).toBe('a full house');
+    expect(withArticle('two pair')).toBe('two pair');
+    expect(withArticle('three queens')).toBe('three queens');
+    expect(withArticle('ace high')).toBe('ace high');
+    const trips = { ...WON_RESULT, player: { ...WON_RESULT.player, category: 'trips' as const } };
+    // three aces: rank comes from the lead card of best5 (ace = 12 -> index 48..51)
+    const aces = { ...trips, player: { ...trips.player, best5: [48, 49, 50, 4, 8] } };
+    expect(describeResult(aces)).toMatch(/^Your three aces beat the dealer's pair of nines\./);
+    const tie = { ...aces, outcome: 'tie' as const };
+    expect(describeResult(tie)).toMatch(/^Tie: you and the dealer both have three aces\./);
   });
 });

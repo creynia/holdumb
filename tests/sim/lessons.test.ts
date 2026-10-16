@@ -22,13 +22,15 @@ const scenes = bundle.lessons.flatMap((l) =>
   l.blocks.flatMap((b) => (b.kind === 'scene' ? [{ lesson: l.id, scene: b.scene }] : [])),
 );
 
+const rat = (f?: { num: bigint; den: bigint }): number => (f ? Number(f.num) / Number(f.den) : 0);
+const results = new Map<string, { bustRate: number; meanFinal: number }>();
+
 async function script(scene: SceneConfig): Promise<DriverEvent[]> {
   const events: DriverEvent[] = [];
   const d = new SimDriver({
     scene,
     mode: 'scene',
     seed: 1,
-    speculate: false,
     preview: (req, o) => client.run('preview', req, o),
     onEvent: (e) => events.push(e),
   });
@@ -66,10 +68,22 @@ async function script(scene: SceneConfig): Promise<DriverEvent[]> {
         did = true;
       } else if ('autoPlayCompleted' in l && !fired.has(k)) {
         fired.add(k);
-        d.autoPlayCompleted(
-          l.autoPlayCompleted.minHands ?? 1,
-          l.autoPlayCompleted.strategy ?? 'expert',
-        );
+        // The real run, with the scene's stake and seed, exactly as the panel requests it.
+        const ap = scene.autoPlay!;
+        const spec = ap.defaultStrategy!;
+        const hands = ap.handOptions?.[0] ?? 30;
+        const sessions = ap.sessions?.[0] ?? 1;
+        const res = await client.run('simulate', {
+          strategy: spec,
+          hands,
+          sessions,
+          seed: scene.seed ?? 1,
+          bankroll: scene.bankroll ?? 50_000,
+          rules: { tripsPaytable: 'trips-8-6-5' },
+          compare: ap.compare?.map((c) => ({ ...c })),
+        });
+        results.set(scene.id, res.series[0]!);
+        d.autoPlayCompleted(hands, spec.id);
         did = true;
       }
       if (did && d.view.version !== before) break;
@@ -89,9 +103,7 @@ async function script(scene: SceneConfig): Promise<DriverEvent[]> {
       const keys = gatedOptions(gate, street);
       const ranked = [...keys].sort((a, b) => {
         const ev = (k: typeof a) =>
-          pv
-            ? Number(pv.options.find((o) => optionKeyOfAction(o.action) === k)?.regret.num ?? 0n)
-            : 0;
+          pv ? rat(pv.options.find((o) => optionKeyOfAction(o.action) === k)?.regret) : 0;
         return ev(a) - ev(b);
       });
       let moved = false;
@@ -131,4 +143,9 @@ describe('every lesson scene completes (30)', () => {
         expect(events.some((e) => e.type === 'auto-play-completed')).toBe(true);
     });
   }
+  it('l17-s2 busts about as often as its copy promises (roughly a third, about 37%)', () => {
+    const r = results.get('l17-s2');
+    expect(r, 'l17-s2 ran before this test').toBeDefined();
+    expect(Math.abs(r!.bustRate - 0.37)).toBeLessThan(0.06);
+  });
 });

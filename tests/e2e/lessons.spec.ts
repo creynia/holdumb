@@ -29,3 +29,27 @@ test('a wrong move is refused with the hint and there is no Try again', async ({
   await expect(scene.locator('button[data-option="check"]')).toBeVisible();
   await expect(scene.getByRole('button', { name: /try again/i })).toHaveCount(0);
 });
+
+// Auto-play-only scenes hide the table: the step panel and Next must still be reachable in every
+// orientation (l17-s1, l17-s2, l18-s1, l21-s1).
+for (const [lesson, count] of [
+  ['variance-and-bankroll', 2],
+  ['costly-habits', 1],
+  ['strategy-fun-per-dollar', 1],
+] as const) {
+  test(`auto-play scenes in ${lesson} complete from Run to Done`, async ({ page }) => {
+    await page.goto(`/#/learn/${lesson}`);
+    const scenes = page.locator('.scene');
+    await expect(scenes).toHaveCount(count);
+    for (let i = 0; i < count; i++) {
+      const scene = scenes.nth(i);
+      await scene.scrollIntoViewIfNeeded();
+      await expect(scene.getByTestId('step-panel')).toBeVisible();
+      await scene.getByRole('button', { name: 'Run' }).click();
+      await expect(scene.getByTestId('auto-play-result')).toBeVisible({ timeout: 60_000 });
+      await scene.getByTestId('step-next').scrollIntoViewIfNeeded();
+      await scene.getByTestId('step-next').click();
+      await expect(scene.locator('.scene-head .badge')).toHaveText('Done');
+    }
+  });
+}

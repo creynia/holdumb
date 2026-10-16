@@ -61,4 +61,6 @@ export interface SimulatorProps {
   snapshot?: unknown;
   /** Sandbox only: called with a JSON-safe snapshot after every action. */
   onSnapshot?: (snapshot: unknown) => void;
+  /** Sandbox: the table's Practice checkbox. The app writes it to settings (the source of truth). */
+  onPracticeChange?: (on: boolean) => void;
 }

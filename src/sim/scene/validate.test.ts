@@ -124,12 +124,42 @@ describe('validateScene', () => {
     };
     expect(errs(s).join()).toMatch(/never reached/);
   });
+  it('counts bestDecisions only on the street it names (no false positive)', () => {
+    const s = {
+      ...base,
+      steps: [
+        step({
+          startAt: { street: 'preflop', deal: { player: ['As', 'Kd'] } },
+          allowedActions: ['check'],
+          completeWhen: { bestDecisions: { count: 1, street: 'river' } },
+        }),
+      ],
+    };
+    expect(errs(s).join()).toMatch(/dead end: the river/);
+  });
+  it('rejects expect best while Deal is allowed (D27)', () => {
+    const s = {
+      ...base,
+      steps: [
+        step({
+          startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } },
+          expect: [{ type: 'play', best: true }],
+          completeWhen: { bestDecisions: { count: 1, street: 'preflop' } },
+        }),
+      ],
+    };
+    expect(errs(s).join()).toMatch(/Deal locked/);
+    expect(errs({ ...s, steps: [{ ...s.steps[0], allowedActions: ['check', 'play'] }] })).toEqual(
+      [],
+    );
+  });
   it('needs EV for best-decision steps', () => {
     const s = {
       ...base,
       showEV: false,
       steps: [
         step({
+          allowedActions: ['check', 'play'],
           expect: [{ type: 'play', best: true }],
           completeWhen: { street: 'settled' },
           startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } },

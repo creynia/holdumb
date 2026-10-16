@@ -1,6 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+const lessonIds: string[] = (
+  JSON.parse(readFileSync('content/chapters.json', 'utf8')) as { lessons: string[] }[]
+).flatMap((c) => c.lessons);
 
 async function clean(page: Page) {
   const { violations } = await new AxeBuilder({ page }).analyze();
@@ -41,4 +46,15 @@ test.describe('axe: no serious or critical issues', () => {
     await expect(page.getByTestId('auto-play-result')).toBeVisible({ timeout: 30_000 });
     await clean(page);
   });
+});
+
+test.describe('axe: every lesson', () => {
+  test.describe.configure({ timeout: 60_000 });
+  for (const id of lessonIds) {
+    test(`lesson ${id}`, async ({ page }) => {
+      await page.goto(`/#/learn/${id}`);
+      await expect(page.locator('h1').first()).toBeVisible();
+      await clean(page);
+    });
+  }
 });

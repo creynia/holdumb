@@ -100,9 +100,11 @@ export function renderMarkdown(md: string, opts: CompileOptions = {}): string {
       return `<a class="gloss" href="#/glossary?term=${encodeURIComponent(slug)}">${label ?? term.trim()}</a>`;
     },
   );
+  // Tables scroll sideways on phones; a scrolling region must be keyboard focusable (axe).
   return markedFor(opts.headingShift ?? 0)
     .parse(withLinks, { async: false })
-    .trim();
+    .trim()
+    .replace(/<table>/g, '<table tabindex="0" aria-label="Table, scrolls sideways">');
 }
 
 function str(v: unknown, what: string): string {

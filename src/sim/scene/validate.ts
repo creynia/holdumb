@@ -349,7 +349,7 @@ function checkBets(e: Errs, path: string, v: unknown): void {
 interface Sym {
   street: Street;
   hands: number;
-  log: { action: Action; best: boolean }[];
+  log: { action: Action; best: boolean; street?: DecisionStreet }[];
 }
 const symKey = (s: Sym): string =>
   `${s.street}|${s.hands}|${s.log.map((l) => JSON.stringify(l.action)).join(',')}`;
@@ -387,10 +387,8 @@ function symSatisfied(c: Condition, s: Sym): boolean {
   if ('hands' in c) return s.hands >= Math.min(c.hands, 2);
   if ('street' in c) return s.street === c.street;
   if ('bestDecisions' in c) {
-    const n = s.log.filter((l) => {
-      if (!l.best) return false;
-      return true;
-    }).length;
+    const want = c.bestDecisions.street;
+    const n = s.log.filter((l) => l.best && (want === undefined || l.street === want)).length;
     return n >= Math.min(c.bestDecisions.count, 3);
   }
   return true; // handResult, betOnFelt, bankroll*, previewed, autoPlayCompleted, acknowledged, tapped
@@ -439,7 +437,7 @@ function explore(
       }
       for (const o of opts) {
         const action = actionOfOption(o);
-        const log = [...s.log, { action, best: true }];
+        const log = [...s.log, { action, best: true, street: s.street }];
         if (action.type === 'check')
           stack.push({ street: s.street === 'preflop' ? 'flop' : 'river', hands: s.hands, log });
         else stack.push({ street: 'settled', hands: s.hands + 1, log });
@@ -497,6 +495,8 @@ function semantic(scene: SceneConfig, e: Errs): void {
         'handResult win/lose/tie needs the hand fully forced (player, dealer, flop, turn, river), or the result is not guaranteed',
       );
     const gate = effectiveGate(scene, step);
+    if (step.expect?.some((m) => m.best) && (!gate.actions || gate.actions.includes('deal')))
+      e.add(path, 'expect best needs Deal locked: leave deal out of allowedActions (D27)');
     const r = explore(step.completeWhen, gate, step.expect, entry);
     for (const st of r.deadEnds)
       e.add(path, `dead end: the ${st} has no allowed option, so the scene cannot continue (D27a)`);

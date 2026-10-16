@@ -36,6 +36,8 @@ export interface ActionBarProps {
   onRebet?: () => void;
   onChangeBets?: () => void;
   canDeal?: boolean;
+  /** False when the scene gates Clear / Change bets (the button is dimmed, not hidden). */
+  canClear?: boolean;
   /** Under Deal: "Ante + Blind $20 · Trips $5". */
   dealSub?: string;
   /** Used to build `dealSub` when it isn't given. */
@@ -74,6 +76,7 @@ export function ActionBar({
   onRebet,
   onChangeBets,
   canDeal = true,
+  canClear = true,
   dealSub,
   bets,
   disabled,
@@ -106,7 +109,7 @@ export function ActionBar({
         <button
           type="button"
           class="sim-act sim-act-secondary"
-          disabled={disabled}
+          disabled={disabled || !canClear}
           onClick={onClear}
           data-action="clear"
         >
@@ -130,7 +133,7 @@ export function ActionBar({
         <button
           type="button"
           class="sim-act sim-act-secondary"
-          disabled={disabled}
+          disabled={disabled || !canClear}
           onClick={onChangeBets}
           data-action="change-bets"
         >

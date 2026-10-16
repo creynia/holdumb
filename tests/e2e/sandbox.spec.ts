@@ -94,6 +94,41 @@ test.describe('sandbox', () => {
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-hands', '1');
   });
 
+  test('reloading on the river restores the same cards and bets', async ({ page }) => {
+    await page.goto('/#/play?speed=instant');
+    await page.getByRole('button', { name: /^Clear/ }).click();
+    await page.locator('button[data-chip="500"]').click();
+    await page.locator('[data-hit="ante"]').click();
+    await page.locator('button[data-action="deal"]').click();
+    // Check, check to the river (confirming a second time when a check is a "big mistake").
+    for (const street of ['preflop', 'flop']) {
+      await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', street);
+      await ready(page);
+      await opt(page, 'check').click();
+      await page.getByTestId('confirm').click();
+      const again = page.getByRole('button', { name: 'Do it anyway' });
+      if (await again.isVisible().catch(() => false)) await again.click();
+      await page.waitForTimeout(150);
+    }
+    const sim = page.getByTestId('simulator');
+    await expect(sim).toHaveAttribute('data-street', 'river');
+    const snapshot = () =>
+      page.evaluate(() => ({
+        cards: [...document.querySelectorAll('g.sim-card:not(.sim-card-back)')].map((e) =>
+          e.getAttribute('aria-label'),
+        ),
+        circles: [...document.querySelectorAll('[data-circle]')].map((e) => e.textContent),
+        equity: document.querySelector('[data-testid="simulator"]')!.getAttribute('data-equity'),
+      }));
+    const before = await snapshot();
+    expect(before.cards).toHaveLength(7);
+    await page.waitForTimeout(600);
+    await page.reload();
+    await expect(sim).toHaveAttribute('data-street', 'river');
+    expect(await snapshot()).toEqual(before);
+    await expect(page.locator('button[data-action="deal"]')).toHaveCount(0);
+  });
+
   test('money never wraps and nothing scrolls sideways', async ({ page }) => {
     await page.goto('/#/play?seed=3&speed=instant');
     const wraps = await page.evaluate(() => {
