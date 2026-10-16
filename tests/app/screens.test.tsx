@@ -14,10 +14,10 @@ import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
 
-/** The `_sample-*` placeholders only, so real lessons can never break these tests. */
+/** The `_sample-*` fixtures in tests/fixtures/content, so real lessons can never break these tests. */
 function fixtureContent() {
   const root = mkdtempSync(join(tmpdir(), 'holdumb-fixture-'));
-  const src = join(process.cwd(), 'content');
+  const src = join(process.cwd(), 'tests', 'fixtures', 'content');
   mkdirSync(join(root, 'content', 'lessons'), { recursive: true });
   for (const sub of ['', 'lessons'])
     for (const f of readdirSync(join(src, sub)).filter((n) => n.startsWith('_sample-')))

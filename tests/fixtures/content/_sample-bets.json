@@ -1,0 +1,22 @@
+{
+  "ante": {
+    "summary": "Placeholder: ante.",
+    "howItWorks": "Placeholder text. The real description is written by the lesson authors.",
+    "verdict": "fair"
+  },
+  "blind": {
+    "summary": "Placeholder: blind.",
+    "howItWorks": "Placeholder text. The real description is written by the lesson authors.",
+    "verdict": "fair"
+  },
+  "play": {
+    "summary": "Placeholder: play.",
+    "howItWorks": "Placeholder text. The real description is written by the lesson authors.",
+    "verdict": "fair"
+  },
+  "trips": {
+    "summary": "Placeholder: trips.",
+    "howItWorks": "Placeholder text. The real description is written by the lesson authors.",
+    "verdict": "fair"
+  }
+}
