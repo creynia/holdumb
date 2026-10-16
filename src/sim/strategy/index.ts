@@ -1,4 +1,14 @@
 export * from './types';
 export { STRATEGY_IDS } from './ids';
 export { simulateJob } from './simulate';
-export { nextSpot, spotCode, spotFromCode } from './drill';
+export { nextSpot, spotCode, spotFromCode, gradeSpot } from './drill';
+export { categorize, DRILL_STREET_OF } from './categories';
+export { STRATEGIES, getStrategy, strategyAction, PICKER_GROUPS } from './presets';
+export { STRATEGY_CONSTANTS } from './constants';
+export type { StrategyConstant } from './constants';
+export { strategyMetrics, evPerHandCents } from './metrics';
+export { RULE_DEFS, PREFLOP_4X_PERFECT, PREFLOP_4X_SIMPLE } from './rules';
+export { strategyChart, describePredicate } from './chart';
+export type { ChartCell, RuleLine, StrategyChartData } from './chart';
+export { handClass } from './ranks';
+export { riverPlays, riverCounts } from './river';
