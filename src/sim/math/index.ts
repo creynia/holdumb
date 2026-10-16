@@ -5,6 +5,7 @@ export { betterAlternative, riverFacts, flopFacts } from './alternatives';
 export type {
   AlternativeCopyKey,
   AlternativeVars,
+  MadeHand,
   BetterAlternative,
   FlopFacts,
   RiverFacts,
@@ -26,4 +27,4 @@ export * as fraction from './fraction';
 export { riverPreview, preflopPreview } from './preview';
 export { riverTotals, flopTotalsJob, blindX2 } from './enumerate';
 export type { RiverTotals, FlopTotals, FlopRequest } from './enumerate';
-export { classWeight, preflopRow as preflopTableRow } from './preflop';
+export { classWeight } from './preflop';
