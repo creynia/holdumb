@@ -7,6 +7,7 @@ const file = path.resolve('dist-single/holdumb.html');
 
 interface Smoke {
   mode: 'worker' | 'inthread';
+  settled: 'resolved' | 'rejected';
 }
 // Needs the test hook in src/app/test-hook.ts.
 const smoke = () =>
