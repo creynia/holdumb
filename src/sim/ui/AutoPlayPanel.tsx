@@ -29,6 +29,9 @@ export interface AutoPlayPanelProps {
   /** A scene may offer fewer choices (scene.autoPlay.handOptions / sessions). */
   handOptions?: number[];
   sessionOptions?: number[];
+  /** A scene's starting stake and seed (the lesson copy quotes results for these). */
+  bankroll?: number;
+  seed?: number;
   onEvent?: (e: SimulatorEvent) => void;
 }
 
@@ -39,6 +42,8 @@ export function AutoPlayPanel({
   compare,
   handOptions,
   sessionOptions,
+  bankroll: sceneBankroll,
+  seed: sceneSeed,
   onEvent,
 }: AutoPlayPanelProps) {
   const handChoices: readonly number[] = handOptions?.length
@@ -54,7 +59,7 @@ export function AutoPlayPanel({
     handOptions?.length ? handOptions[0]! : settings.handsPerHour,
   );
   const [sessions, setSessions] = useState(sessionOptions?.length ? sessionOptions[0]! : 1);
-  const [seed, setSeed] = useState(1);
+  const [seed, setSeed] = useState(sceneSeed ?? 1);
   const [cmp, setCmp] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [result, setResult] = useState<SimulateResult | null>(null);
@@ -65,7 +70,7 @@ export function AutoPlayPanel({
   const ante = Math.max(100, Math.round(anteDollars) * 100);
   const trips = Math.max(0, Math.round(tripsDollars) * 100);
   const spec: StrategySpec = { id, ante, trips };
-  const bankroll = ante * 100 + trips * 50;
+  const bankroll = sceneBankroll ?? ante * 100 + trips * 50;
   const metrics = strategyMetrics(
     spec,
     { tripsPaytable: settings.paytable },
@@ -221,13 +226,13 @@ export function AutoPlayPanel({
         {(fracToNumber(metrics.edgePerAnte) * 100).toFixed(2)}% of the Ante).
       </p>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <button type="button" onClick={() => void run()} disabled={running}>
+        <button type="button" class="btn" onClick={() => void run()} disabled={running}>
           Run
         </button>
         {running ? (
           <>
             <progress value={progress.done} max={progress.total} aria-label="Simulation progress" />
-            <button type="button" onClick={() => ctl.current?.abort()}>
+            <button type="button" class="btn btn-ghost" onClick={() => ctl.current?.abort()}>
               Cancel
             </button>
           </>
@@ -245,8 +250,17 @@ export function AutoPlayPanel({
               {sessions > 1 ? ` ± ${formatMoney(Math.round(main.meanFinalCi95))}` : ''}
             </li>
             <li>Luck: {formatMoney(Math.round(simNet - exactNet), { sign: true })}</li>
-            <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>
-            <li>Busted (≈): {(main.bustRate * 100).toFixed(0)}% of sessions</li>
+            {sessions >= 10 ? (
+              <>
+                <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>
+                <li>Busted (≈): {(main.bustRate * 100).toFixed(0)}% of sessions</li>
+              </>
+            ) : (
+              <li>
+                1 session: {simNet >= 0 ? 'finished ahead' : 'finished behind'} (one run says little
+                about the odds; try 100 sessions)
+              </li>
+            )}
             {trips > 0 ? <li>Trips hits: {main.tripsHits}</li> : null}
             <li>Blind bonus hits: {main.blindBonusHits}</li>
           </ul>

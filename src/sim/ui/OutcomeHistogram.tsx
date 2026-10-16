@@ -30,10 +30,10 @@ function Bars({ rows, total, label }: { rows: [string, number][]; total: number;
       <tbody>
         {rows.map(([name, n]) => (
           <tr key={name}>
-            <th scope="row" style={{ textAlign: 'left', fontWeight: 400, width: '28%' }}>
+            <th scope="row" style={{ textAlign: 'left', fontWeight: 400, width: '26%' }}>
               {LABEL[name] ?? name}
             </th>
-            <td style={{ width: '52%' }}>
+            <td style={{ width: '40%' }}>
               <div
                 style={{
                   height: '10px',

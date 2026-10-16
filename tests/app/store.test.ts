@@ -115,3 +115,20 @@ describe('Store', () => {
     expect(s.drill.byStreet.preflop.answered).toBe(2);
   });
 });
+
+describe('Store sandbox', () => {
+  it('keeps the sandbox snapshot, saves it, and round-trips it through export/import', () => {
+    const mem = new MemoryStorage();
+    const s = new Store(mem, 0);
+    expect(s.sandbox).toBeUndefined();
+    s.setSandbox({ v: 1, bankroll: 49000 });
+    s.flush();
+    expect(load(mem).sandbox).toEqual({ v: 1, bankroll: 49000 });
+    const code = s.exportCode();
+    const t = new Store(new MemoryStorage(), 0);
+    expect(t.importCode(code)).toBe(true);
+    expect(t.sandbox).toEqual({ v: 1, bankroll: 49000 });
+    t.setSandbox(undefined);
+    expect(t.sandbox).toBeUndefined();
+  });
+});

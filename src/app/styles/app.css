@@ -157,6 +157,11 @@ main {
   margin: 0 auto;
   padding: 1rem 16px 2rem;
 }
+main:has(> .page-wide) {
+  max-width: 64rem;
+  padding-left: 0;
+  padding-right: 0;
+}
 .page-wide {
   max-width: 64rem;
   padding-left: 8px;

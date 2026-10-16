@@ -17,7 +17,7 @@ export default defineConfig({
     {
       name: 'phone-landscape',
       use: { ...devices['Pixel 7 landscape'], viewport: { width: 844, height: 390 } },
-      testMatch: /(sandbox|lessons|layout|drill|tabs)\.spec\.ts/,
+      testMatch: /(sandbox|lessons|layout|drill|tabs|screenshots)\.spec\.ts/,
     },
     // perf.spec.ts runs in the mobile project only (CPU-throttled budgets)
     { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /perf\.spec\.ts/ },

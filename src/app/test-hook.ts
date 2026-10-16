@@ -5,8 +5,8 @@ import { createEvClient } from '../sim/worker';
 const client = createEvClient();
 window.__holdumb = {
   client,
-  // Runs one river preview through the client. The job is a stub until the math WP lands, so
-  // it may reject; either way the round trip proves the transport, and `mode` says which one.
+  // Runs one river preview through the client: the round trip proves the transport, `mode` says
+  // which one served it, and `settled` says whether the job resolved.
   async smoke() {
     const [a, b, ...board] = parseCards('As Kd Qh Jc 2d 7s 9h') as [number, number, ...number[]];
     let settled: 'resolved' | 'rejected' = 'resolved';
@@ -24,3 +24,5 @@ window.__holdumb = {
     return { mode: client.mode, settled };
   },
 };
+// The in-thread fallback client, for perf specs (CDP CPU throttling does not reach workers).
+Object.assign(window.__holdumb, { inthread: createEvClient({ mode: 'inthread' }) });

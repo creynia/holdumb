@@ -56,7 +56,8 @@ for (const size of SIZES) {
             .filter(
               (e) =>
                 e.getClientRects().length > 0 &&
-                !e.closest('.prose, .sr') &&
+                // the 13x13 chart cannot have 44 px cells at 390 px (WCAG 2.5.8 asks 24 px)
+                !e.closest('.prose, .sr, .sim-chart-grid') &&
                 !(e.matches('a:not(.btn)') && e.closest('p')),
             )
             .map((e) => {
