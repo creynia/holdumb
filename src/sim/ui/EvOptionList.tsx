@@ -7,9 +7,9 @@ import {
   bestOf,
   fmtAnteUnits,
   fmtCentsFraction,
-  fmtVsBest,
+  fmtVsBestC,
   optionKeyOf,
-  sub,
+  costCents,
   typographic,
 } from './text';
 
@@ -45,7 +45,7 @@ export function EvOptionList({
       {rows.map((o) => {
         const key = optionKeyOf(o.action);
         const isBest = o === best;
-        const cost = sub(best.evCents, o.evCents);
+        const cost = costCents(best, o);
         const body = (
           <>
             <span class="sim-evrow-label">{o.label}</span>
@@ -57,7 +57,9 @@ export function EvOptionList({
                   <b>{typographic(fmtCentsFraction(o.evCents))}</b>{' '}
                   <span class="sim-muted">({typographic(fmtAnteUnits(o.ev))} ante)</span>
                 </span>
-                <span class="sim-evrow-cost">{isBest ? 'Best' : `${fmtVsBest(cost)} vs best`}</span>
+                <span class="sim-evrow-cost">
+                  {isBest ? 'Best' : `${fmtVsBestC(cost)} vs best`}
+                </span>
                 <TierBadge tier={o.tier} />
               </>
             )}

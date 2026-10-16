@@ -1,7 +1,7 @@
 // Gallery and test fixtures, shaped exactly like math's DecisionPreview and engine's HandResult.
 // Every EV is an exact fraction from simulator.md section 2.5 (worked examples) or Appendix A
 // (preflop AA: SA 3292247168, SP 2953693496, SC 91996341600), never an invented number.
-// TODO(integration): the gallery swaps these for real engine + previewJob calls when math lands.
+// The gallery itself runs on the real engine and math; these are for component tests.
 import { parseCards } from '../engine';
 import type { Card, Cents, DecisionAction, EvaluatedHand, HandResult } from '../engine';
 import { decisionTier } from '../math';

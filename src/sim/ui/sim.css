@@ -77,18 +77,22 @@
   gap: 8px;
   padding: 8px;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--surface);
   border-left: 1px solid var(--sim-border);
 }
-.sim-rail-actions {
+.sim-rail-actions,
+.sim-rail .sim-status,
+.sim-rail .sim-rack {
   flex: none;
 }
 .sim-rail-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* ---------- felt ---------- */
@@ -969,4 +973,13 @@ button.sim-evrow-btn {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.sim-evrow-label,
+.sim-evrow-cost {
+  white-space: nowrap;
+}
+.sim-evrow-ev .sim-muted {
+  display: block;
+  font-size: 0.8rem;
 }
