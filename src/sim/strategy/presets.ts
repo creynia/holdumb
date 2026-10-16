@@ -79,7 +79,8 @@ export const PICKER_GROUPS: readonly {
   lens: 'perfect' | 'practical' | 'fun';
   ids: StrategyId[];
 }[] = [
-  { lens: 'perfect', ids: ['perfect', 'expert'] },
+  // 'perfect' is for Watch and Drill only (flop needs enumeration); long runs use Expert.
+  { lens: 'perfect', ids: ['expert'] },
   { lens: 'practical', ids: ['basic', 'simple'] },
   { lens: 'fun', ids: ['check-to-river', 'never-fold', 'always-max'] },
 ];

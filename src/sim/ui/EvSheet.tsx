@@ -2,7 +2,9 @@ import './sim.css';
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import type { OptionKey } from '../scene';
 import type { DecisionPreview } from '../math';
+import { alternativeCopy } from './altCopy';
 import { EvOptionList } from './EvOptionList';
+import type { BetterAlternative } from '../math';
 import { TierBadge } from './TierBadge';
 import { WhyTable } from './WhyTable';
 import {
@@ -11,11 +13,10 @@ import {
   bestOf,
   fmtAnteUnits,
   fmtCentsFraction,
-  fmtCost,
-  fmtVsBest,
-  mulInt,
+  fmtCostC,
+  costCents,
+  wrongEveryTimePerHour,
   optionKeyOf,
-  sub,
   typographic,
 } from './text';
 
@@ -49,6 +50,8 @@ export interface EvSheetProps {
   handsPerHour?: number;
   /** Options a scene forbids are hidden. */
   allowed?: readonly OptionKey[];
+  /** math.betterAlternative(...) for the selected option; renders curriculum 8.4 copy. */
+  alternative?: BetterAlternative | null;
 }
 
 const FOCUSABLE =
@@ -59,7 +62,7 @@ function ResultCard({ preview, chosen }: { preview: DecisionPreview; chosen: Opt
   const best = bestOf(preview);
   const o = preview.options.find((x) => optionKeyOf(x.action) === chosen);
   if (!o) return null;
-  const cost = sub(best.evCents, o.evCents);
+  const cost = costCents(best, o);
   const isBest = optionKeyOf(best.action) === chosen || o.tier === 'best';
   return (
     <div class="sim-result" role="status" data-testid="practice-result">
@@ -67,7 +70,7 @@ function ResultCard({ preview, chosen }: { preview: DecisionPreview; chosen: Opt
       <p>
         {isBest
           ? `${o.label} was the best play.`
-          : `${best.label} was worth ${fmtCost(cost)} more than ${o.label}.`}
+          : `${best.label} was worth ${fmtCostC(cost)} more than ${o.label}.`}
       </p>
     </div>
   );
@@ -92,13 +95,32 @@ export function EvSheet({
   onWhyToggle,
   handsPerHour,
   allowed,
+  alternative,
 }: EvSheetProps) {
   const preview = isUsablePreview(rawPreview) ? rawPreview : null;
   const failed = !!error || (!!rawPreview && !preview);
   const rootRef = useRef<HTMLDivElement>(null);
+  // Escape (and closing) return focus to whatever opened the sheet.
+  const opener = useRef<Element | null>(
+    typeof document === 'undefined' ? null : document.activeElement,
+  );
+  useEffect(
+    () => () => {
+      const el = opener.current;
+      if (el instanceof HTMLElement && el.isConnected) el.focus();
+    },
+    [],
+  );
   const titleId = useId();
   const whyId = useId();
   const [armed, setArmed] = useState(false);
+  // The skeleton only appears after 150 ms, so fast previews never flash it.
+  const [skel, setSkel] = useState(false);
+  useEffect(() => {
+    if (rawPreview) return setSkel(false);
+    const h = setTimeout(() => setSkel(true), 150);
+    return () => clearTimeout(h);
+  }, [rawPreview]);
   const [why, setWhy] = useState(!!whyOpen);
   useEffect(() => setArmed(false), [selected]);
   useEffect(() => setWhy(!!whyOpen), [whyOpen]);
@@ -113,7 +135,7 @@ export function EvSheet({
   const opt = preview?.options.find((o) => optionKeyOf(o.action) === selected) ?? null;
   const best = preview ? bestOf(preview) : null;
   const isBest = !!opt && !!best && opt.tier === 'best';
-  const cost = opt && best ? sub(best.evCents, opt.evCents) : null;
+  const cost = opt && best ? costCents(best, opt) : null;
   const needsSecondTap =
     !!opt && opt.tier === 'blunder' && confirmCostlyMoves && !hidden && !confirmed;
   const label = OPTION_LABELS[selected];
@@ -154,9 +176,10 @@ export function EvSheet({
 
   const alt = best && opt && !isBest && !confirmed && detail === 'full' && !hidden ? best : null;
   const selectedWhy = opt?.why;
+  const altText = alternative && preview ? alternativeCopy(alternative, preview) : null;
   const perHour =
-    cost && handsPerHour && !isBest
-      ? `about ${fmtCost(mulInt(cost, handsPerHour))} an hour at ${handsPerHour} hands an hour`
+    preview && opt && handsPerHour && !isBest
+      ? wrongEveryTimePerHour(preview, opt, handsPerHour)
       : null;
 
   const body = (
@@ -191,11 +214,16 @@ export function EvSheet({
                 <>Whole hand (Ante, Blind and Play): {typographic(fmtAnteUnits(opt.ev))} ante. </>
               ) : null}
               <span class="sim-exact">exact</span>
-              {cost && !isBest ? (
+              {cost !== null && !isBest ? (
                 <span data-testid="cost-vs-best">
                   {' '}
-                  Costs {fmtVsBest(cost).replace('−', '')} against {best!.label}
-                  {perHour ? `, ${perHour}` : ''}.
+                  Costs {fmtCostC(cost)} against {best!.label}.
+                </span>
+              ) : null}
+              {perHour ? (
+                <span data-testid="per-hour">
+                  {' '}
+                  Getting this wrong every time costs about {perHour} an hour.
                 </span>
               ) : null}
             </p>
@@ -211,9 +239,17 @@ export function EvSheet({
           {alt ? (
             <div class="sim-alt" data-testid="alternative">
               <p>
-                <b>{alt.label} instead:</b> {typographic(fmtCentsFraction(alt.evCents))} against{' '}
-                {typographic(fmtCentsFraction(opt!.evCents))}. You keep {fmtCost(cost!)} more per
-                hand on average.
+                {altText ? (
+                  <>
+                    <b>{altText.lead}</b> {altText.text}
+                  </>
+                ) : (
+                  <>
+                    <b>{alt.label} instead:</b> {typographic(fmtCentsFraction(alt.evCents))} against{' '}
+                    {typographic(fmtCentsFraction(opt!.evCents))}. You keep {fmtCostC(cost!)} more
+                    per hand on average.
+                  </>
+                )}
               </p>
               {onSelect ? (
                 <button
@@ -251,18 +287,22 @@ export function EvSheet({
             <span class="sim-spinner" aria-hidden="true" />
             Calculating…
           </p>
-          <div
-            class="sim-progress"
-            role="progressbar"
-            aria-label="EV progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round((progress ?? 0) * 100)}
-          >
-            <span style={`width:${Math.round((progress ?? 0) * 100)}%`} />
-          </div>
-          <span class="sim-skel-row" />
-          <span class="sim-skel-row" />
+          {skel ? (
+            <>
+              <div
+                class="sim-progress"
+                role="progressbar"
+                aria-label="EV progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round((progress ?? 0) * 100)}
+              >
+                <span style={`width:${Math.round((progress ?? 0) * 100)}%`} />
+              </div>
+              <span class="sim-skel-row" />
+              <span class="sim-skel-row" />
+            </>
+          ) : null}
         </div>
       )}
 

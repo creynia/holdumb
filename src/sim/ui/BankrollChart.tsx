@@ -2,13 +2,17 @@
 // dashed exact-expected line. Many sessions (D32): a p10-p90 band, the median, the expected
 // line, and a survival curve underneath. A text summary stands in for the picture (a11y).
 import { formatMoney } from '../engine/money';
+import { STRATEGY_CONSTANTS } from '../strategy/constants';
 import type { SessionSeries } from '../strategy/types';
 
 const W = 360;
 const H = 180;
 const SH = 54; // survival panel
-const PAD = { l: 44, r: 8, t: 8, b: 18 };
-const COLORS = ['var(--accent)', 'var(--tier-costly)', 'var(--tier-best)', 'var(--tier-small)'];
+const PAD = { l: 52, r: 8, t: 8, b: 18 };
+// Neutral palette (no red/orange: those mean "mistake" elsewhere). Colour is never the only cue:
+// each series also has its own dash pattern and a legend entry.
+const COLORS = ['var(--accent)', 'var(--text)', 'var(--tier-close)', 'var(--muted)'];
+const DASHES = ['', '7 3', '2 2', '9 3 2 3'];
 
 export interface BankrollChartProps {
   series: readonly SessionSeries[];
@@ -63,10 +67,11 @@ export function BankrollChart({ series, bankroll, hands, class: cls }: BankrollC
       const surv = s.survival
         ? `, survival ${(s.survival[s.survival.length - 1]! * 100).toFixed(0)}%`
         : '';
-      return `${s.strategy.id}: ends ${formatMoney(end)} (expected ${formatMoney(s.expected[s.expected.length - 1]!)})${surv}`;
+      return `${STRATEGY_CONSTANTS[s.strategy.id].name}: ends ${formatMoney(end)} (expected ${formatMoney(s.expected[s.expected.length - 1]!)})${surv}`;
     })
     .join('. ');
-  const ticks = [lo, (lo + hi) / 2, hi];
+  const whole = (v: number): number => Math.round(v / 100) * 100;
+  const ticks = [...new Set([whole(lo), whole((lo + hi) / 2), whole(hi)])];
   return (
     <figure class={cls} style={{ margin: 0 }} data-testid="bankroll-chart">
       <svg
@@ -112,17 +117,31 @@ export function BankrollChart({ series, bankroll, hands, class: cls }: BankrollC
                 />
               ) : null}
               {s.p50 ? (
-                <path d={pathOf(s.p50, x, y)} fill="none" stroke={color} stroke-width="1.6" />
+                <path
+                  d={pathOf(s.p50, x, y)}
+                  fill="none"
+                  stroke={color}
+                  stroke-width="1.6"
+                  stroke-dasharray={DASHES[k % DASHES.length]}
+                />
               ) : null}
               {s.equity ? (
-                <path d={pathOf(s.equity, x, y)} fill="none" stroke={color} stroke-width="1.6" />
+                <path
+                  d={pathOf(s.equity, x, y)}
+                  fill="none"
+                  stroke={color}
+                  stroke-width="1.6"
+                  stroke-dasharray={DASHES[k % DASHES.length]}
+                />
               ) : null}
               <path
                 d={pathOf(s.expected, x, y)}
                 fill="none"
                 stroke={color}
                 stroke-width="1.2"
-                stroke-dasharray="5 3"
+                stroke-dasharray="1 3"
+                stroke-linecap="round"
+                opacity="0.8"
               />
             </g>
           );
@@ -155,8 +174,39 @@ export function BankrollChart({ series, bankroll, hands, class: cls }: BankrollC
           </g>
         ) : null}
       </svg>
+      <ul
+        aria-label="Legend"
+        data-testid="legend"
+        style={{
+          listStyle: 'none',
+          margin: '4px 0 0',
+          padding: 0,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '4px 12px',
+          fontSize: '12px',
+        }}
+      >
+        {series.map((s, k) => (
+          <li key={s.strategy.id + k} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <svg width="26" height="8" aria-hidden="true">
+              <line
+                x1="0"
+                x2="26"
+                y1="4"
+                y2="4"
+                stroke={COLORS[k % COLORS.length]}
+                stroke-width="2"
+                stroke-dasharray={DASHES[k % DASHES.length]}
+              />
+            </svg>
+            {STRATEGY_CONSTANTS[s.strategy.id].name}
+          </li>
+        ))}
+      </ul>
       <figcaption style={{ fontSize: '12px', color: 'var(--muted)' }}>
-        {many ? 'Band: middle 80% of sessions (p10 to p90). ' : ''}Dashed: exact expected value.
+        {many ? 'Band: middle 80% of sessions (p10 to p90). ' : ''}Fine dotted line: exact expected
+        value. Grey dotted horizontal line: your starting bankroll.
       </figcaption>
     </figure>
   );

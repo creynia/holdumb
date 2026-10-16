@@ -31,7 +31,7 @@ export const landscapeLayout: FeltLayout = {
     dealer: { x: 340, y: 56, anchor: 'start' },
     player: { x: 340, y: 342, anchor: 'start' },
   },
-  nextHandCaption: { x: 275, y: 213 },
+  nextHandCaption: { x: 275, y: 236 },
   deckPos: { x: 500, y: 20 },
   rackPos: { x: 280, y: 386 },
   minTapUnits: 56, // the app chrome shrinks the felt to ~0.8 of its 844x390 size

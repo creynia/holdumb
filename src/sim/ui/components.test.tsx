@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame, equity, parseCards } from '../engine';
 import type { DecisionPreview } from '../math';
@@ -19,6 +19,7 @@ import {
   RIVER_ACE_HIGH,
 } from './fixtures';
 import { StatusBar } from './StatusBar';
+import { statusMoney } from './status';
 import { StrategyChart, chartClasses, preflop4xSet } from './StrategyChart';
 import { Table } from './Table';
 import { TierBadge } from './TierBadge';
@@ -62,12 +63,13 @@ describe('EvSheet', () => {
     for (const b of container.querySelectorAll('.sim-badge'))
       expect(b.textContent.trim().length).toBeGreaterThan(2);
   });
-  it('shows the cost against the best option and hands per hour', () => {
+  it('shows the cost against the best option and the preflop-only cost per hour (AA = $1.91)', () => {
     sheet({ selected: 'check', handsPerHour: 30 });
     const cost = screen.getByTestId('cost-vs-best').textContent;
     expect(cost).toContain('$14.08');
     expect(cost).toContain('Bet 4x');
-    expect(cost).toContain('$422.44 an hour');
+    expect(cost).not.toContain('an hour');
+    expect(screen.getByTestId('per-hour').textContent).toContain('about $1.91 an hour');
   });
   it('the alternative card switches the selection with "Use this"', () => {
     const props = sheet({ selected: 'check' });
@@ -149,12 +151,21 @@ describe('EvSheet', () => {
       'Bet 4x was worth $14.08 more than Check',
     );
   });
-  it('shows a skeleton and progress while the flop EV computes, and Confirm stays on', () => {
-    const props = sheet({ preview: null, progress: 0.4, selected: 'play-2' });
-    expect(screen.getByTestId('ev-loading')).toBeTruthy();
-    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('40');
-    fireEvent.click(screen.getByTestId('confirm'));
-    expect(props.onConfirm).toHaveBeenCalledWith('play-2');
+  it('shows "Calculating…" at once, the skeleton and progress after 150 ms, and Confirm stays on', () => {
+    vi.useFakeTimers();
+    try {
+      const props = sheet({ preview: null, progress: 0.4, selected: 'play-2' });
+      expect(screen.getByText('Calculating…')).toBeTruthy();
+      expect(screen.queryByRole('progressbar')).toBeNull();
+      void act(() => {
+        vi.advanceTimersByTime(160);
+      });
+      expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('40');
+      fireEvent.click(screen.getByTestId('confirm'));
+      expect(props.onConfirm).toHaveBeenCalledWith('play-2');
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it('is a labelled modal dialog; Escape cancels', () => {
     const props = sheet();
@@ -380,9 +391,9 @@ describe('TierBadge', () => {
     ['blunder', 'Big mistake'],
     ['free', 'Free bet'],
     ['good', 'Good bet'],
-    ['fair', 'Fair bet'],
+    ['fair', 'Fair'],
     ['poor', 'Poor bet'],
-    ['avoid', 'Avoid'],
+    ['avoid', 'Sucker bet'],
   ] as const)('%s reads "%s"', (tier, text) => {
     render(<TierBadge tier={tier} />);
     expect(screen.getByText(text)).toBeTruthy();
@@ -401,7 +412,7 @@ describe('small pieces', () => {
     render(<StatusBar bankroll={49_000} onFelt={2500} sessionNet={-1000} />);
     expect(screen.getByTestId('bankroll').textContent).toBe('$490');
     expect(screen.getByTestId('on-felt').textContent).toBe('$25');
-    expect(screen.getByTestId('session-net').textContent).toBe('-$10');
+    expect(screen.getByTestId('session-net').textContent).toBe('\u2212$10');
   });
   it('Toasts announce politely and dismiss', () => {
     const onDismiss = vi.fn();
@@ -459,7 +470,7 @@ describe('StrategyChart', () => {
   });
   it('lists flop and river rules in words', () => {
     render(<StrategyChart strategy="basic" view="river" />);
-    expect(screen.getByText(/fewer than 21 outs/)).toBeTruthy();
+    expect(screen.getByText(/Fewer than 21 dealer outs/)).toBeTruthy();
   });
 });
 
@@ -539,7 +550,7 @@ describe('session net and next-hand chips (D38)', () => {
     const net = equity(r.state) - equity(start);
     expect(net).toBe(-2500);
     render(<StatusBar bankroll={equity(r.state)} onFelt={0} sessionNet={net} />);
-    expect(screen.getByTestId('session-net').textContent).toBe('-$25');
+    expect(screen.getByTestId('session-net').textContent).toBe('\u2212$25');
   });
   it('Felt ghosts the chips and captions them "Next hand"', () => {
     const { container } = render(
@@ -588,5 +599,64 @@ describe('StrategyChart keyboard', () => {
     expect(document.activeElement?.getAttribute('data-class')).toBe('AKs');
     fireEvent.keyDown(document.activeElement!, { key: 'Enter' });
     expect(document.querySelector('.sim-chart-legend')!.textContent).toBe('AKs: Bet 4x.');
+  });
+});
+
+describe('review fixes', () => {
+  it('per-hour cost is preflop only: none on the flop or river', () => {
+    sheet({ preview: FLOP_HIDDEN_PAIR.preview, selected: 'check', handsPerHour: 30 });
+    expect(screen.queryByTestId('per-hour')).toBeNull();
+  });
+  it('shown costs add up with shown EVs', () => {
+    const { container } = render(<EvSheet {...baseProps()} />);
+    // $36.01 - $21.93 = $14.08
+    expect(container.textContent).toContain('\u2212$14.08 vs best');
+    expect(container.textContent).toContain('+$36.01');
+    expect(container.textContent).toContain('+$21.93');
+  });
+  it('a real cost under a cent reads "−<$0.01 vs best"', () => {
+    const p = structuredClone(PREFLOP_AA.preview);
+    p.options[1]!.evCents = { ...p.options[0]!.evCents };
+    p.options[1]!.tier = 'close';
+    render(<EvSheet {...baseProps({ preview: p })} />);
+    expect(document.body.textContent).toContain('\u2212<$0.01 vs best');
+  });
+  it('renders the curriculum 8.4 copy for a math alternative', () => {
+    sheet({
+      selected: 'check',
+      alternative: {
+        copyKey: 'pre-check-chart-hand',
+        bestIndex: 0,
+        chosenIndex: 2,
+        regret: { num: 1n, den: 1n },
+        vars: { hand: 'AA' },
+      },
+    });
+    expect(screen.getByTestId('alternative').textContent).toContain(
+      'Bet 4x instead: AA is a 4x hand. +$36.01 vs +$21.93.',
+    );
+  });
+  it('ActionBar practice mode shows no EV', () => {
+    render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} hideEv />);
+    expect(document.body.textContent).not.toMatch(/Best|3\.601|Calculating|not available/);
+  });
+  it('Escape returns focus to the opener', () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    const { unmount } = render(<EvSheet {...baseProps()} />);
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+  it('statusMoney uses equity once settled (D38)', () => {
+    const start = createGame({ seed: 7, bets: { ante: 1000 } });
+    const s = statusMoney(start, equity(start));
+    expect(s.sessionNet).toBeUndefined();
+    expect(s.onFelt).toBe(2000);
+  });
+  it('check-to-river never bets 4x preflop and the chart agrees with the strategy module', () => {
+    expect(preflop4xSet('check-to-river').size).toBe(0);
+    expect(preflop4xSet('perfect').size).toBe(69);
   });
 });

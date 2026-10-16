@@ -8,7 +8,8 @@ import { applyAction, createGame, equity } from '../engine';
 import type { Action, CreateGameOptions, GameEvent, GameState, HandResult } from '../engine';
 import { createEvClient } from '../worker';
 import type { DecisionPreview } from '../math';
-import { decisionTier, wagerTier } from '../math';
+import { betterAlternative, decisionTier, wagerTier } from '../math';
+import type { PreviewRequest } from '../math';
 import type { OptionKey } from '../scene';
 import { ActionBar } from './ActionBar';
 import { ChipRack } from './ChipRack';
@@ -23,11 +24,14 @@ import { TierBadge } from './TierBadge';
 import { Toasts } from './Toasts';
 import { buildTimeline, effectiveSpeed, useSkippableMotion } from './animation';
 import type { Speed } from './animation';
+import { statusMoney } from './status';
 import { actionOfKey, describeResult, handName, optionKeyOf } from './text';
 
 const q = new URLSearchParams(location.search);
 if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme')!;
 const scene = q.get('scene');
+const practice = q.get('practice') === '1';
+const evMode = q.get('ev');
 const fourColor = q.get('four') === '1';
 const speed = effectiveSpeed((q.get('speed') as Speed | null) ?? 'normal');
 const viewPref = (q.get('view') as 'portrait' | 'landscape' | null) ?? 'auto';
@@ -84,7 +88,20 @@ const START: Record<string, CreateGameOptions> = {
   },
 };
 START.fold = START.river!;
-START.win = START.river!;
+START.win = {
+  seed: 7,
+  bets: { ante: ANTE, trips: 500 },
+  startAt: {
+    street: 'river',
+    deal: {
+      player: ['Ks', 'Kc'],
+      dealer: ['Td', '2s'],
+      flop: ['9h', '5c', '3s'],
+      turn: '7d',
+      river: '2d',
+    },
+  },
+};
 const OPEN: Record<string, OptionKey | undefined> = {
   river: 'play-1',
   'river-fold': 'play-1',
@@ -140,7 +157,9 @@ function Demo({ id }: { id: string }) {
   const [open, setOpen] = useState<OptionKey | null>(OPEN[id] ?? null);
   const [preview, setPreview] = useState<DecisionPreview | null>(null);
   const [progress, setProgress] = useState(0);
-  const [evError, setEvError] = useState(false);
+  const [evError, setEvError] = useState(evMode === 'error');
+  const [chosen, setChosen] = useState<OptionKey | null>(null);
+  const [req, setReq] = useState<PreviewRequest | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [chip, setChip] = useState(1000);
   const hand = state.hand;
@@ -152,24 +171,26 @@ function Demo({ id }: { id: string }) {
   // Real EV: the in-thread client runs the preview job for this decision.
   useEffect(() => {
     setPreview(null);
-    setEvError(false);
+    setEvError(evMode === 'error');
+    setChosen(null);
     setProgress(0);
-    if (!hand || !decision) return;
+    if (!hand || !decision || evMode === 'pending' || evMode === 'error') return;
     abort.current?.abort();
     const ac = new AbortController();
     abort.current = ac;
+    const request: PreviewRequest = {
+      street: state.street as 'preflop' | 'flop' | 'river',
+      hole: hand.deal.player,
+      board,
+      blindPaytable: state.rules.blindPaytable,
+      ante: state.bets.ante,
+    };
+    setReq(request);
     client
-      .run(
-        'preview',
-        {
-          street: state.street as 'preflop' | 'flop' | 'river',
-          hole: hand.deal.player,
-          board,
-          blindPaytable: state.rules.blindPaytable,
-          ante: state.bets.ante,
-        },
-        { signal: ac.signal, onProgress: (p) => setProgress(p.done / Math.max(1, p.total)) },
-      )
+      .run('preview', request, {
+        signal: ac.signal,
+        onProgress: (p) => setProgress(p.done / Math.max(1, p.total)),
+      })
       .then((p) => setPreview(p))
       .catch((e: unknown) => {
         if (!(e instanceof Error && e.name === 'AbortError')) setEvError(true);
@@ -205,15 +226,26 @@ function Demo({ id }: { id: string }) {
         selected={open}
         variant={orientation === 'landscape' ? 'rail' : 'sheet'}
         onSelect={setOpen}
-        onConfirm={(k) => act(actionOfKey(k))}
+        onConfirm={(k) => (practice && !chosen ? setChosen(k) : act(actionOfKey(k)))}
         onCancel={() => setOpen(null)}
+        hideEv={practice}
+        chosen={chosen}
+        onContinue={() => chosen && act(actionOfKey(chosen))}
+        alternative={
+          preview && req && open
+            ? betterAlternative(
+                req,
+                preview,
+                preview.options.findIndex((o) => optionKeyOf(o.action) === open),
+              )
+            : null
+        }
         handsPerHour={30}
         whyOpen={q.get('why') === '1'}
       />
     ) : null;
-  // D38: once settled, show equity(), not bankroll plus felt.
   const settled = state.street === 'settled';
-  const onFelt = settled ? 0 : Object.values(state.bets).reduce((a, b) => a + b, 0);
+  const money = statusMoney(state, startEquity);
   const playBet = state.bets.play;
   return (
     <Table
@@ -222,11 +254,7 @@ function Demo({ id }: { id: string }) {
         toast ? <Toasts toasts={[{ id: 1, text: toast }]} onDismiss={() => setToast(null)} /> : null
       }
       status={
-        <StatusBar
-          bankroll={settled ? equity(state) : state.bankroll}
-          onFelt={onFelt}
-          sessionNet={state.stats.hands ? equity(state) - startEquity : undefined}
-        />
+        <StatusBar bankroll={money.bankroll} onFelt={money.onFelt} sessionNet={money.sessionNet} />
       }
       felt={
         <Felt
@@ -255,6 +283,7 @@ function Demo({ id }: { id: string }) {
             street={state.street}
             layout={orientation === 'landscape' ? 'rail' : 'bar'}
             preview={preview}
+            hideEv={practice}
             evStatus={evError ? 'error' : preview ? 'ready' : decision ? 'pending' : undefined}
             selected={open}
             bets={{ ante: state.bets.ante, trips: state.bets.trips }}
@@ -272,6 +301,7 @@ function Demo({ id }: { id: string }) {
         orientation === 'landscape' && preview && !open ? (
           <EvOptionList
             preview={preview}
+            hideEv={practice}
             compact
             allowed={preview.options.map((o) => optionKeyOf(o.action))}
           />

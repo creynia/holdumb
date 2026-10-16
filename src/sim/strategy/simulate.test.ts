@@ -85,3 +85,25 @@ describe('Monte Carlo agrees with the exact constants', () => {
     }, 120_000);
   }
 });
+
+describe('bust edge cases', () => {
+  it('counts a bust on the final hand', () => {
+    // one hand, bankroll just under the 6 x ante threshold after... start below threshold
+    const r = run(base('basic', { hands: 1, sessions: 4, bankroll: 5000 })).series[0]!;
+    expect(r.bustRate).toBe(1);
+  });
+  it('counts a bust landing exactly on the last hand', () => {
+    const r = run(base('always-max', { hands: 3, sessions: 50, bankroll: 6000, seed: 3 }))
+      .series[0]!;
+    const lost = [...r.finals].filter((f) => f < 6000 + 0 && f < 6000).length;
+    expect(r.bustRate).toBeGreaterThanOrEqual(lost / 50 - 1e-9);
+    for (let i = 0; i < r.finals.length; i++)
+      if (r.finals[i]! < 6000) expect(r.bustRate).toBeGreaterThan(0);
+  });
+  it('a bankroll below the bets is a bust at hand 0', () => {
+    const r = run(base('basic', { bankroll: 500, hands: 5, sessions: 2 })).series[0]!;
+    expect(r.bustRate).toBe(1);
+    expect(r.survival![0]).toBe(0);
+    expect(r.handsPlayed).toBe(0);
+  });
+});

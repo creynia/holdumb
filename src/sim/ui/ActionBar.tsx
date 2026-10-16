@@ -22,6 +22,8 @@ export interface ActionBarProps {
   preview?: DecisionPreview | null;
   /** `pending` shows "Calculating…" and `error` "EV not available" under each decision button, no badges. */
   evStatus?: EvStatus;
+  /** Practice mode (D11): no EV or tier on the buttons. */
+  hideEv?: boolean;
   /** The option whose sheet is open. */
   selected?: OptionKey | null;
   /** A scene may hide options. Omit for all. */
@@ -62,6 +64,7 @@ export function ActionBar({
   layout = 'bar',
   preview: rawPreview,
   evStatus,
+  hideEv,
   selected,
   allowed,
   highlight = [],
@@ -75,14 +78,16 @@ export function ActionBar({
   bets,
   disabled,
 }: ActionBarProps) {
-  const preview = isUsablePreview(rawPreview) ? rawPreview : null;
-  const status: EvStatus | null = preview
-    ? 'ready'
-    : evStatus === 'pending'
-      ? 'pending'
-      : evStatus || rawPreview
-        ? 'error'
-        : null;
+  const preview = !hideEv && isUsablePreview(rawPreview) ? rawPreview : null;
+  const status: EvStatus | null = hideEv
+    ? null
+    : preview
+      ? 'ready'
+      : evStatus === 'pending'
+        ? 'pending'
+        : evStatus || rawPreview
+          ? 'error'
+          : null;
   const cls = `sim-actions sim-actions-${layout}`;
   if (street === 'betting') {
     const sub = dealSub ?? (bets ? dealSubtitle(bets.ante, bets.trips) : undefined);

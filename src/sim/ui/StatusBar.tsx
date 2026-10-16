@@ -24,7 +24,9 @@ export function StatusBar({ bankroll, onFelt, sessionNet }: StatusBarProps) {
       {sessionNet !== undefined ? (
         <div>
           <dt>Session</dt>
-          <dd data-testid="session-net">{formatMoney(sessionNet, { sign: true })}</dd>
+          <dd data-testid="session-net">
+            {formatMoney(sessionNet, { sign: true }).replace('-', '\u2212')}
+          </dd>
         </div>
       ) : null}
     </dl>
