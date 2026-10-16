@@ -1297,7 +1297,7 @@ Every chart has edges. Here are UTH's, with the exact EVs (in antes) of both cho
 | {{Js 8s}} J8s | +0.107 | +0.096 | **4x** | 0.011 |
 | {{Js 7s}} J7s | −0.107 | −0.034 | **Check** | 0.072 |
 | {{Jc Td}} JTo | +0.174 | +0.110 | **4x** | 0.064 |
-| {{Jc 9d}} J9o | −0.070 | −0.039 | **Check** | 0.032 |
+| {{Jc 9d}} J9o | −0.070 | −0.039 | **Check** | 0.031 |
 | {{3c 3d}} 33 | +0.088 | +0.007 | **4x** | 0.081 |
 | {{2c 2d}} 22 | −0.288 | −0.179 | **Check** | 0.108 |
 | {{Ts 9s}} T9s | +0.185 | +0.205 | **Check** | 0.020 |
@@ -1437,7 +1437,7 @@ ahead of every dealer hand that missed.
 
 | You | Flop | Bet 2x | Check | Best |
 |---|---|---|---|---|
-| {{9s 7d}} | {{9h Kc 2s}} | **+0.866** | +0.429 | 2x (hidden pair) |
+| {{9s 7d}} | {{9h Kc 2s}} | **+0.865** | +0.429 | 2x (hidden pair) |
 | {{7c 6d}} | {{Kh 7s 2d}} | **+0.641** | +0.267 | 2x (hidden pair) |
 | {{8h 3c}} | {{Ah Kd 3s}} | **−0.180** | −0.315 | 2x (even bottom pair) |
 | {{Qc 5d}} | {{Qs 5h 9d}} | **+2.517** | +1.726 | 2x (two pair) |
@@ -3307,7 +3307,7 @@ you'd really face. `?street=mixed` draws categories in proportion to how often t
 | `pre-queen-jack` | preflop | Q2–QJ, J2–JT | {{Qc 8d}}: 4x (−0.069 vs −0.093) |
 | `pre-small-pair` | preflop | 22–66 | {{2c 2d}}: check (−0.179 vs −0.288) |
 | `pre-low` | preflop | top card T or lower, not a pair | {{Ts 9s}}: check (+0.205 vs +0.185) |
-| `flop-hidden-pair` | flop | a hole card pairs the flop, or a pocket pair 33+ | {{9s 7d}} on {{9h Kc 2s}}: 2x (+0.866 vs +0.429) |
+| `flop-hidden-pair` | flop | a hole card pairs the flop, or a pocket pair 33+ | {{9s 7d}} on {{9h Kc 2s}}: 2x (+0.865 vs +0.429) |
 | `flop-two-pair-plus` | flop | two pair or better using a hole card | {{Qc 5d}} on {{Qs 5h 9d}}: 2x (+2.517 vs +1.726) |
 | `flop-board-pair` | flop | paired flop, no hole-card help | {{9c 8d}} on {{Ks Kd 4c}}: check (−1.144 vs −1.548) |
 | `flop-flush-draw` | flop | four to a flush | {{Th 4h}} on {{Jh 8h 2c}}: 2x; {{9h 4h}}: check |
