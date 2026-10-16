@@ -46,12 +46,6 @@ function* session(
   const stopAtBust = req.stopAtBust ?? true;
   // 'perfect' decides the flop by enumeration; long runs use `expert` as its stand-in (D18).
   const strat = STRATEGIES[spec.id === 'perfect' ? 'expert' : spec.id];
-  let state = createGame({
-    rules: req.rules,
-    bankroll: req.bankroll,
-    seed: req.seed + index,
-    bets: { ante: spec.ante, trips: spec.trips },
-  });
   const out: SessionOut = {
     eq: new Int32Array(req.hands + 1),
     bustedAt: -1,
@@ -64,6 +58,24 @@ function* session(
   const threshold = 6 * spec.ante + spec.trips;
   const start = req.bankroll;
   out.eq[0] = start;
+  let state: GameState;
+  try {
+    state = createGame({
+      rules: req.rules,
+      bankroll: req.bankroll,
+      seed: req.seed + index,
+      bets: { ante: spec.ante, trips: spec.trips },
+    });
+  } catch {
+    // The bankroll cannot cover the bets: bust at hand 0, flat line.
+    out.eq.fill(start);
+    out.bustedAt = 0;
+    for (let h = 1; h <= req.hands; h++) {
+      const p = tick(1);
+      if (p) yield p;
+    }
+    return out;
+  }
   let stopped = false;
   for (let h = 1; h <= req.hands; h++) {
     if (!stopped) {
@@ -92,6 +104,7 @@ function* session(
     const p = tick(1);
     if (p) yield p;
   }
+  if (out.bustedAt < 0 && out.eq[req.hands]! < threshold) out.bustedAt = req.hands;
   return out;
 }
 
@@ -111,6 +124,7 @@ function dealAndPlay(
   return s;
 }
 
+/** Nearest rank, rounding down: sorted[floor(p x (n - 1))]. */
 function percentile(sorted: Int32Array, p: number): number {
   return sorted[Math.floor(p * (sorted.length - 1))]!;
 }

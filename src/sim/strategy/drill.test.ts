@@ -135,3 +135,13 @@ describe('grading', () => {
     expect(gradeSpot(spot, best, preview, 'perfect').chartCell).toBe('river-outs-edge');
   });
 });
+
+describe('interesting + category', () => {
+  it('never throws, for all 18 categories x 4 seeds', () => {
+    for (const category of DRILL_CATEGORY_IDS)
+      for (const seed of [1, 2, 3, 4]) {
+        const [s] = nextSpot(seedRng(seed), { street: 'mixed', category, interesting: true });
+        expect(s.category).toBe(category);
+      }
+  }, 120_000);
+});

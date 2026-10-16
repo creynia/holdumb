@@ -43,7 +43,13 @@ function Bars({ rows, total, label }: { rows: [string, number][]; total: number;
                 }}
               />
             </td>
-            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            <td
+              style={{
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {n.toLocaleString('en-US')} ({total ? ((100 * n) / total).toFixed(1) : '0.0'}%)
             </td>
           </tr>

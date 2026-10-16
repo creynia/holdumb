@@ -1,6 +1,6 @@
 // D36: exact EV of "check to the river, bet 1x only with a hidden pair", computed with the app's
 // own evaluator over all 2,598,960 boards (suit-isomorphic boards grouped) x 1,081 player hands
-// x 990 dealer hands. Used by d36.slow.test.ts (SLOW=1), never at runtime.
+// x 990 dealer hands. Used by d36.slow.test.ts (HOLDUMB_SLOW=1), never at runtime.
 import { evalMasks } from '../engine/evaluator';
 import { blindHalf } from './river';
 

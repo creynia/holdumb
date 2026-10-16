@@ -17,6 +17,7 @@ const CHART_4X: ReadonlySet<string> = new Set(PREFLOP_4X_PERFECT);
 const LETTER: Record<DecisionStreet, string> = { preflop: 'p', flop: 'f', river: 'r' };
 const STREET_OF_LETTER: Record<string, DecisionStreet> = { p: 'preflop', f: 'flop', r: 'river' };
 const MAX_ATTEMPTS = 200_000;
+const MAX_CLOSE_TRIES = 200;
 
 // ---------- codes ----------
 export function spotCode(spot: Omit<DrillSpot, 'code'>): string {
@@ -181,7 +182,16 @@ export function nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngSta
   const [u, r2] = randBelow(r, 1000);
   r = r2;
   const wantClose = u < 600;
-  return sampleWhere(r, street, (s) => base(s) && isClose(s) === wantClose);
+  // The wanted kind may be rare or absent inside one category: after MAX_CLOSE_TRIES
+  // candidates, settle for the last spot that satisfies the category alone.
+  let last: DrillSpot | undefined;
+  for (let n = 0; n < MAX_CLOSE_TRIES; n++) {
+    let s: DrillSpot;
+    [s, r] = sampleWhere(r, street, base);
+    last = s;
+    if (isClose(s) === wantClose) return [s, r];
+  }
+  return [last!, r];
 }
 
 // ---------- grading ----------
@@ -206,10 +216,7 @@ export function gradeSpot(
   let best = perfectBest.action;
   let regret = chosenOpt.regret;
   if (lens === 'practical') {
-    best =
-      spot.street === 'flop' || spot.street === 'river' || spot.street === 'preflop'
-        ? strategyAction('basic', spot.hole, spot.board)
-        : best;
+    best = strategyAction('basic', spot.hole, spot.board);
     const ref = opt(best) ?? perfectBest;
     const diff = fracSub(chosenOpt.ev, ref.ev);
     regret = diff.num >= 0n ? { num: 0n, den: 1n } : { num: -diff.num, den: diff.den };

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { checkToRiverHiddenOnly } from './d36.exact';
 
-const slow = process.env.SLOW ? it : it.skip;
-describe('D36 (slow, SLOW=1)', () => {
+const slow = process.env.HOLDUMB_SLOW ? it : it.skip;
+describe('D36 (slow, HOLDUMB_SLOW=1)', () => {
   slow(
     'check to the river, 1x only with a hidden pair',
     () => {

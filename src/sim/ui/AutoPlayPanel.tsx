@@ -14,7 +14,11 @@ import { BankrollChart } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
 
 const HAND_CHOICES = [30, 300, 3000] as const;
-const GROUP_LABEL = { perfect: 'Perfect play', practical: 'Practical', fun: 'Fun' } as const;
+const GROUP_LABEL = {
+  perfect: 'Perfect play (Expert)',
+  practical: 'Practical',
+  fun: 'Fun',
+} as const;
 
 export interface AutoPlayPanelProps {
   evClient: EvClient;
@@ -22,6 +26,9 @@ export interface AutoPlayPanelProps {
   defaultStrategy?: StrategySpec;
   /** Strategies to run alongside (compare mode). */
   compare?: StrategySpec[];
+  /** A scene may offer fewer choices (scene.autoPlay.handOptions / sessions). */
+  handOptions?: number[];
+  sessionOptions?: number[];
   onEvent?: (e: SimulatorEvent) => void;
 }
 
@@ -30,13 +37,23 @@ export function AutoPlayPanel({
   settings,
   defaultStrategy,
   compare,
+  handOptions,
+  sessionOptions,
   onEvent,
 }: AutoPlayPanelProps) {
-  const [id, setId] = useState<StrategyId>(defaultStrategy?.id ?? 'expert');
+  const handChoices: readonly number[] = handOptions?.length
+    ? handOptions
+    : [...HAND_CHOICES, 10000];
+  const sessionChoices: readonly number[] = sessionOptions?.length ? sessionOptions : [1, 100];
+  const [id, setId] = useState<StrategyId>(
+    !defaultStrategy || defaultStrategy.id === 'perfect' ? 'expert' : defaultStrategy.id,
+  );
   const [anteDollars, setAnte] = useState((defaultStrategy?.ante ?? settings.anteUnitCents) / 100);
   const [tripsDollars, setTrips] = useState((defaultStrategy?.trips ?? 0) / 100);
-  const [hands, setHands] = useState<number>(settings.handsPerHour);
-  const [sessions, setSessions] = useState(1);
+  const [hands, setHands] = useState<number>(
+    handOptions?.length ? handOptions[0]! : settings.handsPerHour,
+  );
+  const [sessions, setSessions] = useState(sessionOptions?.length ? sessionOptions[0]! : 1);
   const [seed, setSeed] = useState(1);
   const [cmp, setCmp] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -94,20 +111,35 @@ export function AutoPlayPanel({
   }
 
   const main = result?.series[0];
-  const exactNet = main ? main.expected[main.expected.length - 1]! - bankroll : 0;
+  // Busted or stopped sessions play fewer hands: expected result = per-hand EV x hands played.
+  const perHand = main ? main.expected[1]! - main.expected[0]! : 0;
+  const exactNet = main ? perHand * (main.handsPlayed / sessions) : 0;
   const simNet = main ? main.meanFinal - bankroll : 0;
   const running = progress !== null;
-  const field = { display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '13px' } as const;
+  const field = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    fontSize: '13px',
+    minWidth: 0,
+  } as const;
+  const control = { width: '100%', minWidth: 0, boxSizing: 'border-box' } as const;
   return (
     <section
       data-testid="auto-play"
       aria-label="Auto-play"
       style={{ display: 'grid', gap: '12px' }}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+      <div
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}
+      >
         <label style={{ ...field, gridColumn: '1 / -1' }}>
           Strategy
-          <select value={id} onChange={(e) => setId(e.currentTarget.value as StrategyId)}>
+          <select
+            style={control}
+            value={id}
+            onChange={(e) => setId(e.currentTarget.value as StrategyId)}
+          >
             {PICKER_GROUPS.map((g) => (
               <optgroup key={g.lens} label={GROUP_LABEL[g.lens]}>
                 {g.ids.map((s) => (
@@ -122,6 +154,7 @@ export function AutoPlayPanel({
         <label style={field}>
           Ante ($)
           <input
+            style={control}
             type="number"
             min={1}
             step={1}
@@ -132,6 +165,7 @@ export function AutoPlayPanel({
         <label style={field}>
           Trips ($)
           <input
+            style={control}
             type="number"
             min={0}
             step={1}
@@ -141,28 +175,36 @@ export function AutoPlayPanel({
         </label>
         <label style={field}>
           Hands{hands === settings.handsPerHour ? ' (one hour)' : ''}
-          <select value={String(hands)} onChange={(e) => setHands(Number(e.currentTarget.value))}>
-            {HAND_CHOICES.map((n) => (
+          <select
+            style={control}
+            value={String(hands)}
+            onChange={(e) => setHands(Number(e.currentTarget.value))}
+          >
+            {handChoices.map((n) => (
               <option key={n} value={n}>
                 {n.toLocaleString('en-US')}
               </option>
             ))}
-            <option value={10000}>10,000</option>
           </select>
         </label>
         <label style={field}>
           Sessions
           <select
+            style={control}
             value={String(sessions)}
             onChange={(e) => setSessions(Number(e.currentTarget.value))}
           >
-            <option value="1">1</option>
-            <option value="100">100</option>
+            {sessionChoices.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
         </label>
         <label style={field}>
           Seed
           <input
+            style={control}
             type="number"
             value={seed}
             onInput={(e) => setSeed(Number(e.currentTarget.value) | 0)}
