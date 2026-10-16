@@ -24,3 +24,5 @@ window.__holdumb = {
     return { mode: client.mode, settled };
   },
 };
+// The in-thread fallback client, for perf specs (CDP CPU throttling does not reach workers).
+Object.assign(window.__holdumb, { inthread: createEvClient({ mode: 'inthread' }) });

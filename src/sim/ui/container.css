@@ -1,12 +1,7 @@
 /* Container-level styles: step panel, session panel, sandbox tools. Money never wraps at the minus sign. */
 .sim-money,
-.sim-status dd,
-.sim-act-sub,
-.sim-toast {
+.sim-status dd {
   white-space: nowrap;
-}
-.sim-toast span {
-  white-space: normal;
 }
 .sim-container {
   display: flex;
@@ -152,4 +147,26 @@
 .sim-pending {
   opacity: 0.6;
   pointer-events: none;
+}
+
+.sim-autoplay input:not([type='checkbox']),
+.sim-autoplay select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+}
+.sim-autoplay button {
+  min-height: 44px;
+  min-width: 64px;
+  font: inherit;
+}
+.sim-autoplay label {
+  min-width: 0;
+}
+
+/* The landscape rail scrolls as a whole; its sections keep their height. */
+.sim-rail > * {
+  flex: none;
 }

@@ -115,7 +115,9 @@ export function AutoPlayPanel({
       aria-label="Auto-play"
       style={{ display: 'grid', gap: '12px' }}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+      <div
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}
+      >
         <label style={{ ...field, gridColumn: '1 / -1' }}>
           Strategy
           <select value={id} onChange={(e) => setId(e.currentTarget.value as StrategyId)}>

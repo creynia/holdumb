@@ -11,7 +11,6 @@ import { ActionBar } from './ActionBar';
 import { AutoPlayPanel } from './AutoPlayPanel';
 import { ChipRack } from './ChipRack';
 import { CHIP_DENOMS } from './ChipStack';
-import { EvOptionList } from './EvOptionList';
 import { EvSheet } from './EvSheet';
 import { Felt } from './Felt';
 import { FoldReveal } from './FoldReveal';
@@ -348,18 +347,7 @@ export function Simulator(props: SimulatorProps) {
           <ChipRack chips={scene.ui?.chips ?? CHIP_DENOMS} selected={chip} onSelect={setChip} />
         ) : null
       }
-      rail={
-        <>
-          {stepPanel}
-          {orientation === 'landscape' && evShown && !practice && pv.value && !sheet && decision ? (
-            <EvOptionList
-              preview={pv.value}
-              compact
-              allowed={pv.value.options.map((o) => optionKeyOf(o.action))}
-            />
-          ) : null}
-        </>
-      }
+      rail={<>{stepPanel}</>}
       sheet={sheet}
     />
   );
@@ -373,6 +361,7 @@ export function Simulator(props: SimulatorProps) {
       data-mode={mode}
       data-ev={pv.status}
       data-equity={eq}
+      style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 82px)' : undefined}
     >
       {orientation === 'portrait' ? stepPanel : null}
       {autoOnly ? null : table}
