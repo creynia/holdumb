@@ -376,6 +376,8 @@ describe('Drill', () => {
           action: { type: 'play', multiple: 2 },
           label: 'Bet 2x',
           ev: frac(5),
+          evCents: frac(500),
+          why: { rows: [], casesLabel: 'deals', formula: '' },
           regret: frac(bestIdx === 0 ? 0 : 30),
           tier: bestIdx === 0 ? 'best' : 'costly',
         },
@@ -383,6 +385,8 @@ describe('Drill', () => {
           action: { type: 'check' },
           label: 'Check',
           ev: frac(-5),
+          evCents: frac(-500),
+          why: { rows: [], casesLabel: 'deals', formula: '' },
           regret: frac(bestIdx === 1 ? 0 : 10),
           tier: bestIdx === 1 ? 'best' : 'close',
         },
@@ -465,7 +469,7 @@ describe('Drill', () => {
     );
     expect(store.drill.recentMisses).toEqual(['f:x']);
     expect(store.drill.bestStreak).toBe(0);
-    await act(() => btn(el, 'Next hand').click());
+    await act(() => btn(el, 'Continue').click());
     expect(el.querySelector('[data-testid="drill-result"]')).toBeNull();
     expect(btn(el, /Review misses/)).toBeTruthy();
   });

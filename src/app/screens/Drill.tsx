@@ -7,6 +7,7 @@ import type {
   DrillFilter,
   DrillSpot,
   PreviewRequest,
+  OptionKey,
   RngState,
 } from '../../sim';
 import { Cards } from '../components/Cards';
@@ -46,6 +47,9 @@ export const CHOICES: Record<DecisionStreet, Choice[]> = {
     { label: 'Fold', action: { type: 'fold' } },
   ],
 };
+
+const optionKey = (a: DecisionAction): OptionKey =>
+  a.type === 'check' ? 'check' : a.type === 'fold' ? 'fold' : (`play-${a.multiple}` as OptionKey);
 
 const sameAction = (a: DecisionAction, b: DecisionAction) =>
   a.type === b.type && (a.type !== 'play' || (b.type === 'play' && a.multiple === b.multiple));
@@ -233,11 +237,17 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
                   ),
                 )} per hand).`}
           </p>
-          <EvSheet preview={answer.preview} />
+          <EvSheet
+            preview={answer.preview}
+            variant="inline"
+            selected={optionKey(CHOICES[spot.street][answer.chosen]!.action)}
+            chosen={optionKey(CHOICES[spot.street][answer.chosen]!.action)}
+            onConfirm={() => undefined}
+            onCancel={deal}
+            onContinue={deal}
+            handsPerHour={store.settings.handsPerHour}
+          />
           <div class="row">
-            <button type="button" class="btn" onClick={deal}>
-              Next hand
-            </button>
             <Link
               to={`/strategy?highlight=${answer.preview.handClass ?? ''}`}
               class="btn btn-ghost"
