@@ -1,7 +1,10 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import content from 'virtual:content';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { buildContent } from '../../src/content/load';
 import { parseCards } from '../../src/sim/engine';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
@@ -10,6 +13,18 @@ import { Drill, type DrillDeps } from '../../src/app/screens/Drill';
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
+
+/** The `_sample-*` placeholders only, so real lessons can never break these tests. */
+function fixtureContent() {
+  const root = mkdtempSync(join(tmpdir(), 'holdumb-fixture-'));
+  const src = join(process.cwd(), 'content');
+  mkdirSync(join(root, 'content', 'lessons'), { recursive: true });
+  for (const sub of ['', 'lessons'])
+    for (const f of readdirSync(join(src, sub)).filter((n) => n.startsWith('_sample-')))
+      cpSync(join(src, sub, f), join(root, 'content', sub, f));
+  return buildContent(root);
+}
+const content = fixtureContent();
 
 async function mount(hash: string, store = new Store(new MemoryStorage())) {
   location.hash = hash;
@@ -264,6 +279,54 @@ describe('Settings', () => {
     Object.defineProperty(s, 'persistent', { value: false });
     const { el: el2 } = await mount('#/settings', s);
     expect(el2.querySelector('.banner')).toBeTruthy();
+  });
+});
+
+describe('Settings bounds and flushing', () => {
+  const field = (el: HTMLElement, label: string) =>
+    [...el.querySelectorAll('label')]
+      .find((l) => l.textContent?.startsWith(label))!
+      .querySelector('input')!;
+  const type = (i: HTMLInputElement, v: string) =>
+    act(() => {
+      i.value = v;
+      i.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  it('clamps on commit, re-syncs rejected input, and sets min/max attributes', async () => {
+    const { el, store } = await mount('#/settings');
+    const ante = field(el, 'Ante unit');
+    expect([ante.min, ante.max]).toEqual(['1', '500']);
+    expect(field(el, 'Hands per hour').max).toBe('500');
+    expect(field(el, 'Default bankroll').max).toBe('1000000');
+    await type(ante, '9999');
+    expect(store.settings.anteUnitCents).toBe(50_000);
+    expect(ante.value).toBe('500');
+    await type(ante, '');
+    expect(store.settings.anteUnitCents).toBe(50_000);
+    expect(ante.value).toBe('500');
+    await type(field(el, 'Hands per hour'), '0');
+    expect(store.settings.handsPerHour).toBe(1);
+  });
+  it('flushes when the page becomes hidden', async () => {
+    const { store } = await mount('#/settings');
+    const flush = vi.spyOn(store, 'flush');
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(flush).toHaveBeenCalled();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  });
+  it('shows the banner when a save is refused', async () => {
+    const m = new MemoryStorage();
+    const { el, store } = await mount('#/learn', new Store(m));
+    m.setItem = () => {
+      throw new Error('quota');
+    };
+    expect(el.querySelector('.banner')).toBeNull();
+    await act(() => {
+      store.completeLesson('x');
+      store.flush();
+    });
+    expect(el.querySelector('.banner')).toBeTruthy();
   });
 });
 

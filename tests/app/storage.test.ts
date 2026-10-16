@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   MemoryStorage,
   STORAGE_KEY,
@@ -6,10 +6,13 @@ import {
   defaultPersisted,
   encodeExport,
   load,
+  migrate,
   sanitize,
   save,
 } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
+
+const backups = (m: MemoryStorage) => m.keys().filter((k) => k.startsWith('holdumb:v1:backup-'));
 
 describe('storage', () => {
   it('uses the holdumb:v1 key and round-trips', () => {
@@ -84,5 +87,58 @@ describe('storage', () => {
     } finally {
       if (real) Object.defineProperty(globalThis, 'localStorage', real);
     }
+  });
+
+  it('backs up corrupt JSON before loading defaults', () => {
+    const m = new MemoryStorage();
+    m.setItem(STORAGE_KEY, '{oops');
+    const s = new Store(m);
+    expect(s.snapshot).toEqual(defaultPersisted());
+    expect(s.persistent).toBe(true);
+    expect(backups(m).map((k) => m.getItem(k))).toEqual(['{oops']);
+  });
+  it('a newer version is backed up, never overwritten, and shows the banner', () => {
+    const m = new MemoryStorage();
+    const newer = JSON.stringify({ version: 2, lessons: { x: 1 } });
+    m.setItem(STORAGE_KEY, newer);
+    const s = new Store(m);
+    expect(s.persistent).toBe(false);
+    s.completeLesson('a');
+    s.flush();
+    expect(m.getItem(STORAGE_KEY)).toBe(newer);
+    expect(backups(m).map((k) => m.getItem(k))).toEqual([newer]);
+  });
+  it('an unknown older version is backed up but stays writable', () => {
+    const m = new MemoryStorage();
+    m.setItem(STORAGE_KEY, JSON.stringify({ version: 0 }));
+    const s = new Store(m);
+    expect(s.persistent).toBe(true);
+    expect(backups(m)).toHaveLength(1);
+  });
+  it('migrate: v1 is the identity, others are refused', () => {
+    const d = defaultPersisted();
+    expect(migrate(d)).toEqual(d);
+    expect(migrate({ version: 7 })).toBeNull();
+    expect(migrate('x')).toBeNull();
+  });
+  it('a refused save (quota) flips persistent and notifies; a later save recovers', () => {
+    const m = new MemoryStorage();
+    const s = new Store(m);
+    const fn = vi.fn();
+    s.subscribe(fn);
+    let full = true;
+    const set = m.setItem.bind(m);
+    m.setItem = (k, v) => {
+      if (full) throw new Error('QuotaExceededError');
+      set(k, v);
+    };
+    s.completeLesson('a');
+    fn.mockClear();
+    s.flush();
+    expect(s.persistent).toBe(false);
+    expect(fn).toHaveBeenCalledTimes(1);
+    full = false;
+    s.flush();
+    expect(s.persistent).toBe(true);
   });
 });

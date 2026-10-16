@@ -19,10 +19,16 @@ export function AppProviders(props: {
   useEffect(() => {
     const off = props.store.subscribe(bump);
     const flush = () => props.store.flush();
+    // Android often skips pagehide when the tab is backgrounded, so flush on hidden too.
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
     window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVis);
     return () => {
       off();
       window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, [props.store]);
   return (

@@ -45,7 +45,9 @@ export function About(props: { check?: () => Promise<UpdateCheck> }) {
       </p>
       <p class="muted">
         holdumb is MIT licensed. It is a practice tool: no real money, ever. Odds are for the
-        standard rules shown in Paytables. Please gamble responsibly.
+        standard rules shown in Paytables. Please gamble responsibly. If gambling is causing you or
+        someone you know harm, call 1-800-GAMBLER (US) or find your national problem-gambling
+        helpline.
       </p>
     </div>
   );
