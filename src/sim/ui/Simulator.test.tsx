@@ -54,6 +54,28 @@ describe('Simulator container', () => {
     expect(document.querySelectorAll('.is-best').length).toBe(1);
     evClient.dispose();
   });
+  it('a worse option shows the better alternative in the sheet', async () => {
+    const { evClient } = mount({
+      id: 'sandbox',
+      version: 1,
+      startAt: {
+        street: 'river',
+        deal: {
+          player: ['3c', '4d'],
+          flop: ['Ah', 'Ks', 'Qd'],
+          turn: '9c',
+          river: '7h',
+          dealer: ['Td', 'Ts'],
+        },
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
+    );
+    fireEvent.click(document.querySelector('[data-option="play-1"]')!);
+    await waitFor(() => expect(screen.getByTestId('alternative')).toBeTruthy());
+    evClient.dispose();
+  });
   it('a scene step refuses the wrong move with its hint and no retry button', async () => {
     const scene: SceneConfig = {
       id: 'x',

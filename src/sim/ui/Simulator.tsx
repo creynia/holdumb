@@ -24,7 +24,8 @@ import { decodeSnapshot, encodeSnapshot } from './persist';
 import { randomSeed, resolvePractice, resolveSpeed } from './settings';
 import { actionOfKey, describeResult, handName, headline, optionKeyOf } from './text';
 import type { SimulatorProps } from './types';
-import type { DecisionPreview } from '../math';
+import { betterAlternative } from '../math';
+import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../math';
 import type { StrategyId } from '../strategy';
 
 const isDecisionStreet = (s: string): boolean => s === 'preflop' || s === 'flop' || s === 'river';
@@ -121,9 +122,11 @@ export function Simulator(props: SimulatorProps) {
   const pv = view.preview;
 
   const [open, setOpen] = useState<OptionKey | null>(null);
-  const [reveal, setReveal] = useState<{ preview: DecisionPreview; chosen: OptionKey } | null>(
-    null,
-  );
+  const [reveal, setReveal] = useState<{
+    preview: DecisionPreview;
+    chosen: OptionKey;
+    req: PreviewRequest | null;
+  } | null>(null);
   const [chip, setChip] = useState<Cents>(scene.ui?.defaultChip ?? 500);
   const handKey = `${hand?.n ?? 0}:${street}`;
   const lastKey = useRef(handKey);
@@ -168,10 +171,23 @@ export function Simulator(props: SimulatorProps) {
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
     return r;
   };
+  const requestNow = (): PreviewRequest | null => {
+    const st = d.view.state;
+    const h = st.hand;
+    if (!h || !isDecisionStreet(st.street)) return null;
+    return {
+      street: st.street as PreviewRequest['street'],
+      hole: h.deal.player,
+      board: h.deal.board.slice(0, h.boardShown),
+      blindPaytable: st.rules.blindPaytable,
+      ante: st.bets.ante,
+    };
+  };
   const confirm = async (k: OptionKey) => {
     const before = d.view.preview.value;
+    const reqBefore = requestNow();
     const r = await d.act(actionOfKey(k));
-    if (practice && before) setReveal({ preview: before, chosen: k });
+    if (practice && before) setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
   };
@@ -221,9 +237,9 @@ export function Simulator(props: SimulatorProps) {
     />
   ) : null;
 
-  const showPreviewOnBar = evShown && !practice && pv.status === 'ready' ? pv.value : null;
+  const showPreviewOnBar = evShown && pv.status === 'ready' ? pv.value : null;
   const barStatus =
-    !decision || !evShown || practice
+    !decision || !evShown
       ? undefined
       : pv.status === 'idle'
         ? undefined
@@ -232,6 +248,17 @@ export function Simulator(props: SimulatorProps) {
           : pv.status;
 
   const sheetKey = reveal?.chosen ?? open;
+  const sheetPreview = reveal ? reveal.preview : pv.value;
+  const sheetReq = reveal ? reveal.req : requestNow();
+  let alternative: BetterAlternative | null = null;
+  if (sheetKey && sheetPreview && sheetReq && sheetPreview.street === sheetReq.street) {
+    const i = sheetPreview.options.findIndex((o) => optionKeyOf(o.action) === sheetKey);
+    try {
+      if (i >= 0) alternative = betterAlternative(sheetReq, sheetPreview, i);
+    } catch {
+      alternative = null;
+    }
+  }
   const sheet =
     sheetKey && (reveal || (open && decision)) ? (
       <EvSheet
@@ -251,6 +278,7 @@ export function Simulator(props: SimulatorProps) {
         }}
         confirmCostlyMoves={settings.confirmCostlyMoves}
         hideEv={practice}
+        alternative={alternative}
         chosen={reveal?.chosen ?? null}
         onContinue={() => {
           setReveal(null);
@@ -326,6 +354,7 @@ export function Simulator(props: SimulatorProps) {
             street={street}
             layout={orientation === 'landscape' ? 'rail' : 'bar'}
             preview={showPreviewOnBar}
+            hideEv={practice}
             evStatus={barStatus}
             selected={open}
             allowed={view.allowedOptions}
