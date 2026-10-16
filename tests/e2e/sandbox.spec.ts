@@ -17,6 +17,7 @@ test.describe('sandbox', () => {
     await expect(page.locator('[data-circle="blind"]')).toContainText('$10');
     await page.locator('button[data-action="deal"]').click();
     await ready(page);
+    await expect(page.locator('g.sim-card:not(.sim-card-back)')).toHaveCount(2);
     // Preview first: the EV is visible before anything is confirmed.
     await opt(page, 'play-4').click();
     const sheet = page.getByTestId('ev-sheet');

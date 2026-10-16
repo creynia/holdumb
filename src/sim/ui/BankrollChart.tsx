@@ -87,7 +87,7 @@ export function BankrollChart({ series, bankroll, hands, class: cls }: BankrollC
               opacity="0.25"
             />
             <text x={PAD.l - 4} y={y(t) + 3} text-anchor="end" font-size="9" fill="var(--muted)">
-              {formatMoney(t)}
+              {formatMoney(Math.round(t / 100) * 100)}
             </text>
           </g>
         ))}

@@ -30,10 +30,10 @@ function Bars({ rows, total, label }: { rows: [string, number][]; total: number;
       <tbody>
         {rows.map(([name, n]) => (
           <tr key={name}>
-            <th scope="row" style={{ textAlign: 'left', fontWeight: 400, width: '28%' }}>
+            <th scope="row" style={{ textAlign: 'left', fontWeight: 400, width: '26%' }}>
               {LABEL[name] ?? name}
             </th>
-            <td style={{ width: '52%' }}>
+            <td style={{ width: '40%' }}>
               <div
                 style={{
                   height: '10px',
@@ -43,7 +43,13 @@ function Bars({ rows, total, label }: { rows: [string, number][]; total: number;
                 }}
               />
             </td>
-            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            <td
+              style={{
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {n.toLocaleString('en-US')} ({total ? ((100 * n) / total).toFixed(1) : '0.0'}%)
             </td>
           </tr>

@@ -9,9 +9,14 @@ test('a lesson scene completes in the UI and the lesson shows Done', async ({ pa
   await expect(scene.locator('button[data-option]')).toHaveCount(0);
   await scene.getByRole('button', { name: /^Deal/ }).click();
   await expect(scene.getByTestId('step-panel')).toContainText(/Bet 4x/);
+  // Once dealt, the player holds exactly two face-up cards (the dealer's two stay face down).
+  await expect(scene.locator('g.sim-card:not(.sim-card-back)')).toHaveCount(2);
+  await expect(scene.locator('g.sim-card-back')).toHaveCount(2);
   // The deal is locked while a decision is waiting.
   await scene.locator('button[data-option="play-4"]').click();
   await expect(scene.getByTestId('step-panel')).toContainText(/Step 3 of 3/);
+  // The finished hand shows both hole cards, the dealer's two and the whole board.
+  await expect(scene.locator('g.sim-card:not(.sim-card-back)')).toHaveCount(9);
   await scene.getByTestId('step-next').click();
   await expect(scene.locator('.scene-head .badge')).toHaveText('Done');
 });

@@ -33,6 +33,7 @@ test('screenshots', async ({ page }, info) => {
   await scene.scrollIntoViewIfNeeded();
   await page.waitForSelector('[data-testid="step-panel"]');
   await scene.getByRole('button', { name: /^Deal/ }).click();
+  await page.waitForTimeout(900); // let the deal animation finish
   await scene.locator('button[data-option="play-4"]').scrollIntoViewIfNeeded();
   await shot('lesson-scene');
 

@@ -194,13 +194,13 @@ export function AutoPlayPanel({
         {(fracToNumber(metrics.edgePerAnte) * 100).toFixed(2)}% of the Ante).
       </p>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <button type="button" onClick={() => void run()} disabled={running}>
+        <button type="button" class="btn" onClick={() => void run()} disabled={running}>
           Run
         </button>
         {running ? (
           <>
             <progress value={progress.done} max={progress.total} aria-label="Simulation progress" />
-            <button type="button" onClick={() => ctl.current?.abort()}>
+            <button type="button" class="btn btn-ghost" onClick={() => ctl.current?.abort()}>
               Cancel
             </button>
           </>
@@ -218,8 +218,17 @@ export function AutoPlayPanel({
               {sessions > 1 ? ` ± ${formatMoney(Math.round(main.meanFinalCi95))}` : ''}
             </li>
             <li>Luck: {formatMoney(Math.round(simNet - exactNet), { sign: true })}</li>
-            <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>
-            <li>Busted (≈): {(main.bustRate * 100).toFixed(0)}% of sessions</li>
+            {sessions >= 10 ? (
+              <>
+                <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>
+                <li>Busted (≈): {(main.bustRate * 100).toFixed(0)}% of sessions</li>
+              </>
+            ) : (
+              <li>
+                1 session: {simNet >= 0 ? 'finished ahead' : 'finished behind'} (one run says little
+                about the odds; try 100 sessions)
+              </li>
+            )}
             {trips > 0 ? <li>Trips hits: {main.tripsHits}</li> : null}
             <li>Blind bonus hits: {main.blindBonusHits}</li>
           </ul>
