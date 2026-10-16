@@ -155,6 +155,11 @@
 }
 .sim-hit {
   pointer-events: all;
+  outline: none;
+}
+.sim-hit:focus-visible {
+  stroke: var(--sim-hl);
+  stroke-width: 4;
 }
 
 /* ---------- cards ---------- */

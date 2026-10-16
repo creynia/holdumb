@@ -1,11 +1,14 @@
-// Dev-only gallery of the table UI. Run `npm run dev` and open /src/sim/ui/gallery.html
+// Dev-only gallery of the table UI, driven by the REAL engine and the REAL EV module (in-thread client).
+// Run `npm run dev` and open /src/sim/ui/gallery.html
 //   ?scene=betting|preflop|flop|river|river-fold|fold|win|blunder|chart|badges
-//   &view=portrait|landscape   &theme=dark|light   &four=1   &speed=normal|fast|instant
-// Data comes from fixtures.ts (exact fractions from the design docs), shaped like DecisionPreview.
+//   &view=portrait|landscape   &theme=dark|light   &four=1   &speed=normal|fast|instant   &why=1
 import { render } from 'preact';
-import { useState } from 'preact/hooks';
-import type { Card, GameEvent, Street } from '../engine';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { applyAction, createGame } from '../engine';
+import type { Action, CreateGameOptions, GameEvent, GameState, HandResult } from '../engine';
+import { createEvClient } from '../worker';
 import type { DecisionPreview } from '../math';
+import { decisionTier, wagerTier } from '../math';
 import type { OptionKey } from '../scene';
 import { ActionBar } from './ActionBar';
 import { ChipRack } from './ChipRack';
@@ -20,17 +23,7 @@ import { TierBadge } from './TierBadge';
 import { Toasts } from './Toasts';
 import { buildTimeline, effectiveSpeed, useSkippableMotion } from './animation';
 import type { Speed } from './animation';
-import {
-  FIXTURES,
-  FLOP_HIDDEN_PAIR,
-  FOLDED_DEALER_CARDS,
-  FOLDED_RESULT,
-  PREFLOP_AA,
-  RIVER_ACE_HIGH,
-  RIVER_PLAY_BOARD,
-  WON_RESULT,
-} from './fixtures';
-import { describeResult, handName, optionKeyOf } from './text';
+import { actionOfKey, describeResult, handName, optionKeyOf } from './text';
 
 const q = new URLSearchParams(location.search);
 if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme')!;
@@ -39,74 +32,89 @@ const fourColor = q.get('four') === '1';
 const speed = effectiveSpeed((q.get('speed') as Speed | null) ?? 'normal');
 const viewPref = (q.get('view') as 'portrait' | 'landscape' | null) ?? 'auto';
 
-interface Scene {
-  street: Street;
-  hole: readonly Card[] | null;
-  board: readonly Card[];
-  preview: DecisionPreview | null;
-  open?: OptionKey;
-  dealerShown?: boolean;
-  dealer?: readonly Card[];
-  result?: 'fold' | 'win';
-  play?: number;
-  chosen?: OptionKey;
-}
-
-const SCENES: Record<string, Scene> = {
-  betting: { street: 'betting', hole: null, board: [], preview: null },
-  preflop: { street: 'preflop', hole: PREFLOP_AA.hole, board: [], preview: PREFLOP_AA.preview },
-  flop: {
-    street: 'flop',
-    hole: FLOP_HIDDEN_PAIR.hole,
-    board: FLOP_HIDDEN_PAIR.board,
-    preview: FLOP_HIDDEN_PAIR.preview,
-    play: undefined,
-  },
-  river: {
-    street: 'river',
-    hole: RIVER_ACE_HIGH.hole,
-    board: RIVER_ACE_HIGH.board,
-    preview: RIVER_ACE_HIGH.preview,
-    open: 'play-1',
-  },
-  'river-fold': {
-    street: 'river',
-    hole: RIVER_PLAY_BOARD.hole,
-    board: RIVER_PLAY_BOARD.board,
-    preview: RIVER_PLAY_BOARD.preview,
-    open: 'play-1',
-  },
-  fold: {
-    street: 'settled',
-    hole: RIVER_ACE_HIGH.hole,
-    board: RIVER_ACE_HIGH.board,
-    preview: null,
-    dealerShown: true,
-    dealer: FOLDED_DEALER_CARDS,
-    result: 'fold',
-  },
-  win: {
-    street: 'settled',
-    hole: RIVER_ACE_HIGH.hole,
-    board: RIVER_ACE_HIGH.board,
-    preview: null,
-    dealerShown: true,
-    dealer: FOLDED_DEALER_CARDS,
-    result: 'win',
-    play: 4,
+const client = createEvClient({ mode: 'inthread' });
+const ANTE = 1000;
+const START: Record<string, CreateGameOptions> = {
+  betting: { seed: 7, bets: { ante: ANTE, trips: 500 } },
+  preflop: {
+    seed: 7,
+    bets: { ante: ANTE, trips: 500 },
+    startAt: { street: 'preflop', deal: { player: ['As', 'Ah'], dealer: ['Td', 'Ts'] } },
   },
   blunder: {
-    street: 'preflop',
-    hole: PREFLOP_AA.hole,
-    board: [],
-    preview: PREFLOP_AA.preview,
-    open: 'check',
+    seed: 7,
+    bets: { ante: ANTE },
+    startAt: { street: 'preflop', deal: { player: ['As', 'Ah'], dealer: ['Td', 'Ts'] } },
+  },
+  flop: {
+    seed: 7,
+    bets: { ante: ANTE },
+    startAt: {
+      street: 'flop',
+      deal: { player: ['Ah', '7c'], dealer: ['Td', 'Ts'], flop: ['7d', 'Ks', '2c'] },
+    },
+  },
+  river: {
+    seed: 7,
+    bets: { ante: ANTE, trips: 500 },
+    startAt: {
+      street: 'river',
+      deal: {
+        player: ['As', '7c'],
+        dealer: ['Td', 'Ts'],
+        flop: ['Kd', '9h', '5c'],
+        turn: '3s',
+        river: '2d',
+      },
+    },
+  },
+  'river-fold': {
+    seed: 7,
+    bets: { ante: ANTE },
+    startAt: {
+      street: 'river',
+      deal: {
+        player: ['3c', '4d'],
+        dealer: ['Td', 'Ts'],
+        flop: ['Ah', 'Ks', 'Qd'],
+        turn: '9c',
+        river: '7h',
+      },
+    },
   },
 };
+START.fold = START.river!;
+START.win = START.river!;
+const OPEN: Record<string, OptionKey | undefined> = {
+  river: 'play-1',
+  'river-fold': 'play-1',
+  blunder: 'check',
+};
+/** Scenes that apply one action first, so the settled table shows. */
+const THEN: Record<string, Action | undefined> = {
+  fold: { type: 'fold' },
+  win: { type: 'play', multiple: 1 },
+};
+
+function initial(id: string): { state: GameState; events: GameEvent[] } {
+  let state = createGame(START[id]);
+  let events: GameEvent[] = [];
+  const then = THEN[id];
+  if (then) {
+    const r = applyAction(state, then);
+    if (r.ok) {
+      state = r.state;
+      events = r.events;
+    }
+  }
+  return { state, events };
+}
 
 function Badges() {
   const decision = ['best', 'close', 'small', 'costly', 'blunder'] as const;
   const wager = ['free', 'good', 'fair', 'poor', 'avoid'] as const;
+  // Real tier functions: the 8-6-5 Trips edge and a 0.5 ante regret.
+  const real = [decisionTier({ num: 1n, den: 2n }), wagerTier({ num: 48987n, den: 2572780n })];
   return (
     <div style="padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start">
       {decision.map((t) => (
@@ -115,101 +123,145 @@ function Badges() {
       {wager.map((t) => (
         <TierBadge key={t} tier={t} />
       ))}
-      <EvOptionList preview={PREFLOP_AA.preview} selected="check" onSelect={() => undefined} />
+      <p>Real tiers: {real.join(', ')}</p>
     </div>
   );
 }
 
 function Demo({ id }: { id: string }) {
-  const s = SCENES[id]!;
+  const init = useMemo(() => initial(id), [id]);
+  const [state, setState] = useState(init.state);
+  const [events, setEvents] = useState<GameEvent[]>(init.events);
+  const [runKey, setRunKey] = useState(0);
   const orientation = useOrientation(viewPref);
-  const [open, setOpen] = useState<OptionKey | null>(s.open ?? null);
+  const [open, setOpen] = useState<OptionKey | null>(OPEN[id] ?? null);
+  const [preview, setPreview] = useState<DecisionPreview | null>(null);
+  const [progress, setProgress] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [chip, setChip] = useState(1000);
-  const events: GameEvent[] =
-    s.street === 'preflop' && s.hole
-      ? [{ type: 'player-dealt', cards: s.hole as [Card, Card] }, { type: 'dealer-dealt' }]
-      : [];
+  const hand = state.hand;
+  const decision =
+    state.street === 'preflop' || state.street === 'flop' || state.street === 'river';
+  const board = hand ? hand.deal.board.slice(0, hand.boardShown) : [];
+  const abort = useRef<AbortController | null>(null);
+
+  // Real EV: the in-thread client runs the preview job for this decision.
+  useEffect(() => {
+    setPreview(null);
+    setProgress(0);
+    if (!hand || !decision) return;
+    abort.current?.abort();
+    const ac = new AbortController();
+    abort.current = ac;
+    client
+      .run(
+        'preview',
+        {
+          street: state.street as 'preflop' | 'flop' | 'river',
+          hole: hand.deal.player,
+          board,
+          blindPaytable: state.rules.blindPaytable,
+          ante: state.bets.ante,
+        },
+        { signal: ac.signal, onProgress: (p) => setProgress(p.done / Math.max(1, p.total)) },
+      )
+      .then((p) => setPreview(p))
+      .catch(() => undefined);
+    return () => ac.abort();
+  }, [state.street, hand?.n]);
+
   const tl = buildTimeline(events, speed);
-  const motion = useSkippableMotion(id, tl.totalMs);
-  const bets = { ante: 1000, blind: 1000, trips: 500, play: s.play ? 1000 * s.play : 0 };
-  const result = s.result === 'fold' ? FOLDED_RESULT : s.result === 'win' ? WON_RESULT : null;
+  const motion = useSkippableMotion(`${id}-${runKey}`, tl.totalMs);
+  const result: HandResult | null = hand?.result ?? null;
   const labels = {
     player: result ? handName(result.player) : undefined,
     dealer: result
       ? `${handName(result.dealer)}${result.dealerQualifies ? ', qualifies' : ''}`
       : undefined,
   };
+  const act = (a: Action) => {
+    const r = applyAction(state, a);
+    if (!r.ok) return setToast(r.error.message);
+    setState(r.state);
+    setEvents(r.events);
+    setRunKey((k) => k + 1);
+    setOpen(null);
+    const settled = r.events.find((e) => e.type === 'hand-settled');
+    if (settled && settled.type === 'hand-settled') setToast(describeResult(settled.result));
+  };
   const sheet =
-    open && s.preview ? (
+    open && decision ? (
       <EvSheet
-        preview={s.preview}
+        preview={preview}
+        progress={progress}
         selected={open}
         variant={orientation === 'landscape' ? 'rail' : 'sheet'}
         onSelect={setOpen}
-        onConfirm={(k) => {
-          setToast(`Confirmed ${k}`);
-          setOpen(null);
-        }}
+        onConfirm={(k) => act(actionOfKey(k))}
         onCancel={() => setOpen(null)}
         handsPerHour={30}
         whyOpen={q.get('why') === '1'}
       />
     ) : null;
-  const confirmedToast = toast ?? (result ? describeResult(result) : null);
+  const onFelt = Object.values(state.bets).reduce((a, b) => a + b, 0);
+  const playBet = state.bets.play;
   return (
     <Table
       orientation={orientation}
       toasts={
-        confirmedToast ? (
-          <Toasts toasts={[{ id: 1, text: confirmedToast }]} onDismiss={() => setToast(null)} />
-        ) : null
+        toast ? <Toasts toasts={[{ id: 1, text: toast }]} onDismiss={() => setToast(null)} /> : null
       }
       status={
         <StatusBar
-          bankroll={49_000}
-          onFelt={s.street === 'betting' || s.hole ? 2500 : 0}
-          sessionNet={-1000}
+          bankroll={state.bankroll}
+          onFelt={onFelt}
+          sessionNet={state.stats.hands ? 0 : undefined}
         />
       }
       felt={
         <Felt
           orientation={orientation}
-          hole={s.hole}
-          dealerDealt={!!s.hole}
-          dealer={s.dealer}
-          dealerShown={s.dealerShown}
-          board={s.board}
-          bets={bets}
-          playMultiple={s.play}
+          hole={hand?.deal.player ?? null}
+          dealerDealt={!!hand}
+          dealer={hand?.deal.dealer}
+          dealerShown={state.street === 'settled'}
+          board={board}
+          bets={state.bets}
+          playMultiple={
+            hand?.play?.multiple ?? (playBet > 0 ? playBet / Math.max(1, state.bets.ante) : null)
+          }
           fourColor={fourColor}
           labels={labels}
           timeline={tl}
           skipped={motion.skipped}
           onSkip={motion.playing ? motion.skip : undefined}
-          onCircle={s.street === 'betting' ? () => undefined : undefined}
+          onCircle={state.street === 'betting' ? () => undefined : undefined}
         />
       }
       actions={
         <>
           <ActionBar
-            street={s.street}
+            street={state.street}
             layout={orientation === 'landscape' ? 'rail' : 'bar'}
-            preview={s.preview}
+            preview={preview}
             selected={open}
-            bets={{ ante: 1000, trips: 500 }}
+            bets={{ ante: state.bets.ante, trips: state.bets.trips }}
             onOption={setOpen}
+            onDeal={() => act({ type: 'deal' })}
+            onClear={() => act({ type: 'clear' })}
+            onRebet={() => act({ type: 'deal' })}
+            onChangeBets={() => act({ type: 'clear' })}
           />
           {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
         </>
       }
-      chips={s.street === 'betting' ? <ChipRack selected={chip} onSelect={setChip} /> : null}
+      chips={state.street === 'betting' ? <ChipRack selected={chip} onSelect={setChip} /> : null}
       rail={
-        orientation === 'landscape' && s.preview && !open ? (
+        orientation === 'landscape' && preview && !open ? (
           <EvOptionList
-            preview={s.preview}
+            preview={preview}
             compact
-            allowed={s.preview.options.map((o) => optionKeyOf(o.action))}
+            allowed={preview.options.map((o) => optionKeyOf(o.action))}
           />
         ) : null
       }
@@ -223,14 +275,13 @@ function Index() {
     <main style="padding:16px">
       <h1>Table gallery</h1>
       <ul>
-        {[...Object.keys(SCENES), 'chart', 'badges'].map((id) => (
+        {[...Object.keys(START), 'chart', 'badges'].map((id) => (
           <li key={id}>
             <a href={`?scene=${id}`}>{id}</a> (<a href={`?scene=${id}&view=landscape`}>landscape</a>
             , <a href={`?scene=${id}&theme=dark`}>dark</a>)
           </li>
         ))}
       </ul>
-      <p>Fixtures: {Object.keys(FIXTURES).join(', ')}</p>
     </main>
   );
 }
@@ -243,7 +294,7 @@ function App() {
       </main>
     );
   if (scene === 'badges') return <Badges />;
-  if (scene && SCENES[scene]) return <Demo id={scene} />;
+  if (scene && (START[scene] || scene === 'fold')) return <Demo id={scene} />;
   return <Index />;
 }
 

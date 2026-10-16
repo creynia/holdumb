@@ -4,10 +4,10 @@
 // TODO(integration): the gallery swaps these for real engine + previewJob calls when math lands.
 import { parseCards } from '../engine';
 import type { Card, Cents, DecisionAction, EvaluatedHand, HandResult } from '../engine';
+import { decisionTier } from '../math';
 import type {
   DecisionOption,
   DecisionPreview,
-  DecisionTier,
   Fraction,
   WhyBreakdown,
   WhyRow,
@@ -34,15 +34,8 @@ const sub = (a: Fraction, b: Fraction): Fraction =>
 const mul = (a: Fraction, k: number): Fraction => frac(a.num * BigInt(k), a.den);
 const cmp = (a: Fraction, b: Fraction): number => Number(a.num * b.den - b.num * a.den);
 
-/** D24 thresholds on regret (antes). Mirrors math's decisionTier; the gallery swaps to it later. */
-export function fixtureTier(regret: Fraction): DecisionTier {
-  if (regret.num === 0n) return 'best';
-  const le = (n: bigint, d: bigint) => regret.num * d <= n * regret.den;
-  if (le(2n, 100n)) return 'close';
-  if (le(10n, 100n)) return 'small';
-  if (le(50n, 100n)) return 'costly';
-  return 'blunder';
-}
+/** The real D24 tiers from math. */
+export const fixtureTier = decisionTier;
 
 const row = (id: WhyRowId, label: string, count: number, outOf: number, net: number): WhyRow => ({
   id,

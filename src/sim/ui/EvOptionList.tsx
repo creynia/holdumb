@@ -67,7 +67,11 @@ export function EvOptionList({
           ? o.label
           : `${o.label}, EV ${fmtCentsFraction(o.evCents)}, ${DECISION_TIER_LABEL[o.tier].toLowerCase()}`;
         return (
-          <li key={key} class={`sim-evrow${selected === key ? ' is-selected' : ''}`}>
+          <li
+            key={key}
+            role={onSelect ? 'presentation' : undefined}
+            class={`sim-evrow${selected === key ? ' is-selected' : ''}`}
+          >
             {onSelect ? (
               <button
                 type="button"

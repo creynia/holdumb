@@ -6,7 +6,6 @@ import {
   DECISION_TIER_SHORT,
   OPTION_LABELS,
   OPTION_ORDER,
-  ariaForOption,
   fmtAnteUnits,
   money,
   optionKeyOf,
@@ -134,7 +133,6 @@ export function ActionBar({
             type="button"
             class={`sim-act sim-act-decision${selected === k ? ' is-selected' : ''}${highlight.includes(k) ? ' is-hl' : ''}${o ? ` tier-${o.tier}` : ''}${isBest ? ' is-best' : ''}`}
             disabled={disabled}
-            aria-label={o ? ariaForOption(o) : OPTION_LABELS[k]}
             aria-pressed={selected === k}
             onClick={() => onOption?.(k)}
             data-option={k}

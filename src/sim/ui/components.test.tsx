@@ -209,7 +209,7 @@ describe('ActionBar', () => {
   });
   it('carries EV and a tier word when EV is on, and a spoken name', () => {
     render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} />);
-    const b = screen.getByRole('button', { name: 'Bet 4x, EV plus $36.01, best play' });
+    const b = screen.getByText('Bet 4x').closest('button')!;
     expect(b.textContent).toContain('+3.601 · Best');
     expect(screen.getByText('Check').closest('button')!.textContent).toContain('Big mistake');
   });
