@@ -175,6 +175,24 @@ describe('AA and friends (pinned)', () => {
   });
 });
 
+const CSV = fileURLToPath(
+  new URL('../../../tests/gen/precompute/preflop-blind-standard.csv', import.meta.url),
+);
+function sliceColumns(): Map<string, { sas: bigint; sps: bigint; scs: bigint }> {
+  const [head, ...lines] = readFileSync(CSV, 'utf8').trim().split('\n');
+  const cols = head!.split(',');
+  const at = (n: string) => cols.indexOf(n);
+  return new Map(
+    lines.map((l) => {
+      const f = l.split(',');
+      return [
+        f[0]!,
+        { sas: BigInt(f[at('SAs')]!), sps: BigInt(f[at('SPs')]!), scs: BigInt(f[at('SCs')]!) },
+      ];
+    }),
+  );
+}
+
 describe('sampled exact recompute (decisions.md D22)', () => {
   /** Recompute the slice columns of one class from scratch with the JS enumerator. */
   function recompute(name: string): { sas: bigint; sps: bigint; scs: bigint } {
@@ -214,8 +232,8 @@ describe('sampled exact recompute (decisions.md D22)', () => {
   it.each(['AA', 'AKs', '72o', 'T9s', 'K5o', 'Q6s', '33', 'J8s', '97o'])(
     '%s slice',
     (name) => {
-      const r = preflopRow(B, name);
-      expect(recompute(name)).toEqual({ sas: r.sas, sps: r.sps, scs: r.scs });
+      // The slice columns live only in the committed CSV (not in the shipped table).
+      expect(recompute(name)).toEqual(sliceColumns().get(name));
     },
     60_000,
   );

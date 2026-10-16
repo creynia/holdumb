@@ -27,7 +27,7 @@ describe('performance (D34: flop under 1.5 s at 4x CPU throttle)', () => {
     const median = warm[2]!;
     console.log(
       `[perf] flop cold ${cold.toFixed(1)} ms, warm median ${median.toFixed(1)} ms ` +
-        `(x4 throttle estimate ${(median * 4).toFixed(0)} ms); river ${river.toFixed(2)} ms`,
+        `(node time × 4, estimate: ${(median * 4).toFixed(0)} ms); river ${river.toFixed(2)} ms`,
     );
     expect(median * 4).toBeLessThan(1500);
     expect(river * 4).toBeLessThan(100);

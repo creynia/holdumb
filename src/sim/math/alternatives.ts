@@ -12,21 +12,29 @@ export type AlternativeCopyKey =
   | 'pre-4x-non-chart' //       Bet 4x a non-chart hand → Check
   | 'pre-3x' //                 Bet 3x (never best) → best option
   | 'pre-check-other' //        Check a non-chart hand that is still better as 4x (rare)
-  | 'flop-check-hidden' //      Check with a hidden pair / two pair+ → Bet 2x
+  | 'flop-check-hidden' //      Check with a hidden pair (or two pair+ built on it) → Bet 2x
+  | 'flop-check-made' //        Check a made straight / flush (no hidden pair) → Bet 2x
   | 'flop-check-other' //       Check where 2x is still better (draws, rare)
   | 'flop-2x-no-hand' //        Bet 2x without a qualifying hand → Check
   | 'river-fold-hidden' //      Fold with a hidden pair → Bet 1x
   | 'river-fold-low-outs' //    Fold with < 21 outs → Bet 1x
   | 'river-fold-board-plays' // Fold when the board plays → Bet 1x
   | 'river-fold-other' //       Fold where 1x is still better
-  | 'river-1x-high-outs'; //    Bet 1x with ≥ 21 outs and no hidden pair → Fold
+  | 'river-1x-high-outs' //     Bet 1x with ≥ 21 outs and no hidden pair → Fold
+  | 'river-1x-other'; //        Bet 1x where Fold is still better (hidden pair or < 21 outs)
 
 /** Facts the copy mentions. All optional: only those relevant to the situation are set. */
+export type MadeHand =
+  'two-pair' | 'trips' | 'straight' | 'flush' | 'full-house' | 'quads' | 'straight-flush';
+
 export interface AlternativeVars {
   hand?: string; //                   preflop class, 'AKs'
   outs?: number; //                   dealer outs at the river
   pairRank?: string; //               rank char of the hidden pair, 'K'
+  /** Why a no-hand flop is not worth a 2x (only when the rule says check). */
   flopReason?: 'board-pair' | 'straight-draw' | 'flush-draw' | 'nothing';
+  /** The made hand on a flop check of a straight, flush or better without a hidden pair. */
+  made?: MadeHand;
 }
 
 export interface BetterAlternative {
@@ -84,8 +92,22 @@ export interface FlopFacts {
   /** The rule says Bet 2x. */
   basicRaise: boolean;
   pairRank?: string;
-  reason: NonNullable<AlternativeVars['flopReason']>;
+  /** Set when `twoPairPlus`: the made hand. */
+  made?: MadeHand;
+  /** Set only when the rule says check (no hand). */
+  reason?: NonNullable<AlternativeVars['flopReason']>;
 }
+
+const MADE: Record<number, MadeHand> = {
+  2: 'two-pair',
+  3: 'trips',
+  4: 'straight',
+  5: 'flush',
+  6: 'full-house',
+  7: 'quads',
+  8: 'straight-flush',
+  9: 'straight-flush',
+};
 
 export function flopFacts(hole: readonly [Card, Card], flop: readonly Card[]): FlopFacts {
   const five = [...hole, ...flop];
@@ -106,20 +128,22 @@ export function flopFacts(hole: readonly [Card, Card], flop: readonly Card[]): F
   const pairRank = pocket ? r0 : flopRanks.includes(r0) ? r0 : flopRanks.includes(r1) ? r1 : -1;
   const fourFlush = [0, 1, 2, 3].some((s) => five.filter((c) => (c & 3) === s).length >= 4);
   const paired = new Set(flopRanks).size < 3;
-  const reason: FlopFacts['reason'] = fourFlush
-    ? 'flush-draw'
-    : paired
-      ? 'board-pair'
-      : hasStraightDraw(five)
-        ? 'straight-draw'
-        : 'nothing';
   const out: FlopFacts = {
     twoPairPlus,
     hiddenPair,
     flushDraw,
     basicRaise: twoPairPlus || hiddenPair || flushDraw,
-    reason,
   };
+  if (twoPairPlus) out.made = MADE[catOf(v5)];
+  if (!out.basicRaise) {
+    out.reason = fourFlush
+      ? 'flush-draw'
+      : paired
+        ? 'board-pair'
+        : hasStraightDraw(five)
+          ? 'straight-draw'
+          : 'nothing';
+  }
   if (pairRank >= 0) out.pairRank = RANK_CHARS.charAt(pairRank);
   return out;
 }
@@ -135,9 +159,9 @@ function hasStraightDraw(cards: readonly Card[]): boolean {
   const mask = cards.reduce((m, c) => m | (1 << (c >> 2)), 0);
   const withLow = (mask << 1) | ((mask >> 12) & 1);
   for (let lo = 0; lo <= 9; lo++) {
-    const window = (withLow >> lo) & 0b11111;
+    const win = (withLow >> lo) & 0b11111;
     let bits = 0;
-    for (let i = 0; i < 5; i++) bits += (window >> i) & 1;
+    for (let i = 0; i < 5; i++) bits += (win >> i) & 1;
     if (bits >= 4) return true;
   }
   return false;
@@ -171,13 +195,19 @@ export function betterAlternative(
 
   if (preview.street === 'flop') {
     const f = flopFacts(req.hole, req.board);
-    const vars: AlternativeVars = { flopReason: f.reason };
+    const vars: AlternativeVars = {};
+    if (f.reason) vars.flopReason = f.reason;
     if (f.pairRank) vars.pairRank = f.pairRank;
+    if (f.made && !f.hiddenPair) vars.made = f.made;
     const alt: BetterAlternative =
       act.type === 'check'
         ? {
             ...base,
-            copyKey: f.hiddenPair || f.twoPairPlus ? 'flop-check-hidden' : 'flop-check-other',
+            copyKey: f.hiddenPair
+              ? 'flop-check-hidden'
+              : f.twoPairPlus
+                ? 'flop-check-made'
+                : 'flop-check-other',
             vars,
           }
         : { ...base, copyKey: 'flop-2x-no-hand', vars };
@@ -202,7 +232,11 @@ export function betterAlternative(
           : 'river-fold-other';
     alt = { ...base, copyKey, vars };
   } else {
-    alt = { ...base, copyKey: 'river-1x-high-outs', vars };
+    alt = {
+      ...base,
+      copyKey: !f.hidden && f.outs >= 21 ? 'river-1x-high-outs' : 'river-1x-other',
+      vars,
+    };
   }
   const bestIsPlay = best.action.type === 'play';
   if ((f.basicAction === 'play') !== bestIsPlay) {

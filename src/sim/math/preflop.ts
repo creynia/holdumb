@@ -44,10 +44,6 @@ export interface PreflopRow {
   /** Flops where Bet 2x is strictly best; river-fold runouts among checked flops. */
   f2: bigint;
   cf: bigint;
-  /** Slice checks (boards with sorted index ≥ 36, flops with x ≥ 44), recomputed in CI. */
-  sas: bigint;
-  sps: bigint;
-  scs: bigint;
 }
 
 export const FOLD_UNITS = 3960n; // 4 half-antes × 990 dealer hands
@@ -67,21 +63,7 @@ export function rowSums(r: PreflopRow): {
   return { SA, SP, SC, fc, cp: fc * RUNOUTS_BIG - r.cf };
 }
 
-const COLS = [
-  'sw',
-  'sl',
-  'wq',
-  'lq',
-  'bb2q',
-  'bb2nq',
-  's2x',
-  'scp',
-  'f2',
-  'cf',
-  'sas',
-  'sps',
-  'scs',
-] as const;
+const COLS = ['sw', 'sl', 'wq', 'lq', 'bb2q', 'bb2nq', 's2x', 'scp', 'f2', 'cf'] as const;
 
 const decoded = new Map<string, Map<string, PreflopRow>>();
 
@@ -90,12 +72,19 @@ export function decodeTable(t: PreflopTable): Map<string, PreflopRow> {
   if (hit) return hit;
   const map = new Map<string, PreflopRow>();
   for (const entry of t.rows.split(';')) {
-    const [name, rest] = entry.split(':') as [string, string];
-    const vals = rest.split(',').map((s) => BigInt(parseInt(s, 36)));
+    const [name, rest] = entry.split(':') as [string, string | undefined];
+    if (map.has(name)) throw new Error(`Preflop table: duplicate class ${name}`);
+    const vals = (rest ?? '').split(',').map((v) => BigInt(parseInt(v, 36)));
+    if (vals.length !== COLS.length) {
+      throw new Error(
+        `Preflop table: class ${name} has ${vals.length} columns, need ${COLS.length}`,
+      );
+    }
     const row = { name, weight: classWeight(name) } as Record<string, unknown>;
     COLS.forEach((c, i) => (row[c] = vals[i]));
     map.set(name, row as unknown as PreflopRow);
   }
+  if (map.size !== 169) throw new Error(`Preflop table: ${map.size} classes, need 169`);
   decoded.set(t.blindPaytable, map);
   return map;
 }
