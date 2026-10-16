@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseCards } from '../engine';
+import { applyAction, createGame, equity, parseCards } from '../engine';
+import type { DecisionPreview } from '../math';
 import type { OptionKey } from '../scene';
 import { ActionBar, optionsFor } from './ActionBar';
 import { BetCircle } from './BetCircle';
@@ -466,5 +467,93 @@ describe('layout tap targets', () => {
   it('both layouts keep the 44 unit minimum', () => {
     expect(portraitLayout.minTapUnits).toBeGreaterThanOrEqual(44);
     expect(landscapeLayout.minTapUnits).toBeGreaterThanOrEqual(44);
+  });
+});
+
+const zeroPreview: DecisionPreview = {
+  ...PREFLOP_AA.preview,
+  options: PREFLOP_AA.preview.options.map((o) => ({
+    ...o,
+    ev: { num: 0n, den: 1n },
+    evCents: { num: 0n, den: 1n },
+    regret: { num: 0n, den: 1n },
+    tier: 'best' as const,
+  })),
+};
+
+describe('missing EV is never shown as a value or a tier (no invented zeros)', () => {
+  it('ActionBar pending: "Calculating…", no badges', () => {
+    render(<ActionBar street="preflop" preview={null} evStatus="pending" />);
+    expect(screen.getAllByText('Calculating…')).toHaveLength(3);
+    expect(document.body.textContent).not.toMatch(/Best|0\.000/);
+  });
+  it('ActionBar error: "EV not available", buttons still usable', () => {
+    const onOption = vi.fn();
+    render(<ActionBar street="preflop" preview={null} evStatus="error" onOption={onOption} />);
+    expect(screen.getAllByText('EV not available')).toHaveLength(3);
+    expect(document.body.textContent).not.toContain('Best');
+    fireEvent.click(screen.getByText('Bet 4x'));
+    expect(onOption).toHaveBeenCalledWith('play-4');
+  });
+  it('ActionBar treats an all-zero preview as unavailable', () => {
+    render(<ActionBar street="preflop" preview={zeroPreview} />);
+    expect(document.body.textContent).not.toMatch(/Best|0\.000/);
+    expect(screen.getAllByText('EV not available')).toHaveLength(3);
+  });
+  it('EvSheet pending: skeleton with Calculating…, no tier badge, Confirm works', () => {
+    const props = sheet({ preview: null, selected: 'play-4' });
+    expect(screen.getByText('Calculating…')).toBeTruthy();
+    expect(document.querySelectorAll('.sim-badge')).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('confirm'));
+    expect(props.onConfirm).toHaveBeenCalledWith('play-4');
+  });
+  it('EvSheet error and all-zero preview: "EV not available", no badge, never Best', () => {
+    for (const p of [{ preview: null, error: true }, { preview: zeroPreview }]) {
+      const { unmount } = render(<EvSheet {...baseProps(p)} />);
+      expect(screen.getByTestId('ev-unavailable').textContent).toContain('EV not available');
+      expect(document.querySelectorAll('.sim-badge')).toHaveLength(0);
+      expect(document.body.textContent).not.toContain('Best');
+      unmount();
+    }
+  });
+});
+
+describe('session net and next-hand chips (D38)', () => {
+  it('session net is the equity change after a lost hand, from the real engine', () => {
+    const start = createGame({
+      seed: 7,
+      bets: { ante: 1000, trips: 500 },
+      startAt: {
+        street: 'river',
+        deal: {
+          player: ['As', '7c'],
+          dealer: ['Td', 'Ts'],
+          flop: ['Kd', '9h', '5c'],
+          turn: '3s',
+          river: '2d',
+        },
+      },
+    });
+    const r = applyAction(start, { type: 'fold' });
+    if (!r.ok) throw new Error('fold rejected');
+    const net = equity(r.state) - equity(start);
+    expect(net).toBe(-2500);
+    render(<StatusBar bankroll={equity(r.state)} onFelt={0} sessionNet={net} />);
+    expect(screen.getByTestId('session-net').textContent).toBe('-$25');
+  });
+  it('Felt ghosts the chips and captions them "Next hand"', () => {
+    const { container } = render(
+      <Felt orientation="portrait" bets={{ ante: 1000, blind: 1000, trips: 500 }} nextHand />,
+    );
+    expect(container.querySelectorAll('.sim-circle.is-ghost')).toHaveLength(3);
+    expect(container.textContent).toContain('Next hand');
+    expect(screen.getByRole('img', { name: /Next hand: Ante, \$10/ })).toBeTruthy();
+  });
+  it('no caption or ghost for live bets', () => {
+    const { container } = render(
+      <Felt orientation="portrait" bets={{ ante: 1000, blind: 1000 }} />,
+    );
+    expect(container.querySelectorAll('.is-ghost')).toHaveLength(0);
+    expect(container.textContent).not.toContain('Next hand');
   });
 });

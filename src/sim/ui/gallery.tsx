@@ -96,8 +96,9 @@ const THEN: Record<string, Action | undefined> = {
   win: { type: 'play', multiple: 1 },
 };
 
-function initial(id: string): { state: GameState; events: GameEvent[] } {
-  let state = createGame(START[id]);
+function initial(id: string): { state: GameState; events: GameEvent[]; start: GameState } {
+  const start = createGame(START[id]);
+  let state = start;
   let events: GameEvent[] = [];
   const then = THEN[id];
   if (then) {
@@ -107,7 +108,7 @@ function initial(id: string): { state: GameState; events: GameEvent[] } {
       events = r.events;
     }
   }
-  return { state, events };
+  return { state, events, start };
 }
 
 function Badges() {
@@ -131,12 +132,15 @@ function Badges() {
 function Demo({ id }: { id: string }) {
   const init = useMemo(() => initial(id), [id]);
   const [state, setState] = useState(init.state);
+  // Session net = equity now minus equity at the start (D38).
+  const startEquity = useMemo(() => equity(init.start), [init]);
   const [events, setEvents] = useState<GameEvent[]>(init.events);
   const [runKey, setRunKey] = useState(0);
   const orientation = useOrientation(viewPref);
   const [open, setOpen] = useState<OptionKey | null>(OPEN[id] ?? null);
   const [preview, setPreview] = useState<DecisionPreview | null>(null);
   const [progress, setProgress] = useState(0);
+  const [evError, setEvError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [chip, setChip] = useState(1000);
   const hand = state.hand;
@@ -148,6 +152,7 @@ function Demo({ id }: { id: string }) {
   // Real EV: the in-thread client runs the preview job for this decision.
   useEffect(() => {
     setPreview(null);
+    setEvError(false);
     setProgress(0);
     if (!hand || !decision) return;
     abort.current?.abort();
@@ -166,7 +171,9 @@ function Demo({ id }: { id: string }) {
         { signal: ac.signal, onProgress: (p) => setProgress(p.done / Math.max(1, p.total)) },
       )
       .then((p) => setPreview(p))
-      .catch(() => undefined);
+      .catch((e: unknown) => {
+        if (!(e instanceof Error && e.name === 'AbortError')) setEvError(true);
+      });
     return () => ac.abort();
   }, [state.street, hand?.n]);
 
@@ -193,6 +200,7 @@ function Demo({ id }: { id: string }) {
     open && decision ? (
       <EvSheet
         preview={preview}
+        error={evError}
         progress={progress}
         selected={open}
         variant={orientation === 'landscape' ? 'rail' : 'sheet'}
@@ -217,7 +225,7 @@ function Demo({ id }: { id: string }) {
         <StatusBar
           bankroll={settled ? equity(state) : state.bankroll}
           onFelt={onFelt}
-          sessionNet={state.stats.hands ? 0 : undefined}
+          sessionNet={state.stats.hands ? equity(state) - startEquity : undefined}
         />
       }
       felt={
@@ -235,6 +243,7 @@ function Demo({ id }: { id: string }) {
           fourColor={fourColor}
           labels={labels}
           timeline={tl}
+          nextHand={settled}
           skipped={motion.skipped}
           onSkip={motion.playing ? motion.skip : undefined}
           onCircle={state.street === 'betting' ? () => undefined : undefined}
@@ -246,6 +255,7 @@ function Demo({ id }: { id: string }) {
             street={state.street}
             layout={orientation === 'landscape' ? 'rail' : 'bar'}
             preview={preview}
+            evStatus={evError ? 'error' : preview ? 'ready' : decision ? 'pending' : undefined}
             selected={open}
             bets={{ ante: state.bets.ante, trips: state.bets.trips }}
             onOption={setOpen}

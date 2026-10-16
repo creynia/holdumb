@@ -29,6 +29,8 @@ export interface FeltLayout {
   boardCardSize: { w: number; h: number };
   circles: Record<CircleId, { c: Pt; r: number; label: string }>;
   handLabels: { dealer: LabelSpot; player: LabelSpot };
+  /** Where the "Next hand" caption goes while the chips are a ghost of the next bet. */
+  nextHandCaption: Pt;
   /** Cards fly from here. */
   deckPos: Pt;
   /** Chips fly to and from here. */

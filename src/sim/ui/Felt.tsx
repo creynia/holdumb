@@ -29,6 +29,8 @@ export interface FeltProps {
   labels?: { dealer?: string; player?: string };
   timeline?: Timeline;
   /** Visuals flushed (tap to skip). */
+  /** D38: after a hand settles the chips are the next hand's intent: drawn ghosted with a caption. */
+  nextHand?: boolean;
   skipped?: boolean;
   onSkip?: () => void;
 }
@@ -87,6 +89,7 @@ export function Felt({
   onCircle,
   labels,
   timeline,
+  nextHand,
   skipped,
   onSkip,
 }: FeltProps) {
@@ -194,11 +197,23 @@ export function Felt({
               sublabel={id === 'play' && playMultiple ? `${playMultiple}x` : undefined}
               minTap={L.minTapUnits}
               onTap={onCircle}
+              ghost={!!nextHand && id !== 'play'}
               highlight={highlight.includes(id)}
               hint={id === 'ante' ? 'Blind matches.' : undefined}
             />
           );
         })}
+
+        {nextHand && (bets.ante || bets.trips) ? (
+          <text
+            x={L.nextHandCaption.x}
+            y={L.nextHandCaption.y}
+            text-anchor="middle"
+            class="sim-next-caption"
+          >
+            Next hand
+          </text>
+        ) : null}
 
         {/* player */}
         {dealt

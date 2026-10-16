@@ -7,6 +7,7 @@ import { TierBadge } from './TierBadge';
 import { WhyTable } from './WhyTable';
 import {
   OPTION_LABELS,
+  isUsablePreview,
   bestOf,
   fmtAnteUnits,
   fmtCentsFraction,
@@ -26,6 +27,8 @@ export interface EvSheetProps {
   onSelect?: (k: OptionKey) => void;
   onConfirm: (k: OptionKey) => void;
   onCancel: () => void;
+  /** `error`: the EV could not be computed. Shows "EV not available"; Confirm still works. */
+  error?: boolean;
   /** 0..1 progress of a running preview. */
   progress?: number;
   /** `sheet`: modal dialog (portrait); `rail`: panel in the landscape rail; `inline`: plain panel. */
@@ -71,7 +74,8 @@ function ResultCard({ preview, chosen }: { preview: DecisionPreview; chosen: Opt
 
 /** The EV sheet (simulator.md 3.4): headline, every option, the better alternative, "Why?", Confirm. */
 export function EvSheet({
-  preview,
+  preview: rawPreview,
+  error,
   selected,
   onSelect,
   onConfirm,
@@ -88,6 +92,8 @@ export function EvSheet({
   handsPerHour,
   allowed,
 }: EvSheetProps) {
+  const preview = isUsablePreview(rawPreview) ? rawPreview : null;
+  const failed = !!error || (!!rawPreview && !preview);
   const rootRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const whyId = useId();
@@ -233,10 +239,15 @@ export function EvSheet({
             </div>
           ) : null}
         </>
+      ) : failed ? (
+        <p class="sim-muted" role="status" data-testid="ev-unavailable">
+          EV not available. You can still play this move.
+        </p>
       ) : (
         <div class="sim-skeleton" data-testid="ev-loading" aria-busy="true">
-          <p class="sim-muted" role="status">
-            Working out the EV…
+          <p class="sim-muted sim-calc" role="status">
+            <span class="sim-spinner" aria-hidden="true" />
+            Calculating…
           </p>
           <div
             class="sim-progress"

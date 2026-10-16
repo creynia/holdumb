@@ -31,6 +31,7 @@ export const portraitLayout: FeltLayout = {
     dealer: { x: 195, y: 130, anchor: 'middle' },
     player: { x: 112, y: 540, anchor: 'end' },
   },
+  nextHandCaption: { x: 195, y: 346 },
   deckPos: { x: 340, y: 20 },
   rackPos: { x: 195, y: 596 },
   minTapUnits: 44,

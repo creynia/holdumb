@@ -939,3 +939,37 @@ button.sim-evrow-btn {
     transform: none;
   }
 }
+
+.sim-calc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sim-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid var(--sim-border);
+  border-top-color: var(--accent);
+  animation: sim-spin 0.9s linear infinite;
+}
+@keyframes sim-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sim-spinner {
+    animation: none;
+  }
+}
+.sim-circle.is-ghost {
+  opacity: 0.45;
+}
+.sim-next-caption {
+  fill: var(--sim-felt-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

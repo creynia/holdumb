@@ -250,3 +250,15 @@ export function foldRevealText(r: HandResult): string {
 export function money(c: Cents, sign = false): string {
   return formatMoney(c, { sign });
 }
+
+export type EvStatus = 'pending' | 'ready' | 'error';
+
+/**
+ * A preview is usable only if it has options and is not an all-zero placeholder (e.g. from a
+ * missing table). Anything else must show "Calculating…" or "EV not available", never a tier.
+ */
+export function isUsablePreview(p: DecisionPreview | null | undefined): p is DecisionPreview {
+  if (!p || p.options.length === 0) return false;
+  if (p.options.some((o) => o.ev.den === 0n)) return false;
+  return !p.options.every((o) => o.ev.num === 0n);
+}

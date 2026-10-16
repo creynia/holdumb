@@ -19,6 +19,8 @@ export interface BetCircleProps {
   /** Spoken extra, e.g. "Blind matches." */
   hint?: string;
   disabled?: boolean;
+  /** D38: chips shown are the next hand's intent, not live bets. */
+  ghost?: boolean;
 }
 
 const NAME: Record<CircleId, string> = {
@@ -41,14 +43,15 @@ export function BetCircle({
   highlight,
   hint,
   disabled,
+  ghost,
 }: BetCircleProps) {
   const hit = Math.max(minTap, r * 2);
   const interactive = !!onTap && !disabled;
-  const spoken = `${NAME[id]}, ${amount > 0 ? formatMoney(amount) : 'no bet'}.${hint ? ' ' + hint : ''}`;
+  const spoken = `${ghost ? 'Next hand: ' : ''}${NAME[id]}, ${amount > 0 ? formatMoney(amount) : 'no bet'}.${hint ? ' ' + hint : ''}`;
   const activate = () => onTap?.(id);
   return (
     <g
-      class={`sim-circle sim-circle-${id}${amount > 0 ? ' has-bet' : ''}${highlight ? ' is-hl' : ''}${interactive ? ' is-tap' : ''}`}
+      class={`sim-circle sim-circle-${id}${amount > 0 ? ' has-bet' : ''}${highlight ? ' is-hl' : ''}${ghost ? ' is-ghost' : ''}${interactive ? ' is-tap' : ''}`}
       data-circle={id}
       role={interactive ? undefined : 'img'}
       aria-label={interactive ? undefined : spoken}

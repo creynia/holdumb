@@ -2,10 +2,12 @@ import './sim.css';
 import type { Cents, Street } from '../engine';
 import type { OptionKey } from '../scene';
 import type { DecisionPreview } from '../math';
+import type { EvStatus } from './text';
 import {
   DECISION_TIER_SHORT,
   OPTION_LABELS,
   OPTION_ORDER,
+  isUsablePreview,
   fmtAnteUnits,
   money,
   optionKeyOf,
@@ -18,6 +20,8 @@ export interface ActionBarProps {
   layout?: 'bar' | 'rail';
   /** When set, each decision button shows its EV and a tier word. Practice mode: leave unset. */
   preview?: DecisionPreview | null;
+  /** `pending` shows "Calculating…" and `error` "EV not available" under each decision button, no badges. */
+  evStatus?: EvStatus;
   /** The option whose sheet is open. */
   selected?: OptionKey | null;
   /** A scene may hide options. Omit for all. */
@@ -56,7 +60,8 @@ export function optionsFor(street: Street, allowed?: readonly OptionKey[]): Opti
 export function ActionBar({
   street,
   layout = 'bar',
-  preview,
+  preview: rawPreview,
+  evStatus,
   selected,
   allowed,
   highlight = [],
@@ -70,6 +75,14 @@ export function ActionBar({
   bets,
   disabled,
 }: ActionBarProps) {
+  const preview = isUsablePreview(rawPreview) ? rawPreview : null;
+  const status: EvStatus | null = preview
+    ? 'ready'
+    : evStatus === 'pending'
+      ? 'pending'
+      : evStatus || rawPreview
+        ? 'error'
+        : null;
   const cls = `sim-actions sim-actions-${layout}`;
   if (street === 'betting') {
     const sub = dealSub ?? (bets ? dealSubtitle(bets.ante, bets.trips) : undefined);
@@ -142,6 +155,10 @@ export function ActionBar({
               <span class="sim-act-sub">
                 {typographic(fmtAnteUnits(o.ev))} · {DECISION_TIER_SHORT[o.tier]}
               </span>
+            ) : status === 'pending' ? (
+              <span class="sim-act-sub">Calculating…</span>
+            ) : status === 'error' ? (
+              <span class="sim-act-sub">EV not available</span>
             ) : null}
           </button>
         );
