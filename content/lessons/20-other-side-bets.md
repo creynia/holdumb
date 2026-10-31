@@ -4,18 +4,24 @@ title: "Six Card Bonus, progressives and Bad Beat"
 chapter: perfect-fun
 summary: "The bets the app doesn't deal, and what they cost."
 minutes: 7
+sources:
+  - onthestrip-uth
+  - vegas-aces-uth
+  - nj-dge-six-card-bonus
+  - guide-rivers-pittsburgh
+  - rack-caesars
 ---
 
 Some UTH tables offer more side bets. The app doesn't deal them, but here's what they cost.
 
-**Six Card Bonus.** It pays on the best five cards out of six: your two hole cards plus four more. On the
+**Six Card Bonus.** It pays on the best five cards out of six: your two hole cards plus four more. The two example tables here are as reported by OnTheStrip[^1] and Vegas Aces[^2]; the second is the minimum table in the New Jersey regulation[^3]. On the
 common 1000/200/100/20/15/10/7 table (royal, straight flush, quads, full house, flush, straight, trips),
 the house edge is **8.56%**. On a 1000/200/50/20/15/10/5 table it's **19.36%**. A $5 Six Card bet costs about
 **$12.84 an hour** at the better table, about four and a half times what $5 on Trips costs.
 
 **Progressive jackpot.** It's usually a $1 to $5 bet on your two hole cards plus the flop. It pays a share
 of a growing meter for a royal flush (100%) or straight flush (often 10%), and fixed amounts for smaller
-hands. These awards are paid "for 1": the casino keeps your $1, so a "$300" award is $299 profit. A royal in those five cards comes 1 time in **649,740**. On one example $1 table (royal 100%,
+hands. These awards are paid "for 1": the casino keeps your $1, so a "$300" award is $299 profit. A royal in those five cards comes 1 time in **649,740**. The royal flush (100%) and straight flush (10%) shares are as at Rivers Pittsburgh[^4], and the example fixed awards follow a common Las Vegas rack card (Caesars)[^5]. On one example $1 table (royal 100%,
 straight flush 10%, quads $300, full house $50, flush $40, straight $30, trips $9):
 
 | Meter | House edge | Cost per hour (30 hands) |

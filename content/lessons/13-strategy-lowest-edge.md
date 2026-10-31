@@ -4,9 +4,13 @@ title: "Perfect strategy I: the whole picture"
 chapter: perfect-lowest-edge
 summary: "Everything on one page, and what 'perfect' can and can't do."
 minutes: 7
+sources:
+  - woo-uth-strategy
+  - grosjean-uth
+  - woo-uth-figures
 ---
 
-Here's the lowest-edge strategy for the standard Blind paytable:
+Here's the lowest-edge strategy for the standard Blind paytable. Its rules are the ones the Wizard of Odds publishes as basic strategy[^1], with flop and river rules after James Grosjean[^2]:
 
 **Preflop.** Bet **4x** with: 33+, any ace, any suited king, K5o+, Q6s+, Q8o+, J8s+, JTo. Otherwise check.
 Never bet 3x.
@@ -27,7 +31,7 @@ What happens over the long run when you play this way:
 | Bet 1x on the river | 21.8% |
 | Fold on the river | 19.2% |
 
-On average you'll have **4.15 antes** in action per hand, and lose **2.185% of one Ante** per hand. At a $10
+On average you'll have **4.15 antes** in action per hand, and lose **2.185% of one Ante** per hand (the app computes this exactly; it agrees with the Wizard of Odds figure[^3]). At a $10
 Ante and 30 hands an hour, that's an expected cost of **$6.55 an hour**.
 
 **What perfect means, and what it doesn't.** No decision you make can give you an edge over the house.

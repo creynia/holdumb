@@ -4,6 +4,11 @@ title: "The Trips bet"
 chapter: perfect-fun
 summary: "A side bet on your own hand. Its price depends entirely on the paytable."
 minutes: 7
+sources:
+  - woo-uth-figures
+  - rack-caesars
+  - rack-tulalip
+  - guide-treasury-brisbane
 ---
 
 **Trips** is an optional bet you make before the deal. It pays if your final hand (your two cards plus the
@@ -24,7 +29,7 @@ whether you fold. The standard table (`trips-8-6-5`):
 It pays **about 1 hand in 6.5** (15.3%), or about 4.6 times an hour. The house edge is **1.90%** of the
 Trips bet: a little cheaper than the main game per Ante, and a fair price for the excitement.
 
-**The paytable is everything.** Casinos change the middle rows, and small changes matter a lot:
+**The paytable is everything.** Casinos change the middle rows, and small changes matter a lot. The first three edges below match the Wizard of Odds Trips tables[^1], and the 8 / 7 / 4 table is printed on casino rack cards and gaming guides[^2][^3][^4]:
 
 | Table (Full house / Flush / Straight) | House edge | Cost per hour, $5 Trips | Tier |
 |---|---|---|---|

@@ -4,6 +4,9 @@ title: "Preflop: when to bet 4x"
 chapter: perfect-lowest-edge
 summary: "The exact preflop chart, in eight short rules."
 minutes: 8
+sources:
+  - woo-uth-strategy
+  - pokerlistings-uth
 ---
 
 Before the flop there are 1,326 possible two-card hands, in 169 kinds (pairs, suited and offsuit). For
@@ -24,7 +27,7 @@ The answer for every one of them fits in eight rules.
 kings, queens and jacks.
 
 This isn't a simplification. It is **exactly** the optimal preflop strategy for the standard Blind paytable:
-the app solved every hand, and all 169 kinds match these rules. You'll bet 4x on **500 of the 1,326 hands
+the app solved every hand, and all 169 kinds match these rules. The same list is published in the Wizard of Odds strategy[^1] and in the PokerListings guide[^2]. You'll bet 4x on **500 of the 1,326 hands
 (37.7%)**.
 
 ```chart

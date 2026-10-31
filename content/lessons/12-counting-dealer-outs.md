@@ -4,11 +4,14 @@ title: "Counting the dealer's outs"
 chapter: perfect-lowest-edge
 summary: "Fewer than 21 cards that beat you: bet 1x."
 minutes: 9
+sources:
+  - woo-uth-strategy
+  - grosjean-uth
 ---
 
 Without a hidden pair, you need a quick way to tell "queen high, play it" from "eight high, fold it".
 The trick is to imagine **one** card in the dealer's hand and ask: **which cards would beat me?** Those
-are the dealer's **outs**. You can see 7 cards, which leaves 45 unseen.
+are the dealer's **outs**. This counting method follows the one in the Wizard of Odds strategy[^1], credited there to James Grosjean[^2]. You can see 7 cards, which leaves 45 unseen.
 
 How to count, step by step:
 
