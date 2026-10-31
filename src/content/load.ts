@@ -9,6 +9,8 @@ import type {
   GlossaryEntry,
   HandCopy,
   Lesson,
+  SourceGroup,
+  SourceItem,
   StrategyCopy,
 } from './types';
 import type { WagerId } from '../sim/engine';
@@ -54,6 +56,7 @@ export interface ContentSources {
   bets: Record<string, BetCopy>;
   hands: Record<string, HandCopy>;
   strategy: Record<string, StrategyCopy>;
+  sources: SourceGroup[];
   samplesActive: boolean;
   lessonFiles: { file: string; slug: string; source: string }[];
 }
@@ -86,6 +89,9 @@ export function readSources(root: string, includeSamples = false): ContentSource
     bets: normalizeBets(json<unknown>('bets.json', '_sample-bets.json', {})),
     hands: json<Record<string, HandCopy>>('hands.json', '_sample-hands.json', {}),
     strategy: json<Record<string, StrategyCopy>>('strategy.json', '_sample-strategy.json', {}),
+    sources: has('sources.json')
+      ? (JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')) as SourceGroup[])
+      : [],
     samplesActive,
     lessonFiles: files.map((f) => ({
       file: f,
@@ -99,7 +105,13 @@ export function buildContent(root: string): ContentBundle {
   const src = readSources(root);
   const glossarySlugs = new Set(src.glossary.map((g) => g.slug));
   const glossaryTerms = new Map(src.glossary.map((g) => [g.term.toLowerCase(), g.slug] as const));
-  const opts = { glossarySlugs, glossaryTerms };
+  const sourceById = new Map<string, SourceItem>();
+  for (const g of src.sources)
+    for (const it of g.items) {
+      if (sourceById.has(it.id)) throw new Error(`content/sources.json: duplicate source id "${it.id}"`);
+      sourceById.set(it.id, it);
+    }
+  const opts = { glossarySlugs, glossaryTerms, sources: sourceById };
   const compiled = new Map<string, CompiledLesson>();
   for (const f of src.lessonFiles) {
     const file = `content/lessons/${f.file}`;
@@ -150,5 +162,6 @@ export function buildContent(root: string): ContentBundle {
     bets,
     hands: src.hands,
     strategy,
+    sources: src.sources,
   };
 }

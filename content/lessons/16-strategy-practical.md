@@ -4,10 +4,13 @@ title: "Perfect strategy II: the card you can remember"
 chapter: perfect-practical
 summary: "A strategy card that costs 59¢ an hour more than perfect."
 minutes: 8
+sources:
+  - woo-uth-strategy
+  - grosjean-uth
 ---
 
 The EV sheet plays perfectly, but at a real table you only have your memory. Here's the card that most
-strong players use, with the exact price of each version.
+strong players use: the Wizard of Odds basic strategy[^1], with flop and river rules after James Grosjean[^2]. The prices below are computed by the app.
 
 **The basic card**
 

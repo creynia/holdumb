@@ -4,6 +4,9 @@ title: "House edge, element of risk and cost per hour"
 chapter: perfect-practical
 summary: "Three honest numbers for the same game, and the one that pays your bills."
 minutes: 7
+sources:
+  - woo-uth-figures
+  - guide-treasury-brisbane
 ---
 
 You'll see three different numbers quoted for UTH's house edge. They all describe the same game; they just
@@ -14,6 +17,8 @@ divide the same expected loss by different things.
 | **House edge per Ante** | your Ante | **2.185%** |
 | Edge per initial wager | your Ante + Blind | 1.092% |
 | **Element of risk** | everything you put in action, raises included (4.15 antes on average) | **0.526%** |
+
+The 2.185% and 0.526% figures are computed exactly by the app and agree with the Wizard of Odds analysis[^1]; the Treasury Brisbane gaming guide quotes about 2.18% and 0.53%[^2].
 
 The app uses **per Ante** as its headline number, because it turns straight into money. Your expected cost
 per hand is 2.185% of your Ante, whatever happens with the raises. Element of risk is the fairer way to

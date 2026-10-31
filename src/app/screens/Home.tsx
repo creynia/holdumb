@@ -17,7 +17,7 @@ export function Home() {
       <section class="hero">
         <ProgressRing done={done} total={total} />
         <div>
-          <h1>Learn Ultimate Texas Hold&apos;em</h1>
+          <h1>Learn Ultimate Texas Hold&apos;em&reg;</h1>
           <p class="muted">Lessons, odds and a practice table. Nothing here costs real money.</p>
         </div>
       </section>

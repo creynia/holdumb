@@ -4,6 +4,9 @@ title: "The river: bet 1x or fold"
 chapter: perfect-lowest-edge
 summary: "Folding costs 2 antes for sure. Bet 1x when that's worse."
 minutes: 8
+sources:
+  - woo-uth-strategy
+  - grosjean-uth
 ---
 
 You've checked twice and all five community cards are out. Now it's **bet 1x or fold**.
@@ -19,7 +22,7 @@ Rule one is simple: **with a hidden pair or better, always bet 1x.** {{Td 4c}} o
 (a pair of tens) has an EV of **+0.261** for 1x against −2 for folding.
 
 Without a pair it's closer, and you need to know how many dealer hands beat you. Lesson 12 shows a
-quick way to count. For now, look at the EV sheet:
+quick way to count. The "fewer than 21 outs" rule comes from the Wizard of Odds strategy[^1], where the river rules are credited to James Grosjean[^2]. For now, look at the EV sheet:
 
 | You | Board | Bet 1x | Fold | Best |
 |---|---|---|---|---|

@@ -4,9 +4,20 @@ import { Link } from '../components/Link';
 import { LessonScene } from '../components/LessonScene';
 import { ChartBlock } from '../components/ChartBlock';
 import { Quiz } from '../components/Quiz';
+import { SourceEntry } from '../components/SourceEntry';
 import { useContent, useStore } from '../context';
 import { FINAL_EXAM_ID, finalExamScore } from '../store';
 import { NotFound } from './NotFound';
+
+/** Click on a `[^n]` marker: scroll to, and focus, that entry in the lesson's Sources list. */
+function onCite(e: MouseEvent) {
+  const t = (e.target as HTMLElement).closest<HTMLElement>('[data-cite]');
+  if (!t) return;
+  const li = document.getElementById(`lesson-source-${t.dataset.cite}`);
+  if (!li) return;
+  li.scrollIntoView?.({ block: 'center' });
+  li.focus({ preventScroll: true });
+}
 
 export function LessonView({ id }: { id: string }) {
   const content = useContent();
@@ -29,45 +40,60 @@ export function LessonView({ id }: { id: string }) {
       </Link>
       <h1>{lesson.title}</h1>
       <p class="muted">{lesson.minutes} min read</p>
-      {lesson.blocks.map((b, i) => {
-        switch (b.kind) {
-          case 'html':
-            return <Html key={i} html={b.html} />;
-          case 'tip':
-            return (
-              <aside key={i} class="tip">
-                <strong class="tip-tag">Tip</strong>
-                <Html html={b.html} />
-              </aside>
-            );
-          case 'math':
-            return (
-              <details key={i} class="math">
-                <summary>Show the math: {b.title}</summary>
-                <Html html={b.html} />
-              </details>
-            );
-          case 'scene':
-            return (
-              <LessonScene
-                key={`${lesson.id}:${b.scene.id}`}
-                lessonId={lesson.id}
-                scene={b.scene}
-              />
-            );
-          case 'chart':
-            return <ChartBlock key={i} chart={b.chart} />;
-          case 'quiz':
-            return (
-              <Quiz
-                key={`${lesson.id}:${b.quiz.id}:${retakes}`}
-                quiz={b.quiz}
-                answeredBefore={progress?.quizzes[b.quiz.id]?.correct === true}
-                onAnswer={(ok) => store.markQuiz(lesson.id, b.quiz.id, ok)}
-              />
-            );
-        }
-      })}
+      {/* delegated: citation markers are buttons inside compiled HTML (hash routing: no #links) */}
+      <div onClick={onCite}>
+        {lesson.blocks.map((b, i) => {
+          switch (b.kind) {
+            case 'html':
+              return <Html key={i} html={b.html} />;
+            case 'tip':
+              return (
+                <aside key={i} class="tip">
+                  <strong class="tip-tag">Tip</strong>
+                  <Html html={b.html} />
+                </aside>
+              );
+            case 'math':
+              return (
+                <details key={i} class="math">
+                  <summary>Show the math: {b.title}</summary>
+                  <Html html={b.html} />
+                </details>
+              );
+            case 'scene':
+              return (
+                <LessonScene
+                  key={`${lesson.id}:${b.scene.id}`}
+                  lessonId={lesson.id}
+                  scene={b.scene}
+                />
+              );
+            case 'chart':
+              return <ChartBlock key={i} chart={b.chart} />;
+            case 'quiz':
+              return (
+                <Quiz
+                  key={`${lesson.id}:${b.quiz.id}:${retakes}`}
+                  quiz={b.quiz}
+                  answeredBefore={progress?.quizzes[b.quiz.id]?.correct === true}
+                  onAnswer={(ok) => store.markQuiz(lesson.id, b.quiz.id, ok)}
+                />
+              );
+          }
+        })}
+      </div>
+      {lesson.sources && (
+        <section class="lesson-sources" aria-label="Sources">
+          <h2>Sources</h2>
+          <ol>
+            {lesson.sources.map((s, i) => (
+              <li key={i} id={`lesson-source-${i + 1}`} tabIndex={-1}>
+                <SourceEntry s={s} />
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       {lesson.id === FINAL_EXAM_ID && (
         <section class="card exam-score" aria-label="Exam score">
           <p>

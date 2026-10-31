@@ -5,7 +5,7 @@ import { parseCards } from '../sim/engine';
 import { validateScene } from '../sim/scene';
 import { STRATEGY_IDS } from '../sim/strategy';
 import { cardsHtml, checkInline, isHandClass } from './cards';
-import type { Block, ChartBlockData, Lesson, Quiz, QuizHand } from './types';
+import type { Block, ChartBlockData, Lesson, LessonSource, Quiz, QuizHand, SourceItem } from './types';
 
 export interface CompileOptions {
   /** known glossary slugs, for `[[term]]` links; omit to skip link checking */
@@ -14,7 +14,33 @@ export interface CompileOptions {
   glossaryTerms?: ReadonlyMap<string, string>;
   /** subtract from every heading depth (min result 2), so lesson headings sit under the page h1 */
   headingShift?: number;
+  /** number of sources the text may cite with `[^n]`; omit (or 0) where citations aren't allowed */
+  sourceCount?: number;
+  /** content/sources.json entries by id, for `sources:` front matter ids */
+  sources?: ReadonlyMap<string, SourceItem>;
 }
+
+/**
+ * `[^n]` citation marker (n = 1-based index into the lesson's `sources`). Rendered as a button,
+ * not a link: the app uses hash routing, so `#fragment` hrefs would navigate. The lesson screen
+ * scrolls to the matching list item on click.
+ */
+const citeExtension: TokenizerAndRendererExtension = {
+  name: 'cite',
+  level: 'inline',
+  start(src: string) {
+    const i = src.indexOf('[^');
+    return i < 0 ? undefined : i;
+  },
+  tokenizer(src: string) {
+    const m = /^\[\^(\d+)\]/.exec(src);
+    return m ? { type: 'cite', raw: m[0], n: Number(m[1]) } : undefined;
+  },
+  renderer(token) {
+    const n = Number((token as unknown as { n: number }).n);
+    return `<sup class="cite"><button type="button" class="cite-btn" data-cite="${n}" aria-label="Source ${n}">${n}</button></sup>`;
+  },
+};
 
 /** Inline `{{As Kd}}` cards, tokenised by marked so code spans and code blocks stay literal. */
 const cardsExtension: TokenizerAndRendererExtension = {
@@ -38,7 +64,7 @@ function markedFor(shift: number): Marked {
   let m = instances.get(shift);
   if (!m) {
     m = new Marked({
-      extensions: [cardsExtension],
+      extensions: [cardsExtension, citeExtension],
       ...(shift
         ? {
             renderer: {
@@ -71,6 +97,30 @@ export function minHeadingDepth(body: string): number {
   return min;
 }
 
+/** Resolve the optional `sources:` front matter: ids from sources.json, or `{ title, url?, note? }`. */
+export function parseLessonSources(
+  raw: unknown,
+  known?: ReadonlyMap<string, SourceItem>,
+): LessonSource[] {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) throw new Error('front matter sources must be a list');
+  return raw.map((e, i): LessonSource => {
+    const what = `sources[${i + 1}]`;
+    if (typeof e === 'string') {
+      const hit = known?.get(e);
+      if (!hit) throw new Error(`${what}: unknown source id "${e}" (not in content/sources.json)`);
+      return hit;
+    }
+    if (!isObj(e)) throw new Error(`${what} must be a source id or a { title, url?, note? } mapping`);
+    const out: LessonSource = { title: str(e.title, `${what}.title`) };
+    for (const k of ['author', 'url', 'note'] as const) {
+      if (e[k] !== undefined) out[k] = str(e[k], `${what}.${k}`);
+    }
+    if (out.url && !/^https:\/\//.test(out.url)) throw new Error(`${what}.url must be an https URL`);
+    return out;
+  });
+}
+
 /** A compiled lesson; `chapter` is the front-matter chapter id (checked against chapters.json). */
 export type CompiledLesson = Omit<Lesson, 'chapterId'> & { chapter?: string };
 
@@ -100,11 +150,21 @@ export function renderMarkdown(md: string, opts: CompileOptions = {}): string {
       return `<a class="gloss" href="#/glossary?term=${encodeURIComponent(slug)}">${label ?? term.trim()}</a>`;
     },
   );
-  // Tables scroll sideways on phones; a scrolling region must be keyboard focusable (axe).
-  return markedFor(opts.headingShift ?? 0)
+  const html = markedFor(opts.headingShift ?? 0)
     .parse(withLinks, { async: false })
-    .trim()
-    .replace(/<table>/g, '<table tabindex="0" aria-label="Table, scrolls sideways">');
+    .trim();
+  for (const m of html.matchAll(/data-cite="(\d+)"/g)) {
+    const n = Number(m[1]);
+    const max = opts.sourceCount ?? 0;
+    if (n < 1 || n > max)
+      throw new Error(
+        max
+          ? `citation [^${n}] is out of range (this lesson lists ${max} source${max === 1 ? '' : 's'})`
+          : `citation [^${n}] needs a \`sources:\` list in the front matter`,
+      );
+  }
+  // Tables scroll sideways on phones; a scrolling region must be keyboard focusable (axe).
+  return html.replace(/<table>/g, '<table tabindex="0" aria-label="Table, scrolls sideways">');
 }
 
 function str(v: unknown, what: string): string {
@@ -288,7 +348,12 @@ export function compileLesson(
     const { data, body } = splitFrontMatter(source);
     const id = str(data.id, 'front matter id');
     const min = minHeadingDepth(body);
-    opts = { ...opts, headingShift: min <= 6 ? Math.max(0, min - 2) : 0 };
+    const sources = parseLessonSources(data.sources, opts.sources);
+    opts = {
+      ...opts,
+      headingShift: min <= 6 ? Math.max(0, min - 2) : 0,
+      sourceCount: sources.length,
+    };
     const blocks: Block[] = [];
     const quizIds = new Set<string>();
     let quizCount = 0;
@@ -334,6 +399,7 @@ export function compileLesson(
       summary: str(data.summary, 'front matter summary'),
       minutes,
       blocks,
+      ...(sources.length ? { sources } : {}),
       ...(chapter ? { chapter } : {}),
     };
   } catch (e) {

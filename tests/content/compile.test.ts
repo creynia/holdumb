@@ -223,3 +223,52 @@ describe('failing build', () => {
     expect(() => buildContent(root)).toThrow(/not listed/);
   });
 });
+
+describe('lesson sources and citations', () => {
+  const known = new Map([['woo', { id: 'woo', title: 'Wizard of Odds', url: 'https://example.com/' }]]);
+  const withSrc = (fm: string, body: string) => head.replace('minutes: 2\n', `minutes: 2\n${fm}`) + body;
+
+  it('resolves ids and one-off sources, and renders [^n] as a button marker', () => {
+    const l = compileLesson(
+      withSrc('sources:\n  - woo\n  - { title: One-off, note: n }\n', 'Claim.[^1] Other.[^2]\n'),
+      't.md',
+      { sources: known },
+    );
+    expect(l.sources).toEqual([
+      { id: 'woo', title: 'Wizard of Odds', url: 'https://example.com/' },
+      { title: 'One-off', note: 'n' },
+    ]);
+    const html = l.blocks[0]!.kind === 'html' ? l.blocks[0]!.html : '';
+    expect(html).toContain('<sup class="cite"><button type="button" class="cite-btn" data-cite="1"');
+    expect(html).toContain('data-cite="2"');
+    expect(html).not.toContain('href="#');
+  });
+  it('leaves code spans literal', () => {
+    const l = compileLesson(withSrc('sources:\n  - woo\n', 'Use `[^9]` here.[^1]\n'), 't.md', {
+      sources: known,
+    });
+    const b = l.blocks[0];
+    expect(b && b.kind === 'html' ? b.html : '').not.toContain('data-cite="9"');
+  });
+  it('rejects an unknown source id', () => {
+    expect(() => compileLesson(withSrc('sources:\n  - nope\n', 'x\n'), 't.md', { sources: known })).toThrow(
+      /unknown source id "nope"/,
+    );
+  });
+  it('rejects an out-of-range citation, and a citation with no sources', () => {
+    expect(() =>
+      compileLesson(withSrc('sources:\n  - woo\n', 'x[^2]\n'), 't.md', { sources: known }),
+    ).toThrow(/\[\^2\] is out of range/);
+    expect(() => compileLesson(head + 'x[^1]\n', 't.md')).toThrow(/needs a `sources:` list/);
+  });
+  it('rejects a non-https one-off url', () => {
+    expect(() =>
+      compileLesson(withSrc('sources:\n  - { title: T, url: "http://x.test" }\n', 'x\n'), 't.md'),
+    ).toThrow(/https/);
+  });
+  it('buildContent knows every id in content/sources.json and the real lessons all compile', () => {
+    const b = buildContent(process.cwd());
+    expect(b.sources.length).toBeGreaterThan(0);
+    for (const l of b.lessons) if (l.sources) expect(l.sources.length).toBeGreaterThan(0);
+  });
+});

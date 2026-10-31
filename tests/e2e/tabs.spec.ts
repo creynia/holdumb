@@ -17,6 +17,7 @@ const SCREENS = [
   '/hands',
   '/bets',
   '/settings',
+  '/sources',
   '/about',
   '/more',
 ];

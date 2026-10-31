@@ -1,3 +1,11 @@
+/**
+ * Random number generation.
+ *
+ * - xoshiro128** by David Blackman and Sebastiano Vigna (https://prng.di.unimi.it/, public domain).
+ * - splitmix32 seeding: a widely circulated JS variant of SplitMix (Steele, Lea and Flood, 2014).
+ *
+ * Both are re-implemented here; credited on the app's Sources screen.
+ */
 import type { RngState } from './types';
 
 /** One step of splitmix32; returns [output, nextCounter]. */

@@ -58,7 +58,11 @@ const HEADLINE = {
   blunder: 'Big mistake.',
 } as const;
 
-/** splitmix32 -> the engine's four-word RNG state. */
+/**
+ * splitmix32 -> the engine's four-word RNG state. Seeding after SplitMix (Steele, Lea and Flood,
+ * 2014), mixing with the MurmurHash3 fmix32 constants 0x85ebca6b / 0xc2b2ae35 (Austin Appleby,
+ * public domain).
+ */
 export function rngFromSeed(seed: number): RngState {
   let x = seed >>> 0;
   const next = () => {

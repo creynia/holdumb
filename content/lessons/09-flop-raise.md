@@ -4,10 +4,13 @@ title: "The flop: bet 2x or check"
 chapter: perfect-lowest-edge
 summary: "Hidden pairs, two pair and good flush draws are 2x hands."
 minutes: 8
+sources:
+  - woo-uth-strategy
+  - grosjean-uth
 ---
 
 You checked before the flop, so your hand wasn't strong enough for 4x. Now three community cards are out
-and you know much more. **Bet 2x** when the flop gives you any of these:
+and you know much more. **Bet 2x** when the flop gives you any of these. This is the middle raise of the Wizard of Odds strategy[^1], whose flop rules are credited there to James Grosjean[^2]:
 
 1. **Two pair or better** that uses at least one of your cards. Examples: {{Qc 5d}} on {{Qs 5h 9d}}, or
    {{6s 5s}} on {{6h 6d Kc}}.
