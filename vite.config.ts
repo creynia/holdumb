@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { contentPlugin } from './build/vite-plugin-content.ts';
+import { seoPlugin } from './build/vite-plugin-seo.ts';
 import { swPlugin } from './build/vite-plugin-sw.ts';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
@@ -31,7 +32,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     worker: { format: single ? 'iife' : 'es' },
-    plugins: [preact(), contentPlugin(), ...(single ? [viteSingleFile()] : [swPlugin()])],
+    plugins: [
+      preact(),
+      contentPlugin(),
+      ...(single ? [viteSingleFile()] : [seoPlugin(), swPlugin()]),
+    ],
     publicDir: single ? false : 'public',
     build: { outDir: single ? 'dist-single' : 'dist', target: 'es2022' },
   };

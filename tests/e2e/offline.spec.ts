@@ -25,7 +25,7 @@ test('PWA works offline after the service worker is installed', async ({ page, c
 
   await context.setOffline(true);
   await page.reload();
-  await expect(page).toHaveTitle('holdumb');
+  await expect(page).toHaveTitle(/^Ultimate Texas Hold'em.*\| holdumb$/);
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
   await context.setOffline(false);
 });
@@ -133,5 +133,57 @@ test('update within the HTTP max-age window keeps a consistent offline cache', a
   } finally {
     srv.close();
     rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('static lesson pages come from the network, and offline open the app screen', async ({
+  page,
+}) => {
+  // Own server, so "offline" can be real: Chromium's setOffline does not reach SW fetches.
+  const types: Record<string, string> = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
+    '.webmanifest': 'application/manifest+json',
+  };
+  const srv = createServer((req, res) => {
+    let p = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
+    if (p.endsWith('/')) p += 'index.html';
+    const f = join('dist', p);
+    if (!existsSync(f) || !statSync(f).isFile()) {
+      res.writeHead(404);
+      res.end('nf');
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': types[extname(f)] ?? 'application/octet-stream',
+      'cache-control': 'no-store',
+    });
+    createReadStream(f).pipe(res);
+  });
+  await new Promise<void>((r) => srv.listen(0, r));
+  const url = `http://localhost:${(srv.address() as AddressInfo).port}/`;
+  try {
+    await page.goto(url);
+    await page.waitForFunction('!!navigator.serviceWorker.controller');
+
+    // Online, under SW control: the real static page, not the SPA shell.
+    await page.goto(url + 'learn/welcome/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome to the table');
+    await expect(page.locator('#app')).toHaveCount(0);
+    await expect(page).toHaveTitle(/Welcome to the table/);
+
+    // Server gone: the SW redirects to the same lesson in the app (served from the precache).
+    srv.closeAllConnections();
+    await new Promise<void>((r) => srv.close(() => r()));
+    await page.goto(url + 'learn/hand-rankings/');
+    await expect(page).toHaveURL(/#\/learn\/hand-rankings$/);
+    await expect(page.getByRole('heading', { level: 1 }).first()).toHaveText(
+      'Poker hands in five minutes',
+    );
+  } finally {
+    if (srv.listening) srv.close();
   }
 });

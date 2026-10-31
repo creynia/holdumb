@@ -1,7 +1,7 @@
 {
-  "name": "holdumb: learn Ultimate Texas Hold'em",
+  "name": "Ultimate Texas Hold'em: Lessons & Strategy (holdumb)",
   "short_name": "holdumb",
-  "description": "Learn Ultimate Texas Hold'em: lessons, odds, and a practice table.",
+  "description": "Learn Ultimate Texas Hold'em free: short lessons, the exact strategy chart, and a play-money practice table that shows the EV of every decision.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import ts from 'typescript';
 import type { Plugin } from 'vite';
+import { STATIC_DIRS, STATIC_FILES, isStaticPath } from './seo/site';
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -13,7 +14,9 @@ function walk(dir: string): string[] {
 
 /**
  * Emits `sw.js` (from src/pwa/sw.ts) with a precache list of every built file, and
- * injects the manifest + apple-touch-icon links. Only added to non-single builds.
+ * injects the manifest + apple-touch-icon links. Only added to non-single builds. The static SEO
+ * pages, sitemap and llms files (build/vite-plugin-seo.ts) are left out of the precache; the SW
+ * sends those to the network (`__STATIC__`).
  */
 export function swPlugin(): Plugin {
   let outDir = 'dist';
@@ -45,7 +48,9 @@ export function swPlugin(): Plugin {
         if (this.environment && this.environment.config.build.ssr) return;
         const files = walk(outDir)
           .map((f) => relative(outDir, f).split('\\').join('/'))
-          .filter((f) => f !== 'sw.js' && f !== 'holdumb.html' && !f.endsWith('.map'))
+          .filter(
+            (f) => f !== 'sw.js' && f !== 'holdumb.html' && !f.endsWith('.map') && !isStaticPath(f),
+          )
           .sort();
         const precache = ['./', ...files.map((f) => './' + f)];
         const src = readFileSync(resolve(root, 'src/pwa/sw.ts'), 'utf8');
@@ -58,7 +63,8 @@ export function swPlugin(): Plugin {
         }).outputText;
         const out = js
           .replace(/__PRECACHE__/g, JSON.stringify(precache))
-          .replace(/__VERSION__/g, JSON.stringify(version));
+          .replace(/__VERSION__/g, JSON.stringify(version))
+          .replace(/__STATIC__/g, JSON.stringify({ dirs: STATIC_DIRS, files: STATIC_FILES }));
         writeFileSync(join(outDir, 'sw.js'), out);
       },
     },

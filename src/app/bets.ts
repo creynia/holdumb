@@ -1,5 +1,6 @@
 import { HAND_CATEGORIES } from '../sim/engine';
-import type { Fraction, HandCategory, Odds, Paytable } from '../sim';
+import type { HandCategory, Odds, Paytable } from '../sim/engine';
+import type { Fraction } from '../sim/math';
 import type { Tier } from '../content/types';
 
 /**

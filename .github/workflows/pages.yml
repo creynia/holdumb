@@ -31,6 +31,10 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sitemap
+          path: dist/sitemap.xml
 
   deploy:
     needs: build
@@ -41,3 +45,22 @@ jobs:
     steps:
       - id: d
         uses: actions/deploy-pages@v4
+
+  # Tell search engines (IndexNow) about the pages in the new sitemap. Best effort only.
+  indexnow:
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: sitemap
+          path: dist
+      - name: Submit sitemap URLs to IndexNow
+        continue-on-error: true
+        run: node scripts/indexnow.mjs dist/sitemap.xml
