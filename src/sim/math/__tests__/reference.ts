@@ -6,6 +6,7 @@ import type { Card } from '../../engine/types';
 import { frac } from '../fraction';
 import type { Fraction } from '../types';
 
+/** mulberry32 by Tommy Ettinger (public domain); tests only. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
