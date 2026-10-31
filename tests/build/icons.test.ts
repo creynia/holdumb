@@ -28,7 +28,9 @@ describe('gen-icons', () => {
 
 describe('manifest', () => {
   const m = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8')) as {
+    name: string;
     short_name: string;
+    description: string;
     theme_color: string;
     background_color: string;
     display: string;
@@ -36,6 +38,8 @@ describe('manifest', () => {
   };
   it('has the navy theme and standalone display', () => {
     expect(m.short_name).toBe('holdumb');
+    expect(m.name).toMatch(/^Ultimate Texas Hold'em/);
+    expect(m.description).toMatch(/Ultimate Texas Hold'em/);
     expect(m.theme_color).toBe('#0b2e4a');
     expect(m.background_color).toBe('#0b2e4a');
     expect(m.display).toBe('standalone');

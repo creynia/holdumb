@@ -4,10 +4,10 @@ A phone-first web app that teaches **Ultimate Texas Hold'em** from zero to perfe
 
 ## Use it
 
-- **Open it:** <https://creynia.github.io/holdumb/>
+- **Open it:** <https://creynia.com/holdumb/>
 - **Add to Home screen (Android/Chrome):** open the link, tap the Chrome menu (three dots), then **Add to Home screen** (or **Install app**). It launches full screen and works offline after the first load.
 - **Download one offline file:** go to this repo's **Releases**, open **Latest build** and download `holdumb.html` (also linked from the site's Home screen). Open it from Chrome's Downloads list and choose **Chrome**, not "HTML Viewer". It makes no external requests. Progress in this copy is separate from the website copy, so use Settings, then Export/Import to move it.
-- **Reload past the cache:** the installed app updates itself and shows "Update available, Reload". If it doesn't, open **Settings, Check for updates**. Tap **Reload** on the toast; if none shows, close the app completely (swipe it away from Recents) and open it again. To wipe the site's data in Chrome on Android: **⋮, Settings, Site settings, All sites, creynia.github.io, Delete & reset**.
+- **Reload past the cache:** the installed app updates itself and shows "Update available, Reload". If it doesn't, open **Settings, Check for updates**. Tap **Reload** on the toast; if none shows, close the app completely (swipe it away from Recents) and open it again. To wipe the site's data in Chrome on Android: **⋮, Settings, Site settings, All sites, creynia.com, Delete & reset**.
 
 ### One-time setup (maintainer, from a phone)
 
@@ -33,6 +33,24 @@ npm run check      # lint, typecheck, format check, unit tests
 npm run build:all  # dist/ (PWA) and dist-single/holdumb.html
 npm run test:e2e   # Playwright (needs a browser, see CONTRIBUTING.md)
 ```
+
+### Static pages for search engines and LLMs
+
+The app uses hash routes (`#/learn/<id>`), which crawlers ignore. So `npm run build` (not
+`build:single`) also writes plain, JS-free HTML pages at real paths, rendered from the same
+`content/` bundle the app ships (`build/vite-plugin-seo.ts`, `build/seo/`):
+
+- `learn/` (course index) and `learn/<lessonId>/` for every lesson; scenes become a "try it in the
+  app" note, charts become HTML tables, quizzes show their answers in a `<details>`.
+- `strategy/` (the preflop 4x chart plus flop and river rules), `bets/`, `bets/<wager>/`, `glossary/`.
+- `sitemap.xml`, `llms.txt` and `llms-full.txt` (the full text of every page as markdown).
+
+The same plugin fills the SPA head (title, canonical, Open Graph, JSON-LD) and a `<noscript>` block.
+Each page links into the app with a relative hash link. The service worker does not precache these
+files; offline, a static page redirects to the same screen in the app. After each deploy to `main`,
+`pages.yml` sends the sitemap URLs to IndexNow (`scripts/indexnow.mjs`). Canonical URLs use
+`https://creynia.com/holdumb/`, and the link-preview image comes from the landing site
+(`/assets/og/holdumb.jpg`). Tests: `tests/build/seo.test.ts`.
 
 Design documents are in [`docs/design/`](docs/design/). Planned future work is listed in [`docs/chips.md`](docs/chips.md). See [CONTRIBUTING.md](CONTRIBUTING.md) to get involved.
 

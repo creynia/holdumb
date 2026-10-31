@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('home renders a visible h1 and the title', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('h1').first()).toBeVisible();
-  await expect(page).toHaveTitle('holdumb');
+  await expect(page).toHaveTitle(/^Ultimate Texas Hold'em.*\| holdumb$/);
 });
 
 test('no horizontal scroll', async ({ page }) => {

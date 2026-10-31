@@ -1,9 +1,11 @@
 // Service worker source. Compiled (type-stripped) and injected with the precache
 // list by build/vite-plugin-sw.ts, which emits it as `sw.js`. Not bundled into the app.
-// The two build-time constants declared below are replaced textually.
+// The build-time constants declared below are replaced textually.
 
 declare const __PRECACHE__: string[];
 declare const __VERSION__: string;
+/** Static SEO pages (dirs) and root files (sitemap, llms) that are never cached: network only. */
+declare const __STATIC__: { dirs: string[]; files: string[] };
 
 interface ExtendableEventLike extends Event {
   waitUntil(p: Promise<unknown>): void;
@@ -29,6 +31,16 @@ const PREFIX = 'holdumb-';
 const CACHE = PREFIX + __VERSION__;
 const urls = __PRECACHE__.map((p) => new URL(p, sw.location.href).href);
 const indexUrl = new URL('./index.html', sw.location.href).href;
+const scope = new URL('./', sw.location.href);
+
+/** 'learn/welcome/' for a static page under the app root, else null. */
+function staticPath(url: URL): string | null {
+  if (!url.pathname.startsWith(scope.pathname)) return null;
+  const rel = url.pathname.slice(scope.pathname.length);
+  return __STATIC__.dirs.some((d) => rel.startsWith(d)) || __STATIC__.files.includes(rel)
+    ? rel
+    : null;
+}
 
 sw.addEventListener('install', (event) => {
   // Note: no automatic skipWaiting; the app shows "Update available" and posts SKIP_WAITING.
@@ -64,6 +76,20 @@ sw.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== new URL(sw.location.href).origin) return;
+
+  // Static pages (learn/<id>/ etc.) always come from the network, never the app shell. Offline,
+  // a navigation goes to the same screen in the app instead (learn/<id>/ -> ./#/learn/<id>).
+  const rel = staticPath(url);
+  if (rel !== null) {
+    event.respondWith(
+      fetch(req).catch((err: unknown) => {
+        if (req.mode === 'navigate' && rel.endsWith('/'))
+          return Response.redirect(scope.href + '#/' + rel.replace(/\/$/, ''), 302);
+        throw err;
+      }),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {

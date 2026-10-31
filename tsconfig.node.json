@@ -24,7 +24,9 @@
     "src/sim/engine/**/*.ts",
     "src/sim/math/**/*.ts",
     "src/sim/strategy/**/*.ts",
-    "src/sim/scene/**/*.ts"
+    "src/sim/scene/**/*.ts",
+    "src/app/bets.ts",
+    "src/app/screens/handLabels.ts"
   ],
   "exclude": ["**/*.test.ts"]
 }
