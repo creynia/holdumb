@@ -49,6 +49,15 @@ export function About(props: { check?: () => Promise<UpdateCheck> }) {
         someone you know harm, call 1-800-GAMBLER (US) or find your national problem-gambling
         helpline.
       </p>
+      <p class="muted">
+        Ultimate Texas Hold&apos;em&reg; is a registered trademark of Bally Gaming, Inc. (Light
+        &amp; Wonder); the game was invented by Roger Snow at Shuffle Master. holdumb is not
+        affiliated with or endorsed by its owner.
+      </p>
+      <p class="muted">
+        Rules, figures and strategies come from published sources, credited on the{' '}
+        <Link to="/sources">Sources</Link> screen.
+      </p>
     </div>
   );
 }

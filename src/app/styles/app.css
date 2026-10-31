@@ -820,3 +820,45 @@ textarea {
   padding: 0 0.15em;
   font-size: 0.85em;
 }
+
+/* Sources screen, lesson citations and credit footers */
+.source-list {
+  list-style: none;
+  padding: 0;
+}
+.source-list li {
+  margin: 0.7rem 0;
+}
+.source-note {
+  display: block;
+  font-size: 0.85rem;
+}
+.lesson-sources {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.lesson-sources h2 {
+  font-size: 1rem;
+}
+.lesson-sources li {
+  margin: 0.4rem 0;
+}
+.source-credit {
+  font-size: 0.85rem;
+}
+.cite {
+  line-height: 0;
+}
+.cite-btn {
+  all: unset;
+  cursor: pointer;
+  color: var(--focus);
+  font-size: 0.75rem;
+  padding: 0 0.15rem;
+  min-width: 1ch;
+}
+.cite-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}

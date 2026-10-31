@@ -65,7 +65,15 @@ describe('shell', () => {
     );
   });
   it('keeps More highlighted on its sub-screens', async () => {
-    for (const h of ['#/strategy', '#/hands', '#/bets', '#/settings', '#/about', '#/glossary']) {
+    for (const h of [
+      '#/strategy',
+      '#/hands',
+      '#/bets',
+      '#/settings',
+      '#/about',
+      '#/glossary',
+      '#/sources',
+    ]) {
       const { el } = await mount(h);
       expect(el.querySelector('nav.tabbar a[aria-current="page"]')?.getAttribute('href')).toBe(
         '#/more',
@@ -85,6 +93,7 @@ describe('shell', () => {
     '#/glossary',
     '#/settings',
     '#/about',
+    '#/sources',
     '#/more',
   ])('%s renders one h1 (or the table)', async (h) => {
     const { el } = await mount(h);
@@ -224,7 +233,9 @@ describe('reference screens', () => {
     const { el } = await mount('#/more');
     const hrefs = [...el.querySelectorAll('.grid a')].map((a) => a.getAttribute('href'));
     expect(hrefs[0]).toBe('#/strategy');
-    expect(hrefs).toEqual(expect.arrayContaining(['#/hands', '#/bets', '#/settings', '#/about']));
+    expect(hrefs).toEqual(
+      expect.arrayContaining(['#/hands', '#/bets', '#/sources', '#/settings', '#/about']),
+    );
   });
 });
 

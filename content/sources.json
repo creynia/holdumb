@@ -1,0 +1,185 @@
+[
+  {
+    "group": "Figures & analysis",
+    "items": [
+      {
+        "id": "woo-uth-figures",
+        "title": "Ultimate Texas Hold'em, house edge, element of risk and Trips tables",
+        "author": "Michael Shackleford, Wizard of Odds",
+        "url": "https://wizardofodds.com/games/ultimate-texas-hold-em/",
+        "note": "Published house edge (2.185% of the Ante), element of risk (0.526%) and Trips paytable edges. holdumb recomputes every figure itself and they agree."
+      },
+      {
+        "id": "guide-treasury-brisbane",
+        "title": "Treasury Brisbane gaming guide: Ultimate Texas Hold'em",
+        "author": "Treasury Brisbane",
+        "url": "https://www.treasurybrisbane.com.au/sites/treasurybrisbane.com.au/files/tbne_qld_gaming_guide_-_ultimate_texas_hold_em.pdf",
+        "note": "Casino-published edge figures (about 2.18% of the Ante, 0.53% of total bet) used as a cross-check, and the Trips 8/7/4 table."
+      }
+    ]
+  },
+  {
+    "group": "Rules & strategy",
+    "items": [
+      {
+        "id": "woo-uth-strategy",
+        "title": "Ultimate Texas Hold'em, basic strategy",
+        "author": "Michael Shackleford, Wizard of Odds",
+        "url": "https://wizardofodds.com/games/ultimate-texas-hold-em/",
+        "note": "The published simple strategy behind the app's Practical lens: the preflop 4x list, the flop 2x rule and the river 1x rule. Every EV is recomputed by holdumb."
+      },
+      {
+        "id": "wikipedia-uth",
+        "title": "Ultimate Texas Hold'em",
+        "author": "Wikipedia",
+        "url": "https://en.wikipedia.org/wiki/Ultimate_Texas_Hold%27em",
+        "note": "Rules overview and the game's history."
+      },
+      {
+        "id": "pokerlistings-uth",
+        "title": "How to Play Ultimate Texas Hold'em",
+        "author": "PokerListings",
+        "url": "https://www.pokerlistings.com/how-to-play-ultimate-texas-holdem",
+        "note": "Rules, the Blind and Trips tables, and the preflop 4x list."
+      },
+      {
+        "id": "rack-caesars",
+        "title": "Ultimate Texas Hold'em rack card",
+        "author": "Caesars",
+        "url": "https://www.caesars.com/content/dam/ccr/Gaming/tableGames/Ultimate%20Texas%20Holdem_Rack_Card.pdf",
+        "note": "Blind table, Trips 8/7/4 and the Progressive with fixed 50/40/30/9 \"for 1\" awards."
+      },
+      {
+        "id": "rack-tulalip",
+        "title": "Ultimate Texas Hold'em rack card",
+        "author": "Tulalip Resort Casino",
+        "url": "https://www.tulalipresort.com/wp-content/uploads/2024/04/ONEclub_0920_GameRules_RackCard_UltimateTexasHoldem-WEB.pdf",
+        "note": "Blind table, Trips 8/7/4 and the Progressive."
+      },
+      {
+        "id": "guide-rivers-pittsburgh",
+        "title": "Gaming guide: Ultimate Texas Hold'em",
+        "author": "Rivers Casino Pittsburgh",
+        "url": "https://edge.sitecorecloud.io/cordishc-4m5nplkf/media/Files/Pittsburgh/Gaming-Guides/Updated-2021-Gaming-Guides/PA-Gaming-GuidesULTIMATE-TEXAS-HOLDEM.pdf?rev=-1",
+        "note": "Progressive awards of 100% (royal flush) and 10% (straight flush) of the meter."
+      },
+      {
+        "id": "guide-crown-sydney",
+        "title": "Game guide: Ultimate Texas Hold'em",
+        "author": "Crown Sydney",
+        "url": "https://www.crownsydney.com.au/getmedia/7e0e7cf9-52b9-40c5-bb26-59619e59aa22/Crown-Sydney-Gaming-Game-Guide-Poker-Ultimate-Texas-Holdem.pdf",
+        "note": "Rules and Progressive structure."
+      },
+      {
+        "id": "guide-sun-international",
+        "title": "Casino tables: Texas Hold'em guide",
+        "author": "Sun International",
+        "note": "Rules and a 7/6/5 Trips table. The original PDF has since been taken offline."
+      },
+      {
+        "id": "terms-club-hotel-loutraki",
+        "title": "Ultimate Texas Hold'em terms",
+        "author": "Club Hotel Loutraki Casino",
+        "url": "https://www.clubhotelloutraki.gr/casino/wp-content/uploads/2023/02/clubhotelloutraki_casino_ultimate-texas-holdem_terms_en.pdf",
+        "note": "Rules and paytable variants."
+      },
+      {
+        "id": "onthestrip-uth",
+        "title": "Ultimate Texas Hold'em on the Strip",
+        "author": "OnTheStrip",
+        "url": "https://onthestrip.com/casinos/ultimate-texas-holdem-on-the-strip/",
+        "note": "Six Card Bonus mechanics and example tables."
+      },
+      {
+        "id": "vegas-aces-uth",
+        "title": "How to play Ultimate Texas Hold'em",
+        "author": "Vegas Aces",
+        "url": "https://www.vegas-aces.com/learn/how-to-play-ultimate-texas-holdem/",
+        "note": "Six Card Bonus mechanics and example tables."
+      },
+      {
+        "id": "nj-dge-six-card-bonus",
+        "title": "Shuffle Master six-card bonus (five-card poker derivatives), temporary regulation",
+        "author": "New Jersey Division of Gaming Enforcement",
+        "url": "https://nj.gov/oag/ge/docs/TempRegs/SHFL6cardbonusfivepokerderivatives.pdf",
+        "note": "The minimum six-card paytable of 1000/200/50/20/15/10/5, and the two hole cards plus four community cards rule."
+      }
+    ]
+  },
+  {
+    "group": "Named methods",
+    "items": [
+      {
+        "id": "grosjean-uth",
+        "title": "Flop and river rules (hidden pair; fewer than 21 dealer outs) and the outs-counting method",
+        "author": "James Grosjean, as credited by the Wizard of Odds",
+        "note": "The Wizard of Odds attributes the flop and river parts of its strategy to Grosjean. holdumb's lessons teach the same rules and method in their own words."
+      }
+    ]
+  },
+  {
+    "group": "Algorithms",
+    "items": [
+      {
+        "id": "xoshiro128ss",
+        "title": "xoshiro128** pseudo-random generator",
+        "author": "David Blackman and Sebastiano Vigna",
+        "url": "https://prng.di.unimi.it/",
+        "note": "Public domain. Drives every shuffle and simulation."
+      },
+      {
+        "id": "splitmix32",
+        "title": "splitmix32 seeding",
+        "author": "Variant of SplitMix (Steele, Lea and Flood)",
+        "note": "Turns a single seed number into the generator's four-word state."
+      },
+      {
+        "id": "mulberry32",
+        "title": "mulberry32",
+        "author": "Tommy Ettinger",
+        "note": "Public domain. Used only in the test suite, as an independent source of random hands."
+      },
+      {
+        "id": "murmur3-fmix32",
+        "title": "MurmurHash3 finalizer (fmix32) constants",
+        "author": "Austin Appleby",
+        "note": "Public domain. Mixing step in the Drill screen's seeding."
+      }
+    ]
+  },
+  {
+    "group": "Trademarks",
+    "items": [
+      {
+        "id": "uth-trademark",
+        "title": "Ultimate Texas Hold'em®",
+        "author": "Bally Gaming, Inc. (Light & Wonder)",
+        "note": "Ultimate Texas Hold'em is a registered trademark of Bally Gaming, Inc. (Light & Wonder); the game was invented by Roger Snow at Shuffle Master. holdumb is not affiliated with or endorsed by its owner."
+      }
+    ]
+  },
+  {
+    "group": "Software",
+    "items": [
+      {
+        "id": "preact",
+        "title": "Preact",
+        "author": "Jason Miller and contributors",
+        "url": "https://preactjs.com/",
+        "note": "MIT license, © Jason Miller and contributors. The user interface library."
+      }
+    ]
+  },
+  {
+    "group": "Help",
+    "items": [
+      {
+        "id": "ncpg",
+        "title": "Gambling help and treatment (1-800-GAMBLER)",
+        "author": "National Council on Problem Gambling",
+        "url": "https://www.ncpgambling.org/help-treatment/",
+        "note": "If gambling is causing you or someone you know harm, call or text 1-800-GAMBLER."
+      }
+    ]
+  }
+]

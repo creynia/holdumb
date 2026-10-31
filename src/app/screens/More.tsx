@@ -22,6 +22,10 @@ export function More() {
           <strong>Glossary</strong>
           <span class="muted">Poker words, explained</span>
         </Link>
+        <Link to="/sources" class="card tile">
+          <strong>Sources</strong>
+          <span class="muted">Where the rules, figures and strategies come from</span>
+        </Link>
         <Link to="/settings" class="card tile">
           <strong>Settings</strong>
           <span class="muted">Table, theme, your progress</span>

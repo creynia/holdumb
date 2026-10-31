@@ -46,6 +46,21 @@ export type Block =
   | { kind: 'chart'; chart: ChartBlockData }
   | { kind: 'quiz'; quiz: Quiz };
 
+/** One entry of content/sources.json (shown on #/sources and cited by lessons). */
+export interface SourceItem {
+  id: string;
+  title: string;
+  author?: string;
+  url?: string;
+  note?: string;
+}
+export interface SourceGroup {
+  group: string;
+  items: SourceItem[];
+}
+/** A source as a lesson cites it (resolved from `sources:` front matter). */
+export type LessonSource = Omit<SourceItem, 'id'> & { id?: string };
+
 export interface Lesson {
   id: LessonId;
   title: string;
@@ -53,6 +68,8 @@ export interface Lesson {
   minutes: number;
   chapterId: ChapterId;
   blocks: Block[];
+  /** cited sources, in `[^n]` order (1-based); absent when the lesson cites none */
+  sources?: LessonSource[];
 }
 
 export interface Chapter {
@@ -103,4 +120,5 @@ export interface ContentBundle {
   bets: Record<WagerId, BetCopy>;
   hands: Record<HandCategory, HandCopy>;
   strategy: Record<StrategyId, StrategyCopy>;
+  sources: SourceGroup[];
 }

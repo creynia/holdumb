@@ -10,7 +10,7 @@ export const TABS = [
     to: '/more',
     label: 'More',
     icon: '≡',
-    match: (p: string) => /^\/(more|strategy|hands|bets|glossary|settings|about)/.test(p),
+    match: (p: string) => /^\/(more|strategy|hands|bets|glossary|settings|sources|about)/.test(p),
   },
 ];
 

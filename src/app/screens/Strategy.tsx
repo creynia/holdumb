@@ -55,6 +55,13 @@ export function Strategy({ query }: { query: URLSearchParams }) {
               </li>
             ))}
           </ul>
+          {lens.id === 'practical' && (
+            <p class="muted source-credit">
+              Basic strategy as published by the Wizard of Odds (Michael Shackleford), flop and
+              river rules after James Grosjean; every EV recomputed by holdumb.{' '}
+              <Link to="/sources">See Sources</Link>.
+            </p>
+          )}
         </section>
       )}
       {VIEWS.map((v) => (
