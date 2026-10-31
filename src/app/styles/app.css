@@ -862,3 +862,10 @@ textarea {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
+/* full-height tap targets for source links (44 px rule) */
+.source-list a,
+.lesson-sources a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
