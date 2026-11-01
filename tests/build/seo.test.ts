@@ -61,6 +61,9 @@ describe('static SEO pages (generated)', () => {
       expect(h).not.toMatch(/<script(?! type="application\/ld\+json")/);
       expect(h).not.toMatch(/\{\{|\[\[|^:::|```/m);
       expect(h).not.toMatch(/href="#\//);
+      // One cookieless GoatCounter pixel for the page's own path.
+      expect(h.match(/creynia\.goatcounter\.com\/count/g) ?? []).toHaveLength(1);
+      expect(h).toContain(`count?p=${encodeURIComponent(`/holdumb/${dir}`)}"`);
     },
   );
 

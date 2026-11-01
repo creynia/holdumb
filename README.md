@@ -22,6 +22,13 @@ If a deploy fails with "deployment in progress", re-run the failed job.
 
 No. holdumb is for education. In Ultimate Texas Hold'em the house always has an edge, and no betting system changes that; the lessons show you how big the edge is and which plays cost the least, not how to win. Play money only here. If gambling is causing you or someone you know harm, call **1-800-GAMBLER** (US) or find local resources at your national problem-gambling helpline.
 
+## Privacy
+
+Your progress stays in your browser and is never synced to a server (Settings, Export/Import
+moves it between copies). The site counts anonymous, cookieless page views with GoatCounter (no identifiers, no
+tracking across sites, off with Do Not Track or Global Privacy Control, never in the offline file);
+see [`docs/analytics.md`](docs/analytics.md).
+
 ## Development
 
 Requires Node >= 22.12.

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { trackEvent } from '../analytics';
 import { Html } from '../components/Html';
 import { Link } from '../components/Link';
 import { LessonScene } from '../components/LessonScene';
@@ -118,7 +119,10 @@ export function LessonView({ id }: { id: string }) {
           type="button"
           class={done ? 'btn btn-ghost' : 'btn'}
           aria-pressed={done}
-          onClick={() => store.completeLesson(lesson.id, !done)}
+          onClick={() => {
+            if (!done) trackEvent(`lesson-complete/${lesson.id}`);
+            store.completeLesson(lesson.id, !done);
+          }}
         >
           {done ? '✓ Completed (tap to undo)' : 'Mark complete'}
         </button>
