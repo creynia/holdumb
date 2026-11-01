@@ -32,6 +32,8 @@ const CACHE = PREFIX + __VERSION__;
 const urls = __PRECACHE__.map((p) => new URL(p, sw.location.href).href);
 const indexUrl = new URL('./index.html', sw.location.href).href;
 const scope = new URL('./', sw.location.href);
+// Static pages with no app screen of their own: offline, open the lesson that covers them.
+const OFFLINE_SCREEN: Record<string, string> = { 'house-edge/': 'learn/edge-vs-risk/' };
 
 /** 'learn/welcome/' for a static page under the app root, else null. */
 function staticPath(url: URL): string | null {
@@ -83,8 +85,10 @@ sw.addEventListener('fetch', (event) => {
   if (rel !== null) {
     event.respondWith(
       fetch(req).catch((err: unknown) => {
-        if (req.mode === 'navigate' && rel.endsWith('/'))
-          return Response.redirect(scope.href + '#/' + rel.replace(/\/$/, ''), 302);
+        if (req.mode === 'navigate' && rel.endsWith('/')) {
+          const target = OFFLINE_SCREEN[rel] ?? rel;
+          return Response.redirect(scope.href + '#/' + target.replace(/\/$/, ''), 302);
+        }
         throw err;
       }),
     );

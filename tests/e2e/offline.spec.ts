@@ -173,7 +173,7 @@ test('static lesson pages come from the network, and offline open the app screen
     await page.goto(url + 'learn/welcome/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome to the table');
     await expect(page.locator('#app')).toHaveCount(0);
-    await expect(page).toHaveTitle(/Welcome to the table/);
+    await expect(page).toHaveTitle(/How to Play .*Welcome to the Table/);
 
     // Server gone: the SW redirects to the same lesson in the app (served from the precache).
     srv.closeAllConnections();

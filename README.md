@@ -49,7 +49,12 @@ The app uses hash routes (`#/learn/<id>`), which crawlers ignore. So `npm run bu
 
 - `learn/` (course index) and `learn/<lessonId>/` for every lesson; scenes become a "try it in the
   app" note, charts become HTML tables, quizzes show their answers in a `<details>`.
-- `strategy/` (the preflop 4x chart plus flop and river rules), `bets/`, `bets/<wager>/`, `glossary/`.
+- `strategy/` (the preflop 4x chart plus flop and river rules), `house-edge/` (house edge, element of
+  risk and cost per hour of each strategy, Trips edges, dealer qualifying, hand odds), `bets/`,
+  `bets/<wager>/`, `glossary/`. Answer pages open with a one-paragraph answer; every number on them
+  is computed from the engine and math modules at build time (`build/seo/numbers.ts`).
+- Each lesson, bet and reference page ends with a "Related" list chosen from the content data
+  (`relatedDirs` in `build/seo/pages.ts`).
 - `sitemap.xml`, `llms.txt` and `llms-full.txt` (the full text of every page as markdown).
 
 The same plugin fills the SPA head (title, canonical, Open Graph, JSON-LD) and a `<noscript>` block.
