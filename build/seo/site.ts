@@ -17,7 +17,7 @@ export const OTHER_APPS = [
 ] as const;
 
 /** Directories (relative to the app root) that hold static pages, and the extra root files. */
-export const STATIC_DIRS = ['learn/', 'bets/', 'glossary/', 'strategy/'] as const;
+export const STATIC_DIRS = ['learn/', 'bets/', 'glossary/', 'strategy/', 'house-edge/'] as const;
 export const STATIC_FILES = ['sitemap.xml', 'llms.txt', 'llms-full.txt'] as const;
 
 /** True for a dist-relative path ('learn/welcome/index.html', 'sitemap.xml') owned by the SEO build. */
@@ -187,6 +187,10 @@ ol.lessons .s{display:block;color:var(--muted);font-size:.95rem}
 .prevnext{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin:2rem 0 1rem;padding-top:1rem;border-top:1px solid var(--line)}
 .prevnext a{max-width:48%}
 .prevnext .next{margin-left:auto;text-align:right}
+nav.related{margin:2rem 0 0;padding-top:.5rem;border-top:1px solid var(--line)}
+nav.related h2{margin-top:1rem}
+nav.related ul{padding-left:1.4rem}
+nav.related li{margin:.35rem 0}
 footer{border-top:1px solid var(--line);background:var(--bg);color:var(--muted);font-size:.9rem;padding:1.25rem 0 2rem}
 footer p{margin:.5rem 0;max-width:70ch}
 footer a{color:var(--muted)}

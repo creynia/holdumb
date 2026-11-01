@@ -32,11 +32,15 @@ describe.skipIf(!existsSync('dist/sw.js'))('dist/sw.js', () => {
   });
   it('leaves the static SEO pages, sitemap and llms files to the network', () => {
     const urls = list();
-    expect(urls.some((u) => /^\.\/(learn|bets|glossary|strategy)\//.test(u))).toBe(false);
+    expect(urls.some((u) => /^\.\/(learn|bets|glossary|strategy|house-edge)\//.test(u))).toBe(
+      false,
+    );
     for (const f of ['sitemap.xml', 'llms.txt', 'llms-full.txt'])
       expect(urls).not.toContain(`./${f}`);
     expect(sw).not.toContain('__STATIC__');
     expect(sw).toContain('"learn/"');
     expect(sw).toContain('Response.redirect');
+    // house-edge/ has no app screen, so offline it opens the lesson that covers it.
+    expect(sw).toContain('learn/edge-vs-risk/');
   });
 });
