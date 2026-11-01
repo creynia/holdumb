@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef } from 'preact/hooks';
+import { pagePath, trackPage } from './analytics';
 import { Shell } from './components/Shell';
 import { useStore } from './context';
 import { consumeFreshNav, useRoute } from './router';
@@ -37,6 +38,8 @@ export function App() {
       }),
     [store],
   );
+  // One anonymous page view per route (path only; query strings are dropped).
+  useEffect(() => trackPage(pagePath(location.pathname, route.path)), [route.path]);
   // Move focus to the page after a route change (not on first load).
   const firstRoute = useRef(true);
   useEffect(() => {

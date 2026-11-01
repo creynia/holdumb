@@ -8,6 +8,8 @@ export const BASE_URL = `${ORIGIN}/${APP}/`;
 export const SITE_NAME = 'Know the Odds';
 export const THEME = '#0b2e4a';
 export const OG_IMAGE = `${ORIGIN}/assets/og/${APP}.jpg`;
+/** GoatCounter page-view pixel (docs/analytics.md); same endpoint as src/app/analytics.ts. */
+export const COUNT_URL = 'https://creynia.goatcounter.com/count';
 export const PERSON_ID = `${ORIGIN}/#creynia`;
 export const WEBSITE_ID = `${ORIGIN}/#website`;
 export const OTHER_APPS = [
@@ -209,6 +211,12 @@ export interface PageInput {
   h1: string;
 }
 
+/** A JS-free, cookieless page-view count for a static page (dir like 'learn/welcome/'). */
+export function countPixel(path: string): string {
+  const p = encodeURIComponent(`/${APP}/${path}`);
+  return `<img src="${COUNT_URL}?p=${p}" alt="" width="1" height="1" style="position:absolute;left:-9999px">`;
+}
+
 export function renderPage(p: PageInput): string {
   const up = upFrom(p.dir);
   const url = abs(p.dir);
@@ -258,6 +266,7 @@ ${p.body}
         <p>More from ${SITE_NAME}: ${others} · <a href="${ORIGIN}/">creynia.com</a></p>
       </div>
     </footer>
+    ${countPixel(p.dir)}
   </body>
 </html>
 `;
