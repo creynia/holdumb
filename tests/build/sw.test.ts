@@ -32,7 +32,9 @@ describe.skipIf(!existsSync('dist/sw.js'))('dist/sw.js', () => {
   });
   it('leaves the static SEO pages, sitemap and llms files to the network', () => {
     const urls = list();
-    expect(urls.some((u) => /^\.\/(learn|bets|glossary|strategy)\//.test(u))).toBe(false);
+    expect(urls.some((u) => /^\.\/(learn|bets|glossary|strategy|house-edge)\//.test(u))).toBe(
+      false,
+    );
     for (const f of ['sitemap.xml', 'llms.txt', 'llms-full.txt'])
       expect(urls).not.toContain(`./${f}`);
     expect(sw).not.toContain('__STATIC__');
