@@ -40,5 +40,7 @@ describe.skipIf(!existsSync('dist/sw.js'))('dist/sw.js', () => {
     expect(sw).not.toContain('__STATIC__');
     expect(sw).toContain('"learn/"');
     expect(sw).toContain('Response.redirect');
+    // house-edge/ has no app screen, so offline it opens the lesson that covers it.
+    expect(sw).toContain('learn/edge-vs-risk/');
   });
 });
