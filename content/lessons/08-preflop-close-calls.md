@@ -127,3 +127,12 @@ steps:
   answer: 1
   explain: "About $1.91 an hour for the aces vs about 6¢ for K4o, at $10 and 30 hands an hour."
 ```
+
+```practise
+- label: "Drill preflop queens and jacks"
+  to: "#/drill?category=pre-queen-jack"
+- label: "Drill preflop kings"
+  to: "#/drill?category=pre-king"
+- label: "Play queen-seven offsuit preflop"
+  to: "#/play?hole=Qd7c"
+```

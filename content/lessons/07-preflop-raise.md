@@ -158,3 +158,12 @@ steps:
   answer: 2
   explain: "500 of the 1,326 possible hands: 37.7%."
 ```
+
+```practise
+- label: "Drill preflop aces"
+  to: "#/drill?category=pre-ace"
+- label: "Drill preflop kings"
+  to: "#/drill?category=pre-king"
+- label: "Play king-seven offsuit preflop"
+  to: "#/play?hole=Kh7c"
+```
