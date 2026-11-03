@@ -144,13 +144,15 @@ function isClose(s: DrillSpot): boolean {
  * decision comes up per hand of real play, as integers over 6,497,400 (= 663 x 9,800).
  * - preflop: 1 (every hand).
  * - flop: 413/663 = 4,047,400 (the chart checks 826 of 1,326 combos; decisions.md P(4x) = 250/663).
- * - river: P(check, then check) = 413/663 - P(2x on the flop) 1,382,947/6,497,400 = 2,664,453
- *   (about 41.01%; matches P(1x) 21.82% + P(fold) 19.19% in decisions.md section 4).
+ * - river: a river spot needs the preflop check and then a flop check under the basic card (the
+ *   filter `sampleStreet` uses): 4,047,400 - 1,381,793 = 2,665,607, where 1,381,793/6,497,400 =
+ *   5,527,172/25,989,600 is P(check preflop and the basic flop rule fires), enumerated over the
+ *   826 check combos x 19,600 flops (drill.test.ts recomputes it).
  */
 export const MIXED_STREET_WEIGHTS: Readonly<Record<DecisionStreet, number>> = {
   preflop: 6_497_400,
   flop: 4_047_400,
-  river: 2_664_453,
+  river: 2_665_607,
 };
 const STREETS_IN_ORDER: readonly DecisionStreet[] = ['preflop', 'flop', 'river'];
 

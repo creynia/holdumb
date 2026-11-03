@@ -12,7 +12,7 @@ import {
   spotCode,
   spotFromCode,
 } from './drill';
-import { classWeight } from './ranks';
+import { classRep, classWeight } from './ranks';
 import { matchesAny } from './predicates';
 import { handClass } from './ranks';
 import { PREFLOP_4X_PERFECT, RULE_DEFS } from './rules';
@@ -287,17 +287,32 @@ describe('Close calls (I068)', () => {
     const D = 6_497_400n; // 663 x 9,800
     expect(BigInt(MIXED_STREET_WEIGHTS.preflop)).toBe(D);
     expect(BigInt(MIXED_STREET_WEIGHTS.flop) * 1326n).toBe(D * 826n);
-    // river = P(check preflop) - P(2x on the flop); P(2x) = 1,382,947 / 6,497,400 (about 21.28%)
-    expect(MIXED_STREET_WEIGHTS.river).toBe(MIXED_STREET_WEIGHTS.flop - 1_382_947);
-    // and equals P(1x) + P(fold) = 21.82% + 19.19% = about 41.01% of hands
-    expect(MIXED_STREET_WEIGHTS.river / MIXED_STREET_WEIGHTS.preflop).toBeCloseTo(0.4101, 3);
+    // River spots need a preflop check and then a flop check under the basic card. P(check
+    // preflop AND the basic flop rule bets 2x) is enumerated over the check classes (suit
+    // symmetry: one representative hole per class, weighted by its combos) x all 19,600 flops.
+    let fires = 0;
+    for (const c of all) {
+      if (fourX.has(c)) continue;
+      const hole = classRep(c);
+      const rest: number[] = [];
+      for (let k = 0; k < 52; k++) if (k !== hole[0] && k !== hole[1]) rest.push(k);
+      let n = 0;
+      for (let a = 0; a < rest.length; a++)
+        for (let b = a + 1; b < rest.length; b++)
+          for (let d = b + 1; d < rest.length; d++)
+            if (matchesAny(RULE_DEFS.basic.flop2x, hole, [rest[a]!, rest[b]!, rest[d]!])) n++;
+      fires += classWeight(c) * n;
+    }
+    expect(fires).toBe(5_527_172); // of 1,326 x 19,600 = 25,989,600 = 4 x 6,497,400
+    expect(MIXED_STREET_WEIGHTS.river).toBe(MIXED_STREET_WEIGHTS.flop - fires / 4);
+    expect(MIXED_STREET_WEIGHTS.river).toBe(2_665_607);
   });
 
   it('Mixed with close calls draws streets by those weights', () => {
     const n = 1200;
     const counts = { preflop: 0, flop: 0, river: 0 };
     for (const sp of many({ street: 'mixed', interesting: true }, n, 77)) counts[sp.street]++;
-    const total = 6_497_400 + 4_047_400 + 2_664_453;
+    const total = 6_497_400 + 4_047_400 + 2_665_607;
     for (const st of ['preflop', 'flop', 'river'] as const) {
       const p = MIXED_STREET_WEIGHTS[st] / total;
       // river and flop are accepted by closeness, which skews the mix a little: a wide band

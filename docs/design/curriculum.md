@@ -3311,7 +3311,7 @@ hand, as integers over 6,497,400 (= 663 x 9,800):
 |---|---|---|
 | preflop | 6,497,400 | every hand |
 | flop | 4,047,400 | the chart checks 826 of 1,326 combos: 413/663 (P(4x) = 250/663) |
-| river | 2,664,453 | 413/663 - P(2x on the flop) 1,382,947/6,497,400, about 41.01% (= P(1x) 21.82% + P(fold) 19.19%) |
+| river | 2,665,607 | 413/663 less P(check preflop and the basic card bets 2x) 1,381,793/6,497,400: a river spot needs a preflop check and a flop check under the basic card (about 41.02%) |
 
 ### 9.1 Categories
 
