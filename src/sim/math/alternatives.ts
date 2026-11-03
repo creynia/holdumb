@@ -58,28 +58,65 @@ export interface RiverFacts {
   hidden: boolean;
   /** Unseen cards that would give the dealer a hand better than yours (of 45). */
   outs: number;
+  /** The outs themselves, highest rank first, cards of one rank adjacent. `length === outs`. */
+  outCards: Card[];
   /** Your best five is the board itself. */
   boardPlays: boolean;
   /** Basic river: bet 1x if hidden or outs < 21, else fold. */
   basicAction: 'play' | 'fold';
 }
 
+/** Cards you can see on the river (2 + 5), so 45 are unseen. */
+export const RIVER_UNSEEN = 45;
+
 export function riverFacts(hole: readonly [Card, Card], board: readonly Card[]): RiverFacts {
   const mine = handValueOf([...hole, ...board]);
   const boardValue = handValueOf(board);
   const hidden = catOf(mine) >= 1 && catOf(mine) > catOf(boardValue);
-  let outs = 0;
+  const outCards: Card[] = [];
   const seen = new Set<number>([...hole, ...board]);
-  for (let c = 0; c < 52; c++) {
+  const six = [...board, 0];
+  for (let c = 51; c >= 0; c--) {
     if (seen.has(c)) continue;
-    if (handValueOf([...board, c]) > mine) outs++;
+    six[board.length] = c;
+    if (handValueOf(six) > mine) outCards.push(c);
   }
   return {
     hidden,
-    outs,
+    outs: outCards.length,
+    outCards,
     boardPlays: mine === boardValue,
-    basicAction: hidden || outs < 21 ? 'play' : 'fold',
+    basicAction: hidden || outCards.length < 21 ? 'play' : 'fold',
   };
+}
+
+/** One rank's share of the outs: `all` when every unseen card of that rank is an out. */
+export interface OutGroup {
+  rank: number;
+  cards: Card[];
+  all: boolean;
+}
+
+/**
+ * The outs grouped by rank, highest first, for copy like "any king (3)" (`all`) or
+ * "the 9 of clubs" (not `all`: only some unseen cards of that rank beat you, e.g. a flush).
+ */
+export function groupOuts(
+  outCards: readonly Card[],
+  hole: readonly [Card, Card],
+  board: readonly Card[],
+): OutGroup[] {
+  const seenOfRank = new Array<number>(13).fill(0);
+  for (const c of [...hole, ...board]) seenOfRank[c >> 2]!++;
+  const groups: OutGroup[] = [];
+  for (const c of [...outCards].sort((a, b) => b - a)) {
+    const rank = c >> 2;
+    const last = groups[groups.length - 1];
+    if (last && last.rank === rank) last.cards.push(c);
+    else groups.push({ rank, cards: [c], all: false });
+  }
+  for (const g of groups) g.all = g.cards.length === 4 - seenOfRank[g.rank]!;
+  return groups;
 }
 
 export interface FlopFacts {

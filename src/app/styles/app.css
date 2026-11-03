@@ -707,6 +707,10 @@ textarea {
   gap: 0.4rem;
   margin: 0.6rem 0;
 }
+.seg-label {
+  align-self: center;
+  font-weight: 600;
+}
 .seg {
   flex: 1 1 auto;
   min-height: 44px;

@@ -1,0 +1,137 @@
+# Regenerates the visual baselines (tests/visual/__screenshots__) in the same Playwright container
+# as the `visual` CI job, so nobody needs Docker. Two ways to start it:
+#   - add the label `update-visual` to a pull request from this repository, or
+#   - Actions > Visual baselines > Run workflow, choosing the branch (and `push`).
+# Two jobs:
+#   - `regenerate` runs the PR's code with a read-only token and no persisted credentials, and
+#     uploads the new PNGs as the artifact `visual-baselines`.
+#   - `commit` holds the write token, runs no npm and none of the PR's code, accepts only regular
+#     .png files under tests/visual/__screenshots__/, commits them as
+#     "chore(visual): update baselines" and re-runs CI on that commit. It never pushes to main.
+# A PR that changes baselines must say why in its description.
+name: Visual baselines
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: Commit the new baselines to the branch (never main)
+        type: boolean
+        default: false
+
+# Queue, never cancel: a cancelled run could stop between the push and the CI dispatch.
+concurrency:
+  group: visual-baselines-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'update-visual' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    permissions:
+      contents: read
+    env:
+      CI: '1'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    outputs:
+      sha: ${{ steps.rev.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The exact commit that was labelled, not whatever the branch points at by now.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - id: rev
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      # Default mode rewrites only snapshots that differ beyond the threshold (CONTRIBUTING.md).
+      - name: Regenerate changed baselines
+        run: npx playwright test -c playwright.visual.config.ts --update-snapshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: tests/visual/__screenshots__
+          retention-days: 14
+          if-no-files-found: error
+
+  commit:
+    needs: regenerate
+    if: >-
+      github.ref != 'refs/heads/main' &&
+      (github.event_name == 'pull_request' || inputs.push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # pushes the baseline commit; the checks below refuse anything else
+      actions: write # re-runs ci.yml on the pushed commit
+      pull-requests: write # removes the label
+    env:
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      SHA: ${{ needs.regenerate.outputs.sha }}
+    steps:
+      - name: Refuse the default branch
+        run: |
+          if [ -z "$BRANCH" ] || [ "$BRANCH" = main ] || [ "$BRANCH" = "${{ github.event.repository.default_branch }}" ]; then
+            echo "::error::refusing to push baselines to '$BRANCH'"; exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: visual-baselines
+          path: ${{ runner.temp }}/baselines
+      - name: Accept only regular PNG files
+        run: |
+          cd "$RUNNER_TEMP/baselines"
+          bad=$(find . -mindepth 1 ! -type d ! -type f)
+          [ -z "$bad" ] || { echo "::error::not a regular file or directory: $bad"; exit 1; }
+          bad=$(find . -type f | grep -Ev '^\./[a-z0-9-]+/[a-z0-9-]+\.png$' || true)
+          [ -z "$bad" ] || { echo "::error::unexpected files: $bad"; exit 1; }
+          for f in $(find . -type f); do
+            [ "$(head -c 8 "$f" | od -An -tx1 | tr -d ' \n')" = 89504e470d0a1a0a ] ||
+              { echo "::error::not a PNG: $f"; exit 1; }
+          done
+      - name: Commit and push the baselines
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rsync -r --checksum "$RUNNER_TEMP/baselines/" tests/visual/__screenshots__/
+          other=$(git status --porcelain --untracked-files=all | grep -Ev '^.. tests/visual/__screenshots__/[a-z0-9-]+/[a-z0-9-]+\.png$' || true)
+          if [ -n "$other" ]; then echo "::error::refusing to commit files outside the baselines:"; echo "$other"; exit 1; fi
+          git add tests/visual/__screenshots__
+          if git diff --cached --quiet; then
+            echo "Baselines already up to date." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --stat >> "$GITHUB_STEP_SUMMARY"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(visual): update baselines'
+          # Fast-forward only: fails if the branch moved since the labelled commit.
+          git push origin "HEAD:refs/heads/$BRANCH"
+          gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+      - name: Remove the label
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ github.event.pull_request.number }}
+        # A 404 (label already gone) is fine; any other failure is reported, since a label left on
+        # would make a later re-add fire no event.
+        run: |
+          out=$(gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$N/labels/update-visual" 2>&1) && exit 0
+          echo "$out" | grep -q 'HTTP 404' && { echo "label already removed"; exit 0; }
+          echo "::error::could not remove the update-visual label: $out"; exit 1
