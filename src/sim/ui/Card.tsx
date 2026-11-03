@@ -48,6 +48,12 @@ export interface CardProps {
   delayMs?: number;
   durMs?: number;
   dim?: boolean;
+  /**
+   * After a showdown: whether this card is one of the five that play. Not playing dims it a little
+   * (still readable, >= 3:1 against the felt) and both cases extend the accessible name. Omit it
+   * before settlement and for the player's own cards after a fold.
+   */
+  plays?: boolean;
   /** Ring drawn around cards the scene highlights. */
   highlight?: boolean;
   /** A short name for the slot when face down ("Dealer card 1"). */
@@ -66,12 +72,13 @@ export function Card({
   delayMs = 0,
   durMs = 0,
   dim,
+  plays,
   highlight,
   slotLabel,
 }: CardProps) {
   const anim =
     durMs > 0 ? { style: `animation-delay:${delayMs}ms;animation-duration:${durMs}ms` } : {};
-  const cls = `sim-card${durMs > 0 ? ' is-anim' : ''}${dim ? ' is-dim' : ''}${highlight ? ' is-hl' : ''}`;
+  const cls = `sim-card${durMs > 0 ? ' is-anim' : ''}${dim ? ' is-dim' : ''}${plays === false ? ' is-out' : ''}${highlight ? ' is-hl' : ''}`;
   const rx = Math.max(4, w * 0.09);
   if (faceDown || card === undefined) {
     return (
@@ -102,7 +109,12 @@ export function Card({
   const rankText = RANK_TEXT[rank]!;
   const fs = w * (rankText.length > 1 ? 0.3 : 0.36);
   return (
-    <g class={cls} role="img" aria-label={cardName(card)} {...anim}>
+    <g
+      class={cls}
+      role="img"
+      aria-label={`${cardName(card)}${plays === undefined ? '' : plays ? ', plays' : ", doesn't play"}`}
+      {...anim}
+    >
       <rect x={x} y={y} width={w} height={h} rx={rx} class="sim-card-body" />
       <text
         x={x + w * 0.1}

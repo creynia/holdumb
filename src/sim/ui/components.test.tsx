@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyAction, createGame, equity, parseCards } from '../engine';
+import { applyAction, createGame, equity, evaluate7, parseCards } from '../engine';
 import type { Card as PlayingCard, HandRecord } from '../engine';
 import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey, SessionView } from '../scene';
@@ -508,6 +509,106 @@ describe('Felt', () => {
         {...over}
       />,
     );
+  describe('showdown: the five cards that play (I007)', () => {
+    const cards = (t: string) => parseCards(t) as PlayingCard[];
+    const showdown = (hole: string, board: string, dealer: string, fold = false) => {
+      const h = cards(hole);
+      const b = cards(board);
+      const d = cards(dealer);
+      const player = evaluate7([...h, ...b]);
+      const dlr = evaluate7([...d, ...b]);
+      return render(
+        <Felt
+          orientation="portrait"
+          hole={h}
+          dealerDealt
+          dealerShown
+          dealer={d}
+          board={b}
+          bets={{ ante: 1000, blind: 1000 }}
+          plays={{ ...(fold ? {} : { player: player.best5 }), dealer: dlr.best5 }}
+        />,
+      );
+    };
+    const named = (name: string) => screen.getByRole('img', { name: new RegExp(`^${name}(,|$)`) });
+    const out = (name: string) => named(name).classList.contains('is-out');
+    const label = (name: string) => named(name).getAttribute('aria-label');
+
+    it('a royal dims the unused board cards; every card gets plays or does not play', () => {
+      showdown('Ah Kh', 'Qh Jh Th 2c 3d', '7d 4h');
+      expect(label('Ace of hearts')).toBe('Ace of hearts, plays');
+      expect(label('Two of clubs')).toBe("Two of clubs, doesn't play");
+      expect(label('Three of diamonds')).toBe("Three of diamonds, doesn't play");
+      expect(out('Two of clubs')).toBe(true);
+      expect(out('Three of diamonds')).toBe(true);
+      // Board cards in the royal play, and so do the dealer's two (his best five is Q J T 7 4).
+      for (const n of ['Queen of hearts', 'Jack of hearts', 'Ten of hearts', 'Ace of hearts'])
+        expect(out(n)).toBe(false);
+      expect(label('Seven of diamonds')).toBe('Seven of diamonds, plays');
+    });
+    it('when the board plays, both hole pairs are dimmed and the board is not', () => {
+      showdown('5c 6d', 'Ah Kh Qs Jd 9c', '3h 2h');
+      for (const n of ['Five of clubs', 'Six of diamonds', 'Three of hearts', 'Two of hearts'])
+        expect(out(n)).toBe(true);
+      for (const n of [
+        'Ace of hearts',
+        'King of hearts',
+        'Queen of spades',
+        'Jack of diamonds',
+        'Nine of clubs',
+      ])
+        expect(out(n)).toBe(false);
+    });
+    it('a board card is dimmed only when it is in neither hand', () => {
+      // You play A K 8 7 5; the dealer plays 9 9 A K 7. The 4 and the 2 miss both hands.
+      showdown('5c 8d', 'Ah Kh 7c 4d 2s', '9s 9d');
+      expect(out('Two of spades')).toBe(true);
+      expect(out('Four of diamonds')).toBe(true);
+      expect(out('Ace of hearts')).toBe(false);
+      expect(out('Seven of clubs')).toBe(false);
+      expect(out('Eight of diamonds')).toBe(false); // plays for you only
+      expect(out('Nine of spades')).toBe(false); // plays for the dealer only
+    });
+    it('after a fold only the dealer five counts and your cards are left alone', () => {
+      showdown('5c 8d', 'Ah Kh 7c 4d 2s', '9s 9d', true);
+      expect(label('Five of clubs')).toBe('Five of clubs');
+      expect(out('Eight of diamonds')).toBe(false);
+      // The dealer's best five is 9 9 A K 7: the 4 and the 2 are outside it.
+      expect(out('Four of diamonds')).toBe(true);
+      expect(out('Two of spades')).toBe(true);
+      expect(label('Nine of spades')).toBe('Nine of spades, plays');
+    });
+    it('before settlement nothing is dimmed and names are unchanged', () => {
+      render(
+        <Felt
+          orientation="portrait"
+          hole={cards('Ah Kh')}
+          dealerDealt
+          board={cards('Qh Jh Th')}
+          bets={{ ante: 1000, blind: 1000 }}
+          plays={null}
+        />,
+      );
+      expect(screen.getByRole('img', { name: 'Ace of hearts' })).toBeTruthy();
+      expect(document.querySelectorAll('.sim-card.is-out')).toHaveLength(0);
+    });
+    it('the dim keeps the card readable: >= 3:1 against the felt, and it never animates', () => {
+      const css = readFileSync('src/sim/ui/styles/cards.css', 'utf8');
+      const m = /\.sim-card\.is-out\s*{[^}]*opacity:\s*([\d.]+)/.exec(css);
+      expect(m).toBeTruthy();
+      const op = Number(m![1]);
+      const lin = (c: number) =>
+        c / 255 <= 0.03928 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4;
+      const lum = (rgb: number[]) =>
+        0.2126 * lin(rgb[0]!) + 0.7152 * lin(rgb[1]!) + 0.0722 * lin(rgb[2]!);
+      const felt = [0x0b, 0x2e, 0x4a];
+      const card = [0xf8, 0xf5, 0xec];
+      const comp = card.map((c, k) => op * c + (1 - op) * felt[k]!);
+      const ratio = (lum(comp) + 0.05) / (lum(felt) + 0.05);
+      expect(ratio).toBeGreaterThanOrEqual(3);
+      expect(/\.sim-card\.is-out\s*{[^}]*(transition|animation)/.test(css)).toBe(false);
+    });
+  });
   it('shows your cards, the board so far and slots for the rest', () => {
     const { container } = felt();
     expect(screen.getByRole('img', { name: 'Ace of spades' })).toBeTruthy();

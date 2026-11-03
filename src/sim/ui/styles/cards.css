@@ -7,6 +7,11 @@
 .sim-card.is-dim {
   opacity: 0.45;
 }
+.sim-card.is-out {
+  /* A card that does not make the five: 0.6 keeps the body >= 3:1 against the felt (about 5.6:1)
+     and the ranks readable. Static, so reduced motion has nothing to disable. */
+  opacity: 0.6;
+}
 .sim-card.is-hl .sim-card-body {
   stroke: var(--sim-hl);
   stroke-width: 3;
