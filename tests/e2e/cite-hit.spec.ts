@@ -49,7 +49,7 @@ for (const id of lessons) {
       });
       expect(r.glyphHits, `cite ${i} glyph taps`).toBe(9);
       expect(r.width, `cite ${i} width`).toBeGreaterThanOrEqual(43);
-      expect(r.height, `cite ${i} height`).toBeGreaterThanOrEqual(20);
+      expect(r.height, `cite ${i} height`).toBeGreaterThanOrEqual(24);
     }
   });
 

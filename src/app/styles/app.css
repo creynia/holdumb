@@ -950,8 +950,8 @@ textarea {
   /* The button box is 0 tall (.cite has line-height 0), so centre a fixed height on it. The height
      is capped at the line pitch (about 1.55rem), so a tap on one line never reaches the next. */
   top: 50%;
-  height: 1.4rem;
-  margin-top: -0.7rem;
+  height: 1.5rem;
+  margin-top: -0.75rem;
   inset-inline: -17px;
 }
 .cite-btn:focus-visible {
