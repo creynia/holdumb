@@ -200,6 +200,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
     answer !== null &&
     perfectBest !== undefined &&
     !sameAction(perfectBest.action, answer.grade.best);
+  const chosenIsCard = answer !== null && sameAction(answer.grade.chosen, answer.grade.best);
   const optOf = (a: DecisionAction) => answer?.preview.options.find((o) => sameAction(o.action, a));
   const refOpt = answer ? (optOf(answer.grade.best) ?? perfectBest) : undefined;
   // "N antes ($c" for the gap between a reference option and another (same rounding as the EV sheet)
@@ -291,9 +292,13 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
           <p role="status">
             <strong>{HEADLINE[answer.tier]}</strong>{' '}
             {answer.tier === 'best'
-              ? `${chosenOpt.label} is the ${answer.grade.lens === 'practical' ? "card's play" : 'best play'}.`
+              ? answer.grade.lens === 'perfect'
+                ? `${chosenOpt.label} is the best play.`
+                : chosenIsCard
+                  ? `${chosenOpt.label} is the card's play.`
+                  : `${chosenOpt.label} is the best play (the card says ${gradeBest} here).`
               : `${gradeBest} is better by ${money(answer.grade.regret, refOpt, chosenOpt)} per hand).`}
-            {answer.grade.lens === 'practical' && perfectDiffers && (
+            {answer.grade.lens === 'practical' && perfectDiffers && chosenOpt !== perfectBest && (
               <>
                 {' '}
                 {`Perfect play says ${perfectBest.label} here, by ${money(refOpt!.regret, perfectBest, refOpt!)} per hand). The card's rule is still the one to remember.`}

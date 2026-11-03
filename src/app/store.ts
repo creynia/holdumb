@@ -29,6 +29,7 @@ export class Store {
   private listeners = new Set<() => void>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   /** consecutive correct Drill answers this visit (not persisted; the best is) */
+  // Deliberately per lens, like bestStreak: a Basic card run never extends or breaks a Perfect run.
   private streaks: Record<DrillLens, number> = { perfect: 0, practical: 0 };
   private unavailable = false; // localStorage missing: memory only
   private readOnly = false; // stored data is from a newer app: never overwrite it

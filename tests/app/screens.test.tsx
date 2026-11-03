@@ -15,6 +15,7 @@ import {
   gradeSpot as realGradeSpot,
   nextSpot as realNextSpot,
 } from '../../src/sim';
+import { spotFromCode } from '../../src/sim';
 import { weakestCategory } from '../../src/app/drillCategories';
 import { Drill, rngFromSeed, type DrillDeps } from '../../src/app/screens/Drill';
 import { About } from '../../src/app/screens/About';
@@ -548,6 +549,40 @@ describe('Drill', () => {
       );
       expect(store.drill.practical.byStreet.flop).toEqual({ answered: 1, correct: 1 });
       expect(store.drill.byStreet.flop).toEqual({ answered: 0, correct: 0 });
+    });
+    describe('pinned spot f:2dJd.4h6d9d (flush draw; card bets 2x, perfect checks by 0.018 antes)', () => {
+      // Check is perfect-best; Bet 2x costs 18 cents at a $10 ante.
+      const pinned = (): DecisionPreview => {
+        const p = preview(1);
+        p.options[0]!.ev = { num: -518n, den: 1000n };
+        p.options[0]!.evCents = { num: -518n, den: 1n };
+        p.options[0]!.regret = { num: 18n, den: 1000n };
+        p.options[0]!.tier = 'close';
+        p.options[1]!.ev = { num: -500n, den: 1000n };
+        p.options[1]!.evCents = { num: -500n, den: 1n };
+        return p;
+      };
+      const run = async (choice: string) => {
+        const { store, d } = setup(1, {
+          nextSpot: (r) => [spotFromCode('f:2dJd.4h6d9d'), r],
+          preview: () => Promise.resolve(pinned()),
+        });
+        const el = await mountDrill(store, d);
+        await act(() => btnIn(el, 'Grade by', 'Basic card').click());
+        await act(() => btn(el, choice).click());
+        await tick();
+        return el.querySelector('[data-testid="drill-result"] [role="status"]')!.textContent;
+      };
+      it("choosing the card's action names perfect play, exactly", async () => {
+        expect(await run('Bet 2x')).toBe(
+          "Correct! Bet 2x is the card's play. Perfect play says Check here, by 0.018 antes ($0.18 per hand). The card's rule is still the one to remember.",
+        );
+      });
+      it('choosing the perfect action does not claim it is the card play', async () => {
+        expect(await run('Check')).toBe(
+          'Correct! Check is the best play (the card says Bet 2x here).',
+        );
+      });
     });
     it('lenses never mix: categories, misses, streaks and the weakest line are per lens', () => {
       const store = new Store(new MemoryStorage());
