@@ -4,6 +4,7 @@ import { Html } from '../components/Html';
 import { Link } from '../components/Link';
 import { LessonScene } from '../components/LessonScene';
 import { ChartBlock } from '../components/ChartBlock';
+import { ProgressiveBlock } from '../components/ProgressiveBlock';
 import { Quiz } from '../components/Quiz';
 import { SourceEntry } from '../components/SourceEntry';
 import { useContent, useStore } from '../context';
@@ -88,6 +89,8 @@ export function LessonView({ id }: { id: string }) {
                   </ul>
                 </section>
               );
+            case 'progressive':
+              return <ProgressiveBlock key={i} block={b.progressive} />;
             case 'quiz':
               return (
                 <Quiz

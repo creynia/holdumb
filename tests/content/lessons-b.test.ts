@@ -12,6 +12,7 @@ import { validateScene } from '../../src/sim/scene';
 import { buildContent } from '../../src/content/load';
 import type { ForcedDeal } from '../../src/sim/engine';
 import type { Block, Lesson } from '../../src/content/types';
+import { expandNumbers } from '../../src/content/compile';
 
 const root = process.cwd();
 const bundle = buildContent(root);
@@ -35,7 +36,7 @@ const lesson = (id: LId): Lesson => {
 };
 const raw = (id: LId): string => {
   const n = String(IDS.indexOf(id) + 7).padStart(2, '0');
-  return readFileSync(join(root, 'content/lessons', `${n}-${id}.md`), 'utf8');
+  return expandNumbers(readFileSync(join(root, 'content/lessons', `${n}-${id}.md`), 'utf8'));
 };
 const quizzes = (id: LId) =>
   lesson(id).blocks.flatMap((b: Block) => (b.kind === 'quiz' ? [b.quiz] : []));

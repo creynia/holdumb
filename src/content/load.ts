@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { compileLesson, renderMarkdown } from './compile';
+import { compileLesson, expandNumbers, renderMarkdown } from './compile';
 import type { CompiledLesson } from './compile';
 import type {
   BetCopy,
@@ -84,7 +84,11 @@ export function readSources(root: string, includeSamples = false): ContentSource
         .sort()
     : [];
   return {
-    chapters: json<Chapter[]>('chapters.json', '_sample-chapters.json', []),
+    // Chapter summaries take {{num:…}} tokens too (I064).
+    chapters: json<Chapter[]>('chapters.json', '_sample-chapters.json', []).map((c) => ({
+      ...c,
+      summary: expandNumbers(c.summary),
+    })),
     glossary: json<RawGlossary[]>('glossary.json', '_sample-glossary.json', []).map(
       normalizeGlossary,
     ),

@@ -30,7 +30,7 @@ the river.
 **Trips on a paired board.** {{Jd 5c}} on {{5h 5s Kc}} is three fives, using your card. Bet **2x** (+3.845 vs +2.956).
 
 Put together, all of these slips cost very little. Using the three flop rules instead of perfect flop play
-costs **0.086% of the Ante**: about 26¢ an hour at $10. In this chapter the EV sheet always shows you the
+costs **{{num:expert-extra-3}} of the Ante**: about 26¢ an hour at $10. In this chapter the EV sheet always shows you the
 exact answer.
 
 ```scene
@@ -106,7 +106,7 @@ steps:
 - q: How much does following the three flop rules (instead of perfect flop play) cost?
   options: ["About 0.09% of the Ante", "About 1% of the Ante", "About 5% of the Ante", "Nothing"]
   answer: 0
-  explain: "0.086% of the Ante, with a perfect river. About 26¢ an hour at $10."
+  explain: "{{num:expert-extra-3}} of the Ante, with a perfect river. About 26¢ an hour at $10."
 ```
 
 ```practise

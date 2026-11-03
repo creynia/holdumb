@@ -30,8 +30,13 @@ import { decodeSnapshot } from './persist';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
+import { isRackRejection, rackShort } from './bankroll';
+import type { Cents } from '../engine';
 
-export function Simulator(props: SimulatorProps) {
+/** The sandbox also reports a chosen starting bankroll so the app can keep it as the default (I083). */
+export type SimulatorViewProps = SimulatorProps & { onBankrollChange?: (cents: Cents) => void };
+
+export function Simulator(props: SimulatorViewProps) {
   const mode: 'sandbox' | 'scene' =
     props.mode ?? (props.scene?.steps?.length ? 'scene' : 'sandbox');
   const sandbox = mode === 'sandbox';
@@ -92,13 +97,21 @@ export function Simulator(props: SimulatorProps) {
   const table = (
     <Table
       orientation={orientation}
-      toasts={toast ? <Toasts toasts={[toast]} onDismiss={() => setToast(null)} /> : null}
+      toasts={
+        toast || result?.outcome === 'fold' ? (
+          <>
+            {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
+            {toast ? <Toasts toasts={[toast]} onDismiss={() => setToast(null)} /> : null}
+          </>
+        ) : null
+      }
       status={
         scene.ui?.showBankroll === false ? null : (
           <StatusBar
             bankroll={settled ? eq : state.bankroll}
             onFelt={onFelt}
-            sessionNet={state.stats.hands ? eq - view.startEquity : undefined}
+            sessionNet={state.stats.hands ? view.session.net : undefined}
+            hand={settled && result ? result : null}
           />
         )
       }
@@ -124,28 +137,26 @@ export function Simulator(props: SimulatorProps) {
         />
       }
       actions={
-        <>
-          <ActionBar
-            street={street}
-            layout={orientation === 'landscape' ? 'rail' : 'bar'}
-            preview={bar.showPreviewOnBar}
-            hideEv={practice}
-            evStatus={bar.barStatus}
-            selected={ev.open}
-            allowed={view.allowedOptions}
-            highlight={optionHl}
-            bets={{ ante: state.bets.ante, trips: state.bets.trips }}
-            canDeal={!view.dealLocked && state.bets.ante > 0}
-            canClear={!view.clearLocked}
-            disabled={(settled && view.dealLocked) || view.pendingStart}
-            onOption={ev.onOption}
-            onDeal={() => void act({ type: 'deal' })}
-            onClear={bets.clearBets}
-            onRebet={() => void act({ type: 'deal' })}
-            onChangeBets={() => void act({ type: 'clear' })}
-          />
-          {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
-        </>
+        <ActionBar
+          street={street}
+          layout={orientation === 'landscape' ? 'rail' : 'bar'}
+          preview={bar.showPreviewOnBar}
+          hideEv={practice}
+          evOff={!evShown}
+          evStatus={bar.barStatus}
+          selected={ev.open}
+          allowed={view.allowedOptions}
+          highlight={optionHl}
+          bets={{ ante: state.bets.ante, trips: state.bets.trips }}
+          canDeal={!view.dealLocked && state.bets.ante > 0}
+          canClear={!view.clearLocked}
+          disabled={(settled && view.dealLocked) || view.pendingStart}
+          onOption={ev.onOption}
+          onDeal={() => void act({ type: 'deal' })}
+          onClear={bets.clearBets}
+          onRebet={() => void act({ type: 'deal' })}
+          onChangeBets={() => void act({ type: 'clear' })}
+        />
       }
       chips={
         betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
@@ -180,6 +191,11 @@ export function Simulator(props: SimulatorProps) {
           practice={practice}
           onPracticeChange={props.onPracticeChange}
           bankroll={scene.bankroll ?? 50_000}
+          onBankrollChange={props.onBankrollChange}
+          short={
+            rackShort(street, state.bankroll, state.bets.ante, state.bets.trips) ||
+            isRackRejection(view.rejection?.text)
+          }
         />
       ) : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}

@@ -4,7 +4,7 @@ import { applyAction, createGame, equity, parseCards } from '../engine';
 import type { Card as PlayingCard } from '../engine';
 import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey, SessionView } from '../scene';
-import { ActionBar, optionsFor } from './ActionBar';
+import { ActionBar, optionsFor, slotOf } from './ActionBar';
 import { BetCircle } from './BetCircle';
 import { Card } from './Card';
 import { ChipRack } from './ChipRack';
@@ -28,10 +28,24 @@ import { StrategyChart, chartClasses, preflop4xSet } from './StrategyChart';
 import { Table } from './Table';
 import { TierBadge } from './TierBadge';
 import { Toasts } from './Toasts';
+import { flushAnnouncements, resetAnnouncer, subscribeAnnouncements } from './announcer';
 import { buildTimeline } from './animation';
+import { needsConfirm } from './settings';
+import { OPTION_SLOT, optionKeyOf } from './text';
 import { landscapeLayout, portraitLayout } from './layouts';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  resetAnnouncer();
+});
+/** What the app's single announcer would speak now (each entry is one announcement). */
+function heard(): string[] {
+  const out: string[] = [];
+  const off = subscribeAnnouncements((_p, t) => out.push(t));
+  flushAnnouncements();
+  off();
+  return out;
+}
 
 function sheet(over: Partial<EvSheetProps> = {}) {
   const props: EvSheetProps = {
@@ -105,10 +119,42 @@ describe('EvSheet', () => {
     rerender(<EvSheet {...props} selected="play-3" />);
     expect(screen.getByTestId('confirm').textContent).toBe('Confirm Bet 3x');
   });
-  it('confirms in one tap when confirmBlunder is off', () => {
-    const props = sheet({ selected: 'check', confirmBlunder: false });
+  it('confirms in one tap when confirmOn is never', () => {
+    const props = sheet({ selected: 'check', confirmOn: 'never' });
     fireEvent.click(screen.getByTestId('confirm'));
     expect(props.onConfirm).toHaveBeenCalledWith('check');
+  });
+  it('confirmOn x tier: a second tap exactly when needsConfirm says so (D24, D39)', () => {
+    const tiers = ['best', 'close', 'small', 'costly', 'blunder'] as const;
+    for (const confirmOn of ['all', 'costly', 'blunder', 'never'] as const) {
+      for (const tier of tiers) {
+        const base = PREFLOP_AA.preview;
+        const preview: DecisionPreview = {
+          ...base,
+          options: base.options.map((o) =>
+            optionKeyOf(o.action) === 'check' ? { ...o, tier } : o,
+          ),
+        };
+        const props = sheet({ preview, selected: 'check', confirmOn });
+        const btn = screen.getByTestId('confirm');
+        fireEvent.click(btn);
+        const where = `${confirmOn} / ${tier}`;
+        if (needsConfirm(confirmOn, tier)) {
+          expect(props.onConfirm, where).not.toHaveBeenCalled();
+          const warn = tier === 'costly' || tier === 'blunder';
+          expect(btn.textContent, where).toBe(warn ? 'Do it anyway' : 'Yes, Check');
+          expect(
+            screen.getByTestId(
+              tier === 'blunder' ? 'blunder-warning' : warn ? 'mistake-warning' : 'confirm-again',
+            ),
+            where,
+          ).toBeTruthy();
+          fireEvent.click(btn);
+        }
+        expect(props.onConfirm, where).toHaveBeenCalledWith('check');
+        cleanup();
+      }
+    }
   });
   it('a non-blunder mistake confirms in one tap', () => {
     const props = sheet({
@@ -359,22 +405,78 @@ describe('ActionBar', () => {
     expect(onDeal).toHaveBeenCalled();
     expect(screen.getByText('Clear')).toBeTruthy();
   });
-  it('shows the right options per street in the D31 order', () => {
-    expect(optionsFor('preflop')).toEqual(['play-4', 'play-3', 'check']);
+  it('puts the passive action first and the bets by size on every street (I012)', () => {
+    expect(optionsFor('preflop')).toEqual(['check', 'play-3', 'play-4']);
     expect(optionsFor('flop')).toEqual(['check', 'play-2']);
-    expect(optionsFor('river')).toEqual(['play-1', 'fold']);
+    expect(optionsFor('river')).toEqual(['fold', 'play-1']);
     expect(optionsFor('river', ['fold'])).toEqual(['fold']);
+    for (const street of ['preflop', 'flop', 'river'] as const) {
+      const keys = optionsFor(street);
+      expect(OPTION_SLOT[keys[0]!]).toBe('a');
+      const bets = keys.slice(1).map((k) => Number(k.slice(5)));
+      expect(bets).toEqual([...bets].sort((x, y) => x - y));
+      expect(bets.length).toBeGreaterThan(0);
+    }
   });
-  it('labels buttons with Bet/Check/Fold and fires onOption', () => {
+  it('gives each option a fixed slot whatever the street', () => {
+    expect(OPTION_SLOT).toEqual({
+      check: 'a',
+      fold: 'a',
+      'play-3': 'b',
+      'play-4': 'c',
+      'play-2': 'bc',
+      'play-1': 'bc',
+    });
+  });
+  it('labels buttons with Bet/Check/Fold in slot order and fires onOption', () => {
     const onOption = vi.fn();
     render(<ActionBar street="preflop" onOption={onOption} />);
-    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'Bet 4x',
-      'Bet 3x',
-      'Check',
-    ]);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.map((b) => b.textContent)).toEqual(['Check', 'Bet 3x', 'Bet 4x']);
+    expect(buttons.map((b) => b.dataset.slot)).toEqual(['a', 'b', 'c']);
     fireEvent.click(screen.getByText('Bet 3x'));
     expect(onOption).toHaveBeenCalledWith('play-3' satisfies OptionKey);
+  });
+  it('the rail lists the largest bet first and the passive action last (DOM = visual order)', () => {
+    render(<ActionBar street="preflop" layout="rail" />);
+    expect(screen.getAllByRole('button').map((b) => b.dataset.slot)).toEqual(['c', 'b', 'a']);
+    cleanup();
+    render(<ActionBar street="settled" layout="rail" />);
+    expect(screen.getAllByRole('button').map((b) => b.dataset.action)).toEqual([
+      'rebet',
+      'change-bets',
+    ]);
+  });
+  it('a lone allowed preflop bet spans b + c like the flop and river bets', () => {
+    expect(slotOf('play-4', ['check', 'play-4'])).toBe('bc');
+    expect(slotOf('play-3', ['play-3'])).toBe('bc');
+    expect(slotOf('play-4', ['check', 'play-3', 'play-4'])).toBe('c');
+    expect(slotOf('check', ['check', 'play-4'])).toBe('a');
+    render(<ActionBar street="preflop" allowed={['play-4']} />);
+    expect(screen.getByText('Bet 4x').closest('button')!.dataset.slot).toBe('bc');
+  });
+  it('Clear and Change bets take slot a; Deal and Rebet span b + c', () => {
+    render(<ActionBar street="betting" />);
+    expect(screen.getAllByRole('button').map((b) => [b.dataset.action, b.dataset.slot])).toEqual([
+      ['clear', 'a'],
+      ['deal', 'bc'],
+    ]);
+  });
+  it('reserves the EV line while EV is idle, not when EV is off or hidden', () => {
+    render(<ActionBar street="flop" />);
+    for (const b of screen.getAllByRole('button')) {
+      const sub = b.querySelector('.sim-act-sub');
+      expect(sub).not.toBeNull();
+      expect(sub!.getAttribute('aria-hidden')).toBe('true');
+    }
+    cleanup();
+    render(<ActionBar street="flop" evOff />);
+    for (const b of screen.getAllByRole('button'))
+      expect(b.querySelector('.sim-act-sub')).toBeNull();
+    cleanup();
+    render(<ActionBar street="flop" hideEv />);
+    for (const b of screen.getAllByRole('button'))
+      expect(b.querySelector('.sim-act-sub')).toBeNull();
   });
   it('carries EV and a tier word when EV is on, and a spoken name', () => {
     render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} />);
@@ -430,8 +532,10 @@ describe('Felt', () => {
   it('announces the hands to screen readers', () => {
     felt({ labels: { player: 'ace high', dealer: 'pair of tens, qualifies' } });
     const live = document.querySelector('.sim-sr')!;
-    expect(live.getAttribute('aria-live')).toBe('polite');
+    // Not a live region: it is spoken through the one app announcer (I036).
+    expect(live.hasAttribute('aria-live')).toBe(false);
     expect(live.textContent).toContain('Dealer: pair of tens, qualifies');
+    expect(heard()).toEqual([expect.stringContaining('Dealer: pair of tens, qualifies')]);
   });
   it('puts the multiple on the Play circle', () => {
     felt({ bets: { ante: 1000, blind: 1000, play: 4000 }, playMultiple: 4 });
@@ -565,6 +669,21 @@ describe('small pieces', () => {
     fireEvent.click(screen.getByRole('radio', { name: '$25' }));
     expect(onSelect).toHaveBeenCalledWith(2500);
   });
+  it('StatusBar keeps a one-line hand result, reserved before the hand settles (I012)', () => {
+    const { rerender } = render(<StatusBar bankroll={49_000} onFelt={2000} hand={null} />);
+    expect(screen.getByTestId('hand-result').textContent).toBe('Hand\u2014');
+    for (const [outcome, net, text] of [
+      ['win', 15_000, 'Won+$150'],
+      ['lose', -3000, 'Lost\u2212$30'],
+      ['tie', 0, 'Push$0'],
+      ['fold', -2000, 'Folded\u2212$20'],
+    ] as const) {
+      rerender(<StatusBar bankroll={49_000} onFelt={0} hand={{ outcome, net }} />);
+      expect(screen.getByTestId('hand-result').textContent).toBe(text);
+    }
+    rerender(<StatusBar bankroll={49_000} onFelt={0} />);
+    expect(screen.queryByTestId('hand-result')).toBeNull();
+  });
   it('StatusBar shows bankroll, felt and session', () => {
     render(<StatusBar bankroll={49_000} onFelt={2500} sessionNet={-1000} />);
     expect(screen.getByTestId('bankroll').textContent).toBe('$490');
@@ -574,7 +693,10 @@ describe('small pieces', () => {
   it('Toasts announce politely and dismiss', () => {
     const onDismiss = vi.fn();
     render(<Toasts toasts={[{ id: 3, text: 'Net +$50.' }]} onDismiss={onDismiss} />);
-    expect(screen.getByRole('log').getAttribute('aria-live')).toBe('polite');
+    expect(
+      document.querySelector('[aria-live],[role="log"],[role="status"],[role="alert"]'),
+    ).toBeNull();
+    expect(heard()).toEqual(['Net +$50.']);
     fireEvent.click(screen.getByLabelText('Dismiss'));
     expect(onDismiss).toHaveBeenCalledWith(3);
   });
@@ -603,7 +725,7 @@ describe('small pieces', () => {
       'You folded. Net -$20. The dealer had a pair of tens (qualifies).',
     );
     expect(spoken.className).toContain('sim-sr');
-    expect(screen.getByRole('log').contains(spoken)).toBe(true);
+    expect(heard()).toEqual(['You folded. Net -$20. The dealer had a pair of tens (qualifies).']);
   });
   it('Table lays out portrait and landscape with the actions present in both', () => {
     for (const o of ['portrait', 'landscape'] as const) {
@@ -611,6 +733,28 @@ describe('small pieces', () => {
         <Table orientation={o} felt={<i />} actions={<button>Deal</button>} />,
       );
       expect(screen.getByText('Deal')).toBeTruthy();
+      unmount();
+    }
+  });
+  it('Table puts toasts after the actions, so a result never pushes a button (I012)', () => {
+    for (const o of ['portrait', 'landscape'] as const) {
+      const { unmount } = render(
+        <Table
+          orientation={o}
+          felt={<i />}
+          status={<p>status</p>}
+          actions={<button>Deal</button>}
+          toasts={<p>result</p>}
+        />,
+      );
+      const deal = screen.getByText('Deal');
+      const toast = screen.getByText('result');
+      expect(deal.compareDocumentPosition(toast) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      if (o === 'portrait')
+        expect(
+          screen.getByText('status').compareDocumentPosition(deal) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
       unmount();
     }
   });
@@ -759,6 +903,7 @@ describe('SessionPanel (curriculum 8.5)', () => {
     scoredAnteCents: 20_000,
     tripsCents: 2500,
     tripsWageredCents: 21_000,
+    topUpCents: 0,
     tripsExpectedCents: frac(-400),
     decisions: 5,
     mistakes: 3,
