@@ -4,6 +4,7 @@
 // mcr.microsoft.com/playwright:v1.56.1-noble (see CONTRIBUTING.md, "Visual tests").
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { seedSettings } from '../e2e/settings-seed';
 
 /** Frozen wall clock: Drill seeds its spot RNG from Date.now(), and no "today" text may drift. */
 const FIXED_TIME = new Date('2026-01-15T12:00:00Z');
@@ -66,6 +67,8 @@ test('play preflop', async ({ page }) => {
 });
 
 test('play flop with the EV sheet open', async ({ page }) => {
+  // One tap acts by default (D40); with confirmOn 'all' the tap opens the sheet as the confirm step.
+  await seedSettings(page, { confirmOn: 'all' });
   await open(page, '/play?seed=7&hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
   await simReady(page);
   await opt(page, 'play-2').click();
@@ -80,7 +83,6 @@ test('play river fold result', async ({ page }) => {
   );
   await simReady(page);
   await opt(page, 'fold').click();
-  await page.getByTestId('confirm').click();
   await expect(page.getByTestId('fold-reveal')).toContainText(/would have (won|lost)|pushed/);
   await shoot(page, 'play-river-fold');
 });
@@ -93,7 +95,6 @@ test('play settled win', async ({ page }) => {
   );
   await simReady(page);
   await opt(page, 'play-1').click();
-  await page.getByTestId('confirm').click();
   await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
   await expect(page.locator('.sim-toast')).toContainText(/Net \+/);
   await shoot(page, 'play-settled-win');

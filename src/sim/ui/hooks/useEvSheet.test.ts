@@ -1,11 +1,14 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { DecisionPreview, DecisionTier } from '../../math';
 import type { SceneConfig } from '../../scene';
 import { createEvClient } from '../../worker/client';
-import { resolveEvShown } from '../settings';
+import { PREFLOP_AA } from '../fixtures';
+import { CONFIRM_ON, EV_MODES, needsConfirm, resolveEvShown } from '../settings';
 import { isDecisionStreet } from '../simView';
+import { optionKeyOf } from '../text';
 import { DEFAULT_SIM_SETTINGS } from '../types';
-import type { SimulatorProps } from '../types';
+import type { ConfirmOn, EvMode, SimSettings, SimulatorProps } from '../types';
 import { useEvSheet } from './useEvSheet';
 import { useSimDriver } from './useSimDriver';
 
@@ -24,21 +27,54 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function mount(practice: boolean) {
-  const evClient = createEvClient({ mode: 'inthread' });
+function mount(
+  evMode: EvMode = 'before',
+  confirmOn: ConfirmOn = 'never',
+  evClient: SimulatorProps['evClient'] = createEvClient({ mode: 'inthread' }),
+  scene: SceneConfig = preflop,
+) {
   clients.push(evClient);
-  const props: SimulatorProps = { settings, evClient, scene: preflop };
+  const s: SimSettings = { ...settings, evMode, confirmOn };
+  const props: SimulatorProps = { settings: s, evClient, scene };
   return renderHook(() => {
     const sim = useSimDriver(props, 'sandbox');
     const ev = useEvSheet(
       sim,
-      practice,
+      evMode === 'after',
       'portrait',
-      resolveEvShown(settings, sim.d.view.scene, true, sim.d.view.step),
+      resolveEvShown(s, sim.d.view.scene, true, sim.d.view.step),
       isDecisionStreet(sim.d.view.state.street),
     );
     return { sim, ev };
   });
+}
+
+/** The A♠A♥ preflop preview with Check's tier forced (the engine is not run). */
+const AA: SceneConfig = {
+  id: 'sandbox',
+  version: 1,
+  startAt: { street: 'preflop', deal: { player: ['As', 'Ah'], dealer: ['9d', '9s'] } },
+};
+const withCheckTier = (tier: DecisionTier): DecisionPreview => ({
+  ...PREFLOP_AA.preview,
+  options: PREFLOP_AA.preview.options.map((o) =>
+    optionKeyOf(o.action) === 'check' ? { ...o, tier } : o,
+  ),
+});
+/** A fake EvClient: answers every preview with `answer()`, at once or when `release()` is called. */
+function fakeClient(answer: () => DecisionPreview, deferred = false) {
+  const waiting: (() => void)[] = [];
+  const client = {
+    mode: 'inthread' as const,
+    dispose() {},
+    run: (() =>
+      new Promise((res) => {
+        const go = () => res(answer());
+        if (deferred) waiting.push(go);
+        else go();
+      })) as unknown as SimulatorProps['evClient']['run'],
+  };
+  return { client, release: () => waiting.splice(0).forEach((f) => f()) };
 }
 
 async function ready(r: ReturnType<typeof mount>['result']) {
@@ -49,49 +85,111 @@ async function ready(r: ReturnType<typeof mount>['result']) {
 
 describe('useEvSheet', () => {
   it('is closed until an option is tapped', async () => {
-    const { result } = mount(false);
+    const { result } = mount();
     await ready(result);
     expect(result.current.ev.open).toBeNull();
     expect(result.current.ev.sheet).toBeNull();
   });
 
-  it('practice: open -> confirm -> reveal -> continue', async () => {
-    const { result } = mount(true);
+  it("one tap acts with the default policy (confirmOn 'never'): no sheet", async () => {
+    const { result } = mount('before', 'never');
     await ready(result);
     await act(() => result.current.ev.onOption('play-4'));
-    expect(result.current.ev.open).toBe('play-4');
-    const sheet = result.current.ev.sheet!;
-    expect(sheet.selected).toBe('play-4');
-    expect(sheet.hideEv).toBe(true);
-    expect(sheet.chosen).toBeNull();
-    expect(sheet.variant).toBe('sheet');
+    await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('settled'));
+    expect(result.current.ev.sheet).toBeNull();
+    expect(result.current.ev.open).toBeNull();
+  });
 
+  it("'after': one tap acts, then the reveal shows the pre-move preview -> Continue", async () => {
+    const { result } = mount('after', 'never');
+    await ready(result);
+    await act(() => result.current.ev.onOption('play-4'));
+    await waitFor(() => expect(result.current.ev.sheet?.chosen).toBe('play-4'));
+    expect(result.current.sim.d.view.state.street).toBe('settled');
+    const reveal = result.current.ev.sheet!;
+    expect(reveal.selected).toBe('play-4');
+    expect(reveal.evMode).toBe('after');
+    expect(reveal.preview?.street).toBe('preflop');
+    await act(() => reveal.onContinue!());
+    expect(result.current.ev.sheet).toBeNull();
+  });
+
+  it("'after' + confirmOn all: the confirm sheet hides EV, then turns into the reveal in place", async () => {
+    const { result } = mount('after', 'all');
+    await ready(result);
+    await act(() => result.current.ev.onOption('play-4'));
+    const sheet = result.current.ev.sheet!;
+    expect(sheet.evMode).toBe('after');
+    expect(sheet.confirming).toBe(true);
+    expect(sheet.chosen).toBeNull();
     await act(() => sheet.onConfirm!('play-4'));
     await waitFor(() => expect(result.current.ev.sheet?.chosen).toBe('play-4'));
     expect(result.current.sim.d.view.state.street).toBe('settled');
-    // The reveal keeps the sheet up on the hand's next street, with the pre-move preview.
-    const reveal = result.current.ev.sheet!;
-    expect(reveal).not.toBeNull();
-    expect(reveal.chosen).toBe('play-4');
-    expect(reveal.selected).toBe('play-4');
-    expect(reveal.preview?.street).toBe('preflop');
-
-    await act(() => reveal.onContinue!());
-    expect(result.current.ev.sheet).toBeNull();
-    expect(result.current.ev.open).toBeNull();
   });
 
-  it('without practice, confirm closes the sheet at once', async () => {
-    const { result } = mount(false);
+  it('confirmOn all: the sheet opens on a tap; its Confirm acts once and closes it', async () => {
+    const { result } = mount('before', 'all');
     await ready(result);
     await act(() => result.current.ev.onOption('play-4'));
+    expect(result.current.sim.d.view.state.street).toBe('preflop');
     await act(() => result.current.ev.sheet!.onConfirm!('play-4'));
     await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('settled'));
     expect(result.current.ev.sheet).toBeNull();
   });
 
+  describe('the sheet opens iff needsConfirm(confirmOn, tier): 3 evModes x 4 policies x 5 tiers', () => {
+    const tiers: DecisionTier[] = ['best', 'close', 'small', 'costly', 'blunder'];
+    for (const evMode of EV_MODES)
+      for (const confirmOn of CONFIRM_ON)
+        for (const tier of tiers)
+          it(`${evMode} / ${confirmOn} / ${tier}`, async () => {
+            const { client } = fakeClient(() => withCheckTier(tier));
+            const { result } = mount(evMode, confirmOn, client, AA);
+            await ready(result);
+            await act(() => result.current.ev.onOption('check'));
+            if (needsConfirm(confirmOn, tier)) {
+              expect(result.current.ev.open).toBe('check');
+              expect(result.current.ev.sheet?.confirming).toBe(true);
+              expect(result.current.ev.sheet?.evMode).toBe(evMode);
+              expect(result.current.sim.d.view.state.street).toBe('preflop');
+            } else {
+              await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('flop'));
+              // 'after' reveals the move; otherwise no sheet at all.
+              if (evMode === 'after')
+                await waitFor(() => expect(result.current.ev.sheet?.chosen).toBe('check'));
+              else expect(result.current.ev.sheet).toBeNull();
+            }
+          });
+  });
+
+  describe('a tiered policy tapped before the preview is ready', () => {
+    it('shows "Checking your move…" (checking, Cancel only); a best tier then acts', async () => {
+      const f = fakeClient(() => withCheckTier('best'), true);
+      const { result } = mount('before', 'blunder', f.client, AA);
+      await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('preflop'));
+      expect(result.current.sim.d.view.preview.status).not.toBe('ready');
+      await act(() => result.current.ev.onOption('check'));
+      expect(result.current.ev.sheet?.checking).toBe(true);
+      expect(result.current.sim.d.view.state.street).toBe('preflop');
+      await act(() => f.release());
+      await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('flop'));
+      expect(result.current.ev.sheet).toBeNull();
+    });
+    it('a blunder tier then shows the warning and acts on nothing', async () => {
+      const f = fakeClient(() => withCheckTier('blunder'), true);
+      const { result } = mount('before', 'blunder', f.client, AA);
+      await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('preflop'));
+      await act(() => result.current.ev.onOption('check'));
+      expect(result.current.ev.sheet?.checking).toBe(true);
+      await act(() => f.release());
+      await waitFor(() => expect(result.current.ev.sheet?.checking).toBe(false));
+      expect(result.current.ev.open).toBe('check');
+      expect(result.current.sim.d.view.state.street).toBe('preflop');
+    });
+  });
+
   it('select switches the open option', async () => {
-    const { result } = mount(false);
+    const { result } = mount('before', 'all');
     await ready(result);
     await act(() => result.current.ev.onOption('play-4'));
     await act(() => result.current.ev.sheet!.onSelect!('check'));
@@ -100,7 +198,7 @@ describe('useEvSheet', () => {
   });
 
   it('cancel closes the sheet and returns focus to button[data-option]', async () => {
-    const { result } = mount(false);
+    const { result } = mount('before', 'all');
     await ready(result);
     const btn = document.createElement('button');
     btn.dataset.option = 'check';
@@ -114,7 +212,7 @@ describe('useEvSheet', () => {
   });
 
   it('a new street closes an open sheet', async () => {
-    const { result } = mount(false);
+    const { result } = mount('before', 'all');
     await ready(result);
     await act(() => result.current.ev.onOption('check'));
     expect(result.current.ev.open).toBe('check');

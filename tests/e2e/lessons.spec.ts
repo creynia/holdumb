@@ -109,10 +109,11 @@ for (const [lesson, title] of [
     await expect(scene.locator('.is-best')).toHaveCount(0);
     const opt = scene.locator('button[data-option="play-4"]');
     await expect(opt).not.toContainText('$');
+    // The lesson's policy (no confirm) wins over the user's "All bets": one tap acts, then the
+    // move is revealed (D39, D40).
     await opt.click();
-    await expect(page.getByTestId('practice-hidden')).toBeVisible();
-    await page.getByTestId('confirm').click();
-    await expect(page.getByTestId('practice-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-result')).toBeVisible();
+    await expect(page.getByTestId('ev-hidden')).toHaveCount(0);
     await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
   });
 }

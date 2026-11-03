@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { seedSettings } from './settings-seed';
 
 const lessonIds: string[] = (
   JSON.parse(readFileSync('content/chapters.json', 'utf8')) as { lessons: string[] }[]
@@ -18,16 +19,22 @@ const ready = (page: Page) =>
   page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 20_000 });
 
 test.describe('axe: no serious or critical issues', () => {
-  test('sandbox betting, a decision and the EV sheet', async ({ page }) => {
-    await page.goto('/#/play?seed=7&speed=instant');
-    await clean(page);
-    await page.locator('button[data-action="deal"]').click();
-    await ready(page);
-    await clean(page);
-    await page.locator('button[data-option="play-4"]').click();
-    await expect(page.getByTestId('ev-sheet')).toBeVisible();
-    await clean(page);
-  });
+  // The confirm sheet in every EV mode (D40): the tap opens it because confirmOn is 'all'.
+  for (const evMode of ['before', 'after', 'never'] as const)
+    test(`sandbox betting, a decision and the confirm sheet (evMode ${evMode})`, async ({
+      page,
+    }) => {
+      await seedSettings(page, { confirmOn: 'all', evMode });
+      await page.goto('/#/play?seed=7&speed=instant');
+      await clean(page);
+      await page.locator('button[data-action="deal"]').click();
+      if (evMode !== 'never') await ready(page);
+      await clean(page);
+      await page.locator('button[data-option="check"]').click();
+      await expect(page.getByTestId('ev-sheet')).toBeVisible();
+      await expect(page.getByTestId('confirm')).toBeVisible();
+      await clean(page);
+    });
   test('a lesson scene', async ({ page }) => {
     await page.goto('/#/learn/a-full-hand');
     await page.locator('.scene').first().scrollIntoViewIfNeeded();

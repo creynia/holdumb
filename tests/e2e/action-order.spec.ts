@@ -3,6 +3,7 @@
 // whole action group stay put within 1px, and so does the landscape status bar.
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
+import { seedSettings } from './settings-seed';
 
 const VIEWPORTS = [
   { name: '360x740', width: 360, height: 740 },
@@ -48,17 +49,16 @@ async function street(page: Page, s: string) {
   });
 }
 
-/** Acts on a decision: one tap, then the sheet's Confirm when the sheet asks for one. */
+/**
+ * Acts on a decision through the confirm sheet. The test seeds confirmOn 'all', so every tap opens
+ * the sheet (D40): measuring the open sheet is part of the slot check, and it must not be optional.
+ */
 async function decide(page: Page, option: string, next: string, whileOpen?: () => Promise<void>) {
   await page.locator(`.sim-actions [data-option="${option}"]`).click();
-  const sim = page.getByTestId('simulator');
   const confirm = page.getByTestId('confirm');
-  // Today the sheet asks for Confirm; with one-tap acting (I013) the street just moves on.
-  await expect(confirm.or(sim.and(page.locator(`[data-street="${next}"]`)))).toBeVisible();
-  if (await confirm.isVisible()) {
-    await whileOpen?.();
-    await confirm.click();
-  }
+  await expect(confirm).toBeVisible();
+  await whileOpen?.();
+  await confirm.click();
   await street(page, next);
 }
 
@@ -138,6 +138,7 @@ for (const vp of VIEWPORTS) {
   for (const scheme of ['light', 'dark'] as const) {
     test(`fixed action slots on every street at ${vp.name} ${scheme}`, async ({ page }, info) => {
       test.skip(info.project.name !== 'mobile', 'runs its own viewports');
+      await seedSettings(page, { confirmOn: 'all' });
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
       await page.goto('/#/play?seed=7&speed=instant');

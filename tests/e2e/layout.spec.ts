@@ -87,11 +87,10 @@ for (const [w, h] of VIEWPORTS) {
       ['check', 'river'],
       ['fold', 'settled'],
     ] as const) {
+      // One tap acts with the default confirm policy (D40).
       await page.locator(`button[data-option="${k}"]`).click();
-      await page.getByTestId('confirm').click();
-      const anyway = page.getByRole('button', { name: 'Do it anyway' });
-      if (await anyway.isVisible().catch(() => false)) await anyway.click();
       await expect(sim).toHaveAttribute('data-street', next);
+      await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
       await page.keyboard.press('Escape');
       await page.evaluate(() => scrollTo(0, 0));
       await check(page, next, w, h);

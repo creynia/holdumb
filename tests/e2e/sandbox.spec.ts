@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { seedSettings } from './settings-seed';
 
 const ready = (page: Page) =>
   page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 20_000 });
 const opt = (page: Page, k: string) => page.locator(`button[data-option="${k}"]`);
 
 test.describe('sandbox', () => {
-  test('a full hand from betting: chips, deal, EV before confirming, result', async ({ page }) => {
+  test('a full hand from betting: chips, deal, one tap acts, result (D40)', async ({ page }) => {
     await page.goto('/#/play?seed=7&speed=instant');
     const sim = page.getByTestId('simulator');
     // Clear leaves the $5 minimum; one more $5 chip on Ante makes $10 and the Blind mirrors it.
@@ -18,33 +19,64 @@ test.describe('sandbox', () => {
     await page.locator('button[data-action="deal"]').click();
     await ready(page);
     await expect(page.locator('g.sim-card:not(.sim-card-back)')).toHaveCount(2);
-    // Preview first: the EV is visible before anything is confirmed.
+    // The default policy is "no confirm": the tap acts at once, no sheet.
     await opt(page, 'play-4').click();
-    const sheet = page.getByTestId('ev-sheet');
-    await expect(sheet).toBeVisible();
-    await expect(sheet).toContainText(/exact/i);
-    await expect(sheet).toContainText(/\$\d/);
-    await expect(sim).toHaveAttribute('data-street', 'preflop');
-    await page.getByTestId('confirm').click();
     await expect(sim).toHaveAttribute('data-street', 'settled');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
     await expect(page.locator('.sim-toast')).toContainText(/Net/);
     expect(Number(await sim.getAttribute('data-equity'))).not.toBe(50_000);
     await expect(page.getByRole('button', { name: /Rebet/ })).toBeVisible();
   });
 
-  test('a preset flop hand shows both options, one best badge, and plays on', async ({ page }) => {
+  test('defaults: the best option acts in one tap on every street, no sheet (D40)', async ({
+    page,
+  }) => {
     await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
     await ready(page);
     await expect(page.locator('button[data-option].is-best')).toHaveCount(1);
-    await opt(page, 'play-2').click();
-    await expect(page.getByTestId('ev-sheet')).toContainText(/Best play|mistake/i);
+    await page.locator('button[data-option].is-best').click();
+    await expect(page.getByTestId('simulator')).not.toHaveAttribute('data-street', 'flop');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+  });
+
+  test('confirmOn all: tap -> sheet with the EV -> "Confirm Check" acts (two taps, no "Yes")', async ({
+    page,
+  }) => {
+    await seedSettings(page, { confirmOn: 'all' });
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    const sim = page.getByTestId('simulator');
+    await ready(page);
+    await opt(page, 'check').click();
+    const sheet = page.getByTestId('ev-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText(/exact/i);
+    await expect(sheet).toContainText(/\$\d/);
+    await expect(sim).toHaveAttribute('data-street', 'preflop');
+    // Check on aces is a big mistake: the warning shows at once and the primary is "Do it anyway".
+    await expect(page.getByTestId('blunder-warning')).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await opt(page, 'play-4').click();
+    await expect(page.getByTestId('confirm')).toHaveText('Confirm Bet 4x');
     await page.getByTestId('confirm').click();
-    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
+    await expect(sim).toHaveAttribute('data-street', 'settled');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+    await expect(page.getByText(/Yes, |Tap again/)).toHaveCount(0);
+  });
+
+  test('confirmOn all on the flop: "Confirm Check" is one tap in the sheet', async ({ page }) => {
+    await seedSettings(page, { confirmOn: 'all' });
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+    await ready(page);
+    await opt(page, 'check').click();
+    await expect(page.getByTestId('confirm')).toHaveText(/^(Confirm Check|Do it anyway)$/);
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'river');
   });
 
   test('the flop sheet names the basic-card rule and whether perfect agrees (I058)', async ({
     page,
   }) => {
+    await seedSettings(page, { confirmOn: 'all' });
     await page.goto('/#/play?hole=9s7d&board=9hKc2s&dealer=QdJd&street=flop&speed=instant');
     await ready(page);
     await opt(page, 'play-2').click();
@@ -53,43 +85,104 @@ test.describe('sandbox', () => {
     await expect(line).toContainText(/Perfect play (agrees|prefers Check)/);
   });
 
-  test('with "After I choose" the rule line appears only after the move (I058)', async ({
+  test('with "After I choose" one tap acts, then the reveal shows the rule line (I058, D40)', async ({
     page,
   }) => {
-    await page.goto('/#/settings');
-    await page.getByRole('radio', { name: 'After I choose' }).check();
+    await seedSettings(page, { evMode: 'after' });
     await page.goto('/#/play?hole=9s7d&board=9hKc2s&dealer=QdJd&street=flop&speed=instant');
     await ready(page);
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
     await opt(page, 'play-2').click();
-    await expect(page.getByTestId('ev-sheet')).toBeVisible();
-    await expect(page.getByTestId('flop-rule')).toHaveCount(0);
-    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('reveal-result')).toBeVisible();
     await expect(page.getByTestId('flop-rule')).toContainText('Basic card: rule (b)');
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
   });
 
-  test('by default a blunder acts on Confirm with no second tap (D39)', async ({ page }) => {
+  test('"After I choose" + confirmOn all: EV hidden in the sheet, then the reveal in place', async ({
+    page,
+  }) => {
+    await seedSettings(page, { evMode: 'after', confirmOn: 'all' });
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+    await ready(page);
+    await expect(page.locator('button[data-option]').first()).not.toContainText('·');
+    await opt(page, 'play-2').click();
+    await expect(page.getByTestId('ev-hidden')).toHaveText('EV is hidden until you act.');
+    await expect(page.getByTestId('reveal-result')).toHaveCount(0);
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('reveal-result')).toBeVisible();
+    await expect(page.getByTestId('ev-hidden')).toHaveCount(0);
+  });
+
+  test('by default a blunder acts at once: no sheet, no warning (D40)', async ({ page }) => {
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);
     await opt(page, 'check').click();
-    await page.getByTestId('confirm').click();
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
     await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
   });
 
-  test('a blunder needs a second tap with "Only bad bets"', async ({ page }) => {
-    await page.goto('/#/settings');
-    await page.getByRole('radio', { name: /Only bad bets/ }).check();
-    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+  test('"Only bad bets": Bet 4x on 7-2 warns at once; Cancel; Check acts in one tap', async ({
+    page,
+  }) => {
+    await seedSettings(page, { confirmOn: 'blunder' });
+    await page.goto('/#/play?hole=7s2d&dealer=9d9s&street=preflop&speed=instant');
+    const sim = page.getByTestId('simulator');
     await ready(page);
-    await opt(page, 'check').click();
-    await page.getByTestId('confirm').click();
+    await opt(page, 'play-4').click();
     await expect(page.getByTestId('blunder-warning')).toBeVisible();
-    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'preflop');
+    await expect(page.getByTestId('confirm')).toHaveText('Do it anyway');
+    await expect(sim).toHaveAttribute('data-street', 'preflop');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+    await expect(opt(page, 'play-4')).toBeFocused();
+    await opt(page, 'check').click();
+    await expect(sim).toHaveAttribute('data-street', 'flop');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+  });
+
+  test('"Only bad bets": "Do it anyway" acts', async ({ page }) => {
+    await seedSettings(page, { confirmOn: 'blunder' });
+    await page.goto('/#/play?hole=7s2d&dealer=9d9s&street=preflop&speed=instant');
+    await ready(page);
+    await opt(page, 'play-4').click();
     await page.getByRole('button', { name: 'Do it anyway' }).click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
+  });
+
+  test('EV off + confirmOn all: the sheet has no numbers and its Confirm acts (D40)', async ({
+    page,
+  }) => {
+    await seedSettings(page, { evMode: 'never', confirmOn: 'all' });
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+    await opt(page, 'check').click();
+    const sheet = page.getByTestId('ev-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByTestId('cost-vs-best')).toHaveCount(0);
+    await expect(sheet.getByRole('radiogroup')).toHaveCount(0);
+    await expect(page.getByTestId('confirm')).toHaveText(/^(Confirm Check|Do it anyway)$/);
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'river');
+  });
+
+  test('EV off + "Only bad bets": the warning names the better play, with no figures', async ({
+    page,
+  }) => {
+    await seedSettings(page, { evMode: 'never', confirmOn: 'blunder' });
+    await page.goto('/#/play?hole=7s2d&dealer=9d9s&street=preflop&speed=instant');
+    await ready(page);
+    await opt(page, 'play-4').click();
+    const warn = page.getByTestId('blunder-warning');
+    await expect(warn).toContainText('big mistake');
+    await expect(warn).toContainText('Check');
+    const text = (await page.getByTestId('ev-sheet').textContent()) ?? '';
+    expect(text).not.toMatch(/\$|ante/i);
   });
 
   test('folding reveals the dealer and what would have happened (D7)', async ({ page }) => {
+    await seedSettings(page, { confirmOn: 'all' });
     await page.goto('/#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river&speed=instant');
     await ready(page);
     await opt(page, 'fold').click();
@@ -113,15 +206,13 @@ test.describe('sandbox', () => {
     await expect(live).toContainText('would have');
   });
 
-  test('practice mode hides the EV until you confirm', async ({ page }) => {
+  test('the practice toggle (EV after) reveals the move after one tap', async ({ page }) => {
     await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
     await ready(page);
     await page.getByTestId('practice-toggle').check();
     await expect(page.locator('button[data-option]').first()).not.toContainText('·');
     await opt(page, 'play-2').click();
-    await expect(page.getByTestId('practice-hidden')).toBeVisible();
-    await page.getByTestId('confirm').click();
-    await expect(page.getByTestId('practice-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-result')).toBeVisible();
   });
 
   test('the session is saved in the app store and restored after a reload', async ({ page }) => {
@@ -133,7 +224,6 @@ test.describe('sandbox', () => {
       if ((await page.getByTestId('simulator').getAttribute('data-street')) === 'settled') break;
       await ready(page);
       await page.locator('button[data-option].is-best').click();
-      await page.getByTestId('confirm').click();
       await page.waitForTimeout(100);
     }
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
@@ -150,15 +240,12 @@ test.describe('sandbox', () => {
     await page.locator('button[data-chip="500"]').click();
     await page.locator('[data-hit="ante"]').click();
     await page.locator('button[data-action="deal"]').click();
-    // Check, check to the river (confirming a second time when a check is a "big mistake").
+    // Check, check to the river: one tap each with the default policy (D40).
     for (const street of ['preflop', 'flop']) {
       await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', street);
       await ready(page);
       await opt(page, 'check').click();
-      await page.getByTestId('confirm').click();
-      // This scenario never flags a check as a big mistake, so the prompt is asserted absent.
-      // If a change makes it appear, this fails and the scenario should say so explicitly.
-      await expect(page.getByRole('button', { name: 'Do it anyway' })).toHaveCount(0);
+      await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
       await page.waitForTimeout(150);
     }
     const sim = page.getByTestId('simulator');
