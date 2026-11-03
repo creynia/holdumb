@@ -931,11 +931,13 @@ export interface SceneConfig {
   allowedActions?: ActionType[];      // default all
   allowedOptions?: OptionKey[];       // finer: e.g. hide 3x
   highlight?: (WagerId | OptionKey)[];
-  showEV?: boolean;                   // default true
+  showEV?: boolean;                   // default true; legacy alias: false == evMode 'never'
+  evMode?: 'before' | 'after' | 'never';            // D39, default 'before'
+  confirmOn?: 'all' | 'costly' | 'blunder' | 'never'; // D39, default 'never'
   evDetail?: 'basic' | 'full';        // basic = EV + badge; full = + alternative + Why?
   whyOpen?: boolean;
   revealDealer?: boolean;             // teaching: dealer cards face up from the deal (EV still ignores them)
-  practice?: boolean;                 // hide EV until confirm (D11 behaviour)
+  practice?: boolean;                 // legacy alias: true == evMode 'after' (D39)
   ui?: {
     orientation?: 'auto' | 'portrait' | 'landscape';
     chips?: Cents[]; defaultChip?: Cents;
@@ -1017,8 +1019,13 @@ Runner API (pure, crappy names): `initScene`, `gateAction` (returns
 `player` + `flop`, a river start also needs `turn` + `river`); every
 `completeWhen` kind is known; options are legal for the street they appear in;
 money amounts are integer cents and multiples of `betUnit`; the `bestDecisions`
-and `best: true` matchers appear only where `showEV` is not false or practice
-is on (the preview is computed anyway). **Completability lint:** a step whose
+and `best: true` matchers appear only where the step's effective `evMode` is not
+`never` (the preview is computed anyway); `evMode` / `confirmOn` values are known,
+and `evMode` is never set next to its legacy alias (`practice`, `showEV`); a step
+whose `completeWhen` uses `previewed` needs an effective `confirmOn: all` (the
+confirm sheet is how a learner previews). **In a lesson the scene decides** its
+EV mode and confirm policy (step keys override the scene); the user's `evMode` /
+`confirmOn` settings apply only in the sandbox (D39). **Completability lint:** a step whose
 `completeWhen` needs a deal must have `deals`/`startAt`, or follow one; a
 `handResult: {outcome: 'win'}` step must fully force player + dealer + board,
 so the result is guaranteed.

@@ -43,6 +43,29 @@ function extent(series: readonly SessionSeries[], bankroll: number): [number, nu
   return [lo, hi];
 }
 
+/**
+ * "Nice" y ticks in dollars: step of 1, 2 or 5 x 10^n, at most 5 ticks. Always includes `start`
+ * (the starting bankroll) and 0 when it lies strictly inside the range.
+ */
+export function niceTicks(lo: number, hi: number, start: number): number[] {
+  const span = Math.max(hi - lo, 1e-9);
+  const raw = span / 4;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 5, 10].map((m) => m * pow).find((c) => c >= raw) ?? 10 * pow;
+  const out: number[] = [];
+  const near = (v: number): boolean => out.some((t) => Math.abs(t - v) < step * 0.4);
+  if (start >= lo && start <= hi) out.push(start);
+  if (lo < 0 && hi > 0 && !near(0)) out.push(0);
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) {
+    const r = Math.round(v / step) * step;
+    if (out.length < 5 && !near(r)) out.push(r);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/** formatMoney with a real minus sign (U+2212). */
+const money = (cents: number): string => formatMoney(cents).replace(/^-/, '\u2212');
+
 function pathOf(a: ArrayLike<number>, x: (i: number) => number, y: (v: number) => number): string {
   // Thin to <= ~400 points so a 10,000-hand path stays light on a phone.
   const step = Math.max(1, Math.floor(a.length / 400));
@@ -70,8 +93,8 @@ export function BankrollChart({ series, bankroll, hands, class: cls }: BankrollC
       return `${STRATEGY_CONSTANTS[s.strategy.id].name}: ends ${formatMoney(end)} (expected ${formatMoney(s.expected[s.expected.length - 1]!)})${surv}`;
     })
     .join('. ');
-  const whole = (v: number): number => Math.round(v / 100) * 100;
-  const ticks = [...new Set([whole(lo), whole((lo + hi) / 2), whole(hi)])];
+  const ticks = niceTicks(lo / 100, hi / 100, bankroll / 100).map((d) => d * 100);
+  const zero = lo < 0 && hi > 0;
   return (
     <figure class={cls} style={{ margin: 0 }} data-testid="bankroll-chart">
       <svg
@@ -91,11 +114,29 @@ export function BankrollChart({ series, bankroll, hands, class: cls }: BankrollC
               stroke="var(--muted)"
               opacity="0.25"
             />
-            <text x={PAD.l - 4} y={y(t) + 3} text-anchor="end" font-size="9" fill="var(--muted)">
-              {formatMoney(Math.round(t / 100) * 100)}
+            <text
+              x={PAD.l - 4}
+              y={y(t) + 3}
+              text-anchor="end"
+              font-size="9"
+              fill="var(--muted)"
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {money(t)}
             </text>
           </g>
         ))}
+        {zero ? (
+          <line
+            data-testid="zero-line"
+            x1={PAD.l}
+            x2={W - PAD.r}
+            y1={y(0)}
+            y2={y(0)}
+            stroke="var(--text)"
+            stroke-width="1"
+          />
+        ) : null}
         <line
           x1={PAD.l}
           x2={W - PAD.r}
@@ -146,9 +187,22 @@ export function BankrollChart({ series, bankroll, hands, class: cls }: BankrollC
             </g>
           );
         })}
-        <text x={W - PAD.r} y={H - 4} text-anchor="end" font-size="9" fill="var(--muted)">
-          {hands} hands
-        </text>
+        <g
+          font-size="9"
+          fill="var(--muted)"
+          style={{ whiteSpace: 'nowrap' }}
+          data-testid="x-labels"
+        >
+          <text x={PAD.l} y={H - 4} text-anchor="start">
+            0
+          </text>
+          <text x={(PAD.l + W - PAD.r) / 2} y={H - 4} text-anchor="middle">
+            {Math.round(hands / 2)}
+          </text>
+          <text x={W - PAD.r} y={H - 4} text-anchor="end">
+            {hands} hands
+          </text>
+        </g>
         {many ? (
           <g data-testid="survival">
             <text x={PAD.l} y={H + 8} font-size="9" fill="var(--muted)">

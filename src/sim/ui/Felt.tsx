@@ -8,6 +8,12 @@ import { layoutFor } from './layouts';
 import type { LabelSpot } from './layouts';
 import type { Timeline } from './animation';
 import { capitalize } from './text';
+import { useEffect, useRef, useState } from 'preact/hooks';
+
+/** Smallest tap target, in CSS px, whatever the felt is scaled to. */
+const MIN_TAP_PX = 44;
+/** Largest hit box in viewBox units, so padded targets never reach the cards or each other. */
+const MAX_HIT_UNITS = 88;
 
 export interface FeltProps {
   orientation: 'portrait' | 'landscape';
@@ -97,6 +103,23 @@ export function Felt({
   onSkip,
 }: FeltProps) {
   const L = layoutFor(orientation);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      const k = Math.min(r.width / L.viewBox.w, r.height / L.viewBox.h);
+      if (k > 0) setScale(k);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [L]);
+  const minTap = Math.min(MAX_HIT_UNITS, Math.max(L.minTapUnits, Math.ceil(MIN_TAP_PX / scale)));
   const d = timeline?.delays;
   const dur = timeline?.cardMs ?? 0;
   const cs = L.cardSize;
@@ -120,6 +143,7 @@ export function Felt({
       data-testid="felt"
     >
       <svg
+        ref={svgRef}
         class="sim-felt"
         viewBox={`0 0 ${L.viewBox.w} ${L.viewBox.h}`}
         preserveAspectRatio="xMidYMid meet"
@@ -198,7 +222,7 @@ export function Felt({
               label={c.label}
               amount={amountOf(id)}
               sublabel={id === 'play' && playMultiple ? `${playMultiple}x` : undefined}
-              minTap={L.minTapUnits}
+              minTap={minTap}
               onTap={onCircle}
               ghost={!!nextHand && id !== 'play'}
               highlight={highlight.includes(id)}
