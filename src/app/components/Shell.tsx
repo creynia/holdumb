@@ -22,6 +22,17 @@ export function Shell(props: {
 }) {
   return (
     <div class="shell">
+      <a
+        class="skip-link"
+        href="#main"
+        onClick={(e) => {
+          // Hash routing: keep the route, just move focus to the content.
+          e.preventDefault();
+          document.getElementById('main')?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       <header class="topbar">
         <Link to="/" class="brand">
           holdumb
