@@ -912,6 +912,23 @@ textarea {
   font-size: 0.75rem;
   padding: 0 0.15rem;
   min-width: 1ch;
+  position: relative;
+}
+/* Invisible 44px hit area; the visual size and line height are unchanged. */
+.cite-btn::before {
+  content: '';
+  position: absolute;
+  inset: -16px -17px;
+}
+/* Adjacent citations ([2][3]) get a small gap and trimmed hit areas so they never overlap. */
+.cite + .cite {
+  margin-inline-start: 0.5rem;
+}
+.cite + .cite .cite-btn::before {
+  inset-inline-start: -4px;
+}
+.cite:has(+ .cite) .cite-btn::before {
+  inset-inline-end: -4px;
 }
 .cite-btn:focus-visible {
   outline: 2px solid var(--focus);
