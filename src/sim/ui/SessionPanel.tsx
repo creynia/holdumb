@@ -68,9 +68,9 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
               </div>
               <div>
                 <dt>Decisions vs perfect</dt>
-                <dd class="sim-money" data-testid="session-mistakes">
+                <dd data-testid="session-mistakes">
                   {s.mistakes} {s.mistakes === 1 ? 'mistake' : 'mistakes'} ·{' '}
-                  {m(0 - s.mistakesRoundedCents, true)}
+                  <span class="sim-money">{m(0 - s.mistakesRoundedCents, true)}</span>
                 </dd>
               </div>
               <div>
@@ -82,8 +82,8 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
               {s.edgePerAnte ? (
                 <div>
                   <dt>Your edge per Ante</dt>
-                  <dd class="sim-money" data-testid="session-edge">
-                    {fmtPct(s.edgePerAnte, 2)}{' '}
+                  <dd data-testid="session-edge">
+                    <span class="sim-money">{typographic(fmtPct(s.edgePerAnte, 2))}</span>{' '}
                     <span class="sim-muted">(perfect play {fmtPct(GAME_EDGE, 2)})</span>
                   </dd>
                 </div>
@@ -95,9 +95,10 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
           {s.tripsWageredCents > 0 ? (
             <div>
               <dt>Trips</dt>
-              <dd class="sim-money" data-testid="session-trips">
-                wagered {m(s.tripsWageredCents)} · expected {m(s.tripsExpectedRoundedCents, true)} ·
-                actual {m(s.tripsCents, true)}
+              <dd data-testid="session-trips">
+                wagered <span class="sim-money">{m(s.tripsWageredCents)}</span> · expected{' '}
+                <span class="sim-money">{m(s.tripsExpectedRoundedCents, true)}</span> · actual{' '}
+                <span class="sim-money">{m(s.tripsCents, true)}</span>
               </dd>
             </div>
           ) : null}
@@ -109,8 +110,7 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
           ) : null}
           <p class="sim-muted">
             Your result = perfect play + mistakes + luck, to the cent. Expected amounts are exact
-            and rounded once; "expected" means on average over many sessions, not what you will win
-            or lose.
+            and rounded once: what you get on average over many sessions, not a forecast.
           </p>
         </dl>
       ) : null}

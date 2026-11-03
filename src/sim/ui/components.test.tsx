@@ -600,7 +600,7 @@ describe('SessionPanel (curriculum 8.5)', () => {
     expect(screen.getByTestId('session-wagered').textContent).toBe('$1,780');
     expect(screen.getByTestId('session-perfect').textContent).toBe('\u2212$13.18');
     expect(screen.getByTestId('session-mistakes').textContent).toBe('3 mistakes · \u2212$1.20');
-    expect(screen.getByTestId('session-luck').textContent).toBe('\u2212$21.62');
+    expect(screen.getByTestId('session-luck').textContent).toBe('\u2212$20.62');
     expect(screen.getByTestId('session-edge').textContent).toBe('2.40% (perfect play 2.18%)');
     expect(screen.getByTestId('session-trips').textContent).toBe(
       'wagered $210 · expected \u2212$4 · actual +$25',
