@@ -381,7 +381,6 @@ describe('Drill', () => {
     ({
       street: 'flop',
       bestIndex: bestIdx,
-      handClass: 'AKo',
       options: [
         {
           action: { type: 'play', multiple: 2 },
@@ -459,7 +458,7 @@ describe('Drill', () => {
     const res = el.querySelector('[data-testid="drill-result"]')!;
     expect(res.getAttribute('data-tier')).toBe('best');
     expect(btn(res as HTMLElement, 'See the chart').getAttribute('href')).toBe(
-      '#/strategy?highlight=AKo',
+      '#/strategy?view=flop',
     );
     expect(btn(res as HTMLElement, 'Play it out').getAttribute('href')).toMatch(
       /^#\/play\?hole=AsKd&board=/,
@@ -471,6 +470,49 @@ describe('Drill', () => {
         (b) => (b as HTMLButtonElement).disabled,
       ),
     ).toBe(true);
+  });
+  const ACTIONS = {
+    preflop: [{ type: 'play', multiple: 4 }, { type: 'play', multiple: 3 }, { type: 'check' }],
+    flop: [{ type: 'play', multiple: 2 }, { type: 'check' }],
+    river: [{ type: 'play', multiple: 1 }, { type: 'fold' }],
+  } as unknown as Record<
+    'preflop' | 'flop' | 'river',
+    DecisionPreview['options'][number]['action'][]
+  >;
+  it('See the chart: preflop highlights the hand, flop and river open their own view', async () => {
+    for (const [street, handClass, want] of [
+      ['preflop', 'AKs', '#/strategy?highlight=AKs'],
+      ['flop', undefined, '#/strategy?view=flop'],
+      ['river', undefined, '#/strategy?view=river'],
+    ] as const) {
+      document.body.innerHTML = '';
+      const { store, d } = setup(0, {
+        nextSpot: (r) => [spot(street, 'x'), r],
+        preview: () =>
+          Promise.resolve({
+            ...preview(0),
+            street,
+            handClass,
+            options: ACTIONS[street].map((action) => ({ ...preview(0).options[0]!, action })),
+          } as unknown as DecisionPreview),
+      });
+      const el = await mountDrill(store, d);
+      await act(() => (el.querySelector('.choice-row button') as HTMLButtonElement).click());
+      await tick();
+      const res = el.querySelector('[data-testid="drill-result"]') as HTMLElement;
+      expect(btn(res, 'See the chart').getAttribute('href'), street).toBe(want);
+    }
+  });
+  it('Strategy: view=river scrolls the river section into view, unknown views do nothing', async () => {
+    const spy = vi.fn();
+    Element.prototype.scrollIntoView = spy;
+    const { el } = await mount('#/strategy?view=river');
+    const sec = el.querySelector('[data-view="river"]') as HTMLElement;
+    expect(spy.mock.contexts[0]).toBe(sec);
+    spy.mockClear();
+    document.body.innerHTML = '';
+    await mount('#/strategy?view=bogus');
+    expect(spy).not.toHaveBeenCalled();
   });
   it('close counts as correct, costly does not, and misses are remembered (D33)', async () => {
     const { store, d } = setup(1); // best = Check; Bet 2x is "costly"
