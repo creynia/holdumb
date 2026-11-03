@@ -1,6 +1,7 @@
 import { Say } from '../sim';
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
+import { ErrorBoundary, ErrorToast } from './components/ErrorBoundary';
 import { Shell } from './components/Shell';
 import { useContent, useStore } from './context';
 import { consumeFreshNav, useRoute } from './router';
@@ -34,6 +35,7 @@ export function App() {
   const content = useContent();
   const { theme, animationSpeed, reduceMotion, fourColorDeck } = store.settings;
   const [, rerender] = useReducer((n: number) => n + 1, 0);
+  const [epoch, remount] = useReducer((n: number) => n + 1, 0);
   useEffect(() => applyTheme(store.settings), [theme, animationSpeed, reduceMotion, fourColorDeck]);
   // OS reduced-motion preference can change while the app is open.
   useEffect(
@@ -53,6 +55,13 @@ export function App() {
     });
     document.title = name ? `${name} · holdumb` : HOME_TITLE;
   }, [route.path, content]);
+  // Route class on <html> so CSS can scope behaviour (overscroll) to the Play table only.
+  useEffect(() => {
+    document.documentElement.dataset.route = route.path.split('/')[1] || 'home';
+    return () => {
+      delete document.documentElement.dataset.route;
+    };
+  }, [route.path]);
   // One anonymous page view per route (path only; query strings are dropped).
   useEffect(() => trackPage(pagePath(location.pathname, route.path)), [route.path]);
   // Move focus to the page after a route change (not on first load).
@@ -93,6 +102,7 @@ export function App() {
   return (
     <Shell
       path={route.path}
+      toast={<ErrorToast route={route.path} />}
       banner={
         store.persistent ? undefined : (
           <p class="banner">
@@ -105,7 +115,18 @@ export function App() {
         )
       }
     >
-      {renderRoute(route)}
+      <ErrorBoundary
+        key={`${route.path}:${epoch}`}
+        route={route.path}
+        onReset={() => {
+          // Only the sandbox snapshot; lessons, drill and settings stay.
+          store.setSandbox(undefined);
+          store.flush();
+          remount(0);
+        }}
+      >
+        {renderRoute(route)}
+      </ErrorBoundary>
     </Shell>
   );
 }

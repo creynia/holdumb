@@ -85,3 +85,15 @@ As root on Linux, you can run the CI image without a Docker daemon by extracting
 2. Add `127.0.0.1 localhost` to `rootfs/etc/hosts`.
 3. From a shell started with `unshare -m --propagation private`, bind-mount your checkout at `rootfs/w`. Mount `proc` at `rootfs/proc`, rbind `/dev` and `/sys`, and mount a tmpfs at `rootfs/tmp`.
 4. Run `chroot rootfs env -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/ms-playwright HOME=/root CI=1 bash -c 'cd /w && npx playwright test -c playwright.visual.config.ts --update-snapshots'`.
+
+## Playwright version
+
+Playwright lives in three places, and a bump must change all of them in one PR:
+
+1. `package.json`: `devDependencies["@playwright/test"]` and `overrides["playwright-core"]`.
+2. `.github/workflows/ci.yml`, `.github/workflows/visual-baselines.yml` and the `test:visual:update` script in `package.json`: the container image `mcr.microsoft.com/playwright:v<version>-noble`.
+3. `tests/visual/__screenshots__`: the baselines. They must be regenerated inside that container.
+
+Dependabot does not bump these automatically (`.github/dependabot.yml` ignores them). A bump PR
+says in its body that it needs regenerated baselines, and `tests/build/playwright-pins.test.ts`
+fails until the three places agree.
