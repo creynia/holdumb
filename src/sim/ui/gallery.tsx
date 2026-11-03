@@ -216,7 +216,7 @@ function Demo({ id }: { id: string }) {
     setOpen(null);
     const settled = r.events.find((e) => e.type === 'hand-settled');
     if (settled && settled.type === 'hand-settled')
-      setToast(describeResult(settled.result, settled.state.hand?.deal));
+      setToast(describeResult(settled.result, undefined, settled.state.hand?.deal));
   };
   const sheet =
     open && decision ? (
