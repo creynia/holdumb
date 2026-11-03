@@ -217,6 +217,54 @@ export class Store {
     });
   }
 
+  /** Read the showdown: one answered spot (each question graded on its own). */
+  recordShowdown(g: { winner: boolean; qualifies: boolean; blind: boolean; all: boolean }) {
+    const d = this.data.drill;
+    const s = d.modes.showdown;
+    const bump = (c: { answered: number; correct: number }, ok: boolean) => ({
+      answered: c.answered + 1,
+      correct: c.correct + (ok ? 1 : 0),
+    });
+    this.commit({
+      ...this.data,
+      drill: {
+        ...d,
+        modes: {
+          ...d.modes,
+          showdown: {
+            winner: bump(s.winner, g.winner),
+            qualifies: bump(s.qualifies, g.qualifies),
+            blind: bump(s.blind, g.blind),
+            spots: s.spots + 1,
+            allRight: s.allRight + (g.all ? 1 : 0),
+          },
+        },
+      },
+    });
+  }
+
+  /** Count the outs: one typed answer against the exact count. */
+  recordOuts(said: number, actual: number) {
+    const d = this.data.drill;
+    const o = d.modes.outs;
+    const err = Math.abs(said - actual);
+    this.commit({
+      ...this.data,
+      drill: {
+        ...d,
+        modes: {
+          ...d.modes,
+          outs: {
+            answered: o.answered + 1,
+            exact: o.exact + (err === 0 ? 1 : 0),
+            within2: o.within2 + (err <= 2 ? 1 : 0),
+            absErrorSum: o.absErrorSum + err,
+          },
+        },
+      },
+    });
+  }
+
   /** Drill: choose the grading lens (kept across visits; accuracy is tracked per lens). */
   setDrillLens(lens: DrillLens) {
     if (lens === this.data.drill.lens) return;

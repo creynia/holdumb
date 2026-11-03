@@ -458,6 +458,12 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             Your weakest: {DRILL_CATEGORY_LABELS[weakest.id]} {weakest.pct}% ({weakest.answered})
           </p>
         )}
+        <p class="muted" data-testid="drill-modes">
+          Other drills:{' '}
+          <Link to="/drill?mode=showdown" class="inline-link">
+            Read the showdown
+          </Link>
+        </p>
       </div>
     </div>
   );

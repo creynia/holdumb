@@ -2,6 +2,26 @@ export * from './types';
 export { STRATEGY_IDS } from './ids';
 export { simulateJob } from './simulate';
 export { nextSpot, spotCode, spotFromCode, gradeSpot } from './drill';
+export {
+  SHOWDOWN_KINDS,
+  SHOWDOWN_QUESTIONS,
+  gradeShowdown,
+  nextShowdownSpot,
+  showdownCode,
+  showdownFromCode,
+  showdownKindOf,
+  showdownTruth,
+} from './showdown';
+export type {
+  ShowdownAnswers,
+  ShowdownBlind,
+  ShowdownGrade,
+  ShowdownKind,
+  ShowdownQuestion,
+  ShowdownSpot,
+  ShowdownTruth,
+  ShowdownWinner,
+} from './showdown';
 export { categorize, DRILL_STREET_OF } from './categories';
 export { STRATEGIES, getStrategy, strategyAction, PICKER_GROUPS } from './presets';
 export { STRATEGY_CONSTANTS } from './constants';

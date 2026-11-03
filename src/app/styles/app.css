@@ -1246,3 +1246,47 @@ html[data-route='play'] body {
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* Read the showdown (I061) */
+.sd-spot {
+  display: grid;
+  gap: 0.6rem;
+}
+.sd-hand {
+  display: grid;
+  gap: 0.2rem;
+}
+.sd-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.sd-hand .cards {
+  font-size: 1.15em;
+}
+.pc-out {
+  opacity: 0.6;
+}
+.sd-q {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.sd-q legend {
+  padding: 0;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+.sd-q .choice-row .btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+.sd-q .btn.sd-right {
+  outline: 3px solid var(--tier-best, #1a7f4b);
+  outline-offset: -3px;
+}
+.sd-q .btn.sd-wrong {
+  outline: 3px solid var(--tier-blunder, #c0262d);
+  outline-offset: -3px;
+}

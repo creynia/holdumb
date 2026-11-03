@@ -87,6 +87,33 @@ export interface DrillStats extends LensStats {
   practical: LensStats;
   /** "Close calls" (I068): about 60% of spots are close, streets weighted by real play. Default on. */
   closeCalls: boolean;
+  /** The two drills that are not "pick an action": read the showdown (I061), count the outs (I060). */
+  modes: DrillModes;
+}
+
+export interface QuestionCount {
+  answered: number;
+  correct: number;
+}
+/** Read the showdown: each of the three questions is tracked on its own. */
+export interface ShowdownStats {
+  winner: QuestionCount;
+  qualifies: QuestionCount;
+  blind: QuestionCount;
+  /** Spots answered, and how many had all three right. */
+  spots: number;
+  allRight: number;
+}
+/** Count the outs: exact hits, hits within two, and the summed absolute error (mean = sum / answered). */
+export interface OutsStats {
+  answered: number;
+  exact: number;
+  within2: number;
+  absErrorSum: number;
+}
+export interface DrillModes {
+  showdown: ShowdownStats;
+  outs: OutsStats;
 }
 
 /** Stats of the lens currently selected. */
@@ -114,8 +141,26 @@ const emptyLens = (): LensStats => ({
   recentMisses: [],
 });
 
+const emptyCount = (): QuestionCount => ({ answered: 0, correct: 0 });
+export const emptyModes = (): DrillModes => ({
+  showdown: {
+    winner: emptyCount(),
+    qualifies: emptyCount(),
+    blind: emptyCount(),
+    spots: 0,
+    allRight: 0,
+  },
+  outs: { answered: 0, exact: 0, within2: 0, absErrorSum: 0 },
+});
+
 export function emptyDrill(): DrillStats {
-  return { ...emptyLens(), lens: 'perfect', practical: emptyLens(), closeCalls: true };
+  return {
+    ...emptyLens(),
+    lens: 'perfect',
+    practical: emptyLens(),
+    closeCalls: true,
+    modes: emptyModes(),
+  };
 }
 
 export function defaultPersisted(): PersistedV1 {
@@ -229,6 +274,43 @@ function sanitizeLens(raw: unknown): LensStats {
   return d;
 }
 
+const MAX_COUNT = 10_000_000;
+function sanitizeCount(raw: unknown): QuestionCount {
+  if (!isObj(raw)) return emptyCount();
+  const answered = clampInt(raw.answered, 0, MAX_COUNT, 0);
+  return { answered, correct: Math.min(clampInt(raw.correct, 0, MAX_COUNT, 0), answered) };
+}
+
+function sanitizeModes(raw: unknown): DrillModes {
+  const d = emptyModes();
+  if (!isObj(raw)) return d;
+  if (isObj(raw.showdown)) {
+    const s = raw.showdown;
+    const spots = clampInt(s.spots, 0, MAX_COUNT, 0);
+    d.showdown = {
+      winner: sanitizeCount(s.winner),
+      qualifies: sanitizeCount(s.qualifies),
+      blind: sanitizeCount(s.blind),
+      spots,
+      allRight: Math.min(clampInt(s.allRight, 0, MAX_COUNT, 0), spots),
+    };
+  }
+  if (isObj(raw.outs)) {
+    const o = raw.outs;
+    const answered = clampInt(o.answered, 0, MAX_COUNT, 0);
+    const exact = Math.min(clampInt(o.exact, 0, MAX_COUNT, 0), answered);
+    d.outs = {
+      answered,
+      exact,
+      // within2 includes the exact hits.
+      within2: Math.max(exact, Math.min(clampInt(o.within2, 0, MAX_COUNT, 0), answered)),
+      // An answer is 0-45 and the truth 0-45, so no single error exceeds 45.
+      absErrorSum: Math.min(clampInt(o.absErrorSum, 0, MAX_COUNT * 45, 0), answered * 45),
+    };
+  }
+  return d;
+}
+
 function sanitizeDrill(raw: unknown): DrillStats {
   if (!isObj(raw)) return emptyDrill();
   return {
@@ -236,6 +318,7 @@ function sanitizeDrill(raw: unknown): DrillStats {
     lens: raw.lens === 'practical' ? 'practical' : 'perfect',
     practical: sanitizeLens(raw.practical),
     closeCalls: raw.closeCalls !== false,
+    modes: sanitizeModes(raw.modes),
   };
 }
 
