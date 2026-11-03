@@ -1,6 +1,6 @@
 import './container.css';
 import { useState } from 'preact/hooks';
-import { RANK_CHARS, formatMoney, parseCards, recordResult } from '../engine';
+import { RANK_CHARS, cardName, formatMoney, parseCards, recordResult } from '../engine';
 import type { Card, HandRecord, TableRules } from '../engine';
 import { cmp, frac } from '../math/fraction';
 import type { Fraction } from '../math';
@@ -16,6 +16,9 @@ export interface HandHistoryProps {
   replayHref?: (query: string) => string;
 }
 
+/** Rows listed before "Show more". */
+export const SHOWN_FIRST = 10;
+
 const SUIT_GLYPH = ['♠', '♥', '♦', '♣'] as const;
 const SUIT_CLASS = ['s', 'h', 'd', 'c'] as const;
 const TIER_WORD = { b: 'best', c: 'close', s: 'small mistake', m: 'mistake', x: 'big mistake' };
@@ -23,7 +26,11 @@ const TIER_WORD = { b: 'best', c: 'close', s: 'small mistake', m: 'mistake', x: 
 function InlineCards({ codes, label }: { codes: string; label: string }) {
   const cards: Card[] = parseCards(codes);
   return (
-    <span class="sim-history-cards" role="img" aria-label={`${label} ${codes}`}>
+    <span
+      class="sim-history-cards"
+      role="img"
+      aria-label={`${label}: ${cards.map(cardName).join(', ')}`}
+    >
       {cards.map((c) => (
         <span key={c} class={`sim-inline-card sim-suit-${SUIT_CLASS[c & 3]}`} aria-hidden="true">
           {RANK_CHARS.charAt(c >> 2).replace('T', '10')}
@@ -34,10 +41,14 @@ function InlineCards({ codes, label }: { codes: string; label: string }) {
   );
 }
 
-/** "num/den" from a record back to an exact Fraction. */
-function ratio(s: string): Fraction {
-  const [n, d] = s.split('/');
-  return frac(BigInt(n!), d === undefined ? 1n : BigInt(d));
+/** "num/den" from a record back to an exact Fraction; null if it does not parse. */
+function ratio(s: string): Fraction | null {
+  try {
+    const [n, d] = s.split('/');
+    return frac(BigInt(n!), d === undefined ? 1n : BigInt(d));
+  } catch {
+    return null;
+  }
 }
 
 /** The street of the costliest scored decision, or the first decision's street. */
@@ -46,7 +57,7 @@ export function costliestStreet(r: HandRecord): 'preflop' | 'flop' | 'river' {
   for (const dec of r.a) {
     if (dec.length !== 4) continue;
     const regret = ratio(dec[3]);
-    if (!best || cmp(regret, best.regret) > 0) best = { street: dec[0], regret };
+    if (regret && (!best || cmp(regret, best.regret) > 0)) best = { street: dec[0], regret };
   }
   return STREET_OF_CODE[best?.street ?? r.a[0]?.[0] ?? 'p'];
 }
@@ -59,20 +70,25 @@ export function actionsText(r: HandRecord): string {
 }
 
 /**
- * The last hands, newest first (simulator.md 3.7): cards, your choices with the tier of each
+ * The last hands, newest first (simulator.md 3.7). This history is the exact record (deal,
+ * choices, exact regrets) that replay and review are rebuilt from; the move log (I081) is the
+ * display-only narration of the same hands. cards, your choices with the tier of each
  * scored decision, and the net. A row opens to the settlement sentence and "Replay this spot",
  * which reopens the hand at the street of your costliest decision with the same cards.
  */
 export function HandHistory({ records, rules, replayHref }: HandHistoryProps) {
   const [openN, setOpenN] = useState<number | null>(null);
+  const [all, setAll] = useState(false);
   if (records.length === 0) return null;
+  // The newest SHOWN_FIRST rows; "Show more" lists them all (50 rows are ~6,000 px at 360).
+  const shown = all ? records : records.slice(0, SHOWN_FIRST);
   return (
     <section class="sim-history" aria-labelledby="sim-history-h" data-testid="hand-history">
       <h2 id="sim-history-h" class="sim-history-title">
         Hand history
       </h2>
       <ol class="sim-history-list">
-        {records.map((r) => {
+        {shown.map((r) => {
           const open = openN === r.n;
           const id = `sim-history-${r.n}`;
           return (
@@ -82,6 +98,7 @@ export function HandHistory({ records, rules, replayHref }: HandHistoryProps) {
                 class="sim-history-head"
                 aria-expanded={open}
                 aria-controls={id}
+                aria-label={`Hand ${r.n}, net ${typographic(formatMoney(r.net, { sign: true }))}, ${actionsText(r)}`}
                 onClick={() => setOpenN(open ? null : r.n)}
               >
                 <span class="sim-history-n">#{r.n}</span>
@@ -120,6 +137,16 @@ export function HandHistory({ records, rules, replayHref }: HandHistoryProps) {
           );
         })}
       </ol>
+      {!all && records.length > SHOWN_FIRST ? (
+        <button
+          type="button"
+          class="sim-btn sim-btn-secondary sim-history-more"
+          onClick={() => setAll(true)}
+          data-testid="history-more"
+        >
+          Show {records.length - SHOWN_FIRST} more
+        </button>
+      ) : null}
     </section>
   );
 }

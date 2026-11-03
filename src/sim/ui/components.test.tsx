@@ -928,13 +928,21 @@ describe('HandHistory (simulator.md 3.7)', () => {
     expect(rows[0]!.textContent).toContain('+$45');
     expect(rows[1]!.textContent).toContain('check (best), check (close), fold (mistake)');
     expect(rows[1]!.textContent).toContain('\u2212$20');
-    expect(within(rows[1]!).getByRole('img', { name: 'You Qc7d' })).toBeTruthy();
-    expect(within(rows[1]!).getByRole('img', { name: 'Dealer TdTs' })).toBeTruthy();
+    expect(
+      within(rows[1]!).getByRole('img', { name: 'You: Queen of clubs, Seven of diamonds' }),
+    ).toBeTruthy();
+    expect(
+      within(rows[1]!).getByRole('img', { name: 'Dealer: Ten of diamonds, Ten of spades' }),
+    ).toBeTruthy();
+    // Each row's button says the hand, its net and the choices in one name.
+    expect(within(rows[1]!).getByRole('button').getAttribute('aria-label')).toBe(
+      'Hand 1, net \u2212$20, check (best), check (close), fold (mistake)',
+    );
     expect(screen.queryByRole('status')).toBeNull(); // no live region of its own
   });
   it('a row expands to the settlement sentence and the replay link at the costliest street', () => {
     render(<HandHistory records={[rec(1)]} rules={rules} replayHref={(q) => `#/play?${q}`} />);
-    const btn = screen.getByRole('button', { name: /#1/ });
+    const btn = screen.getByRole('button', { name: /^Hand 1,/ });
     expect(btn.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByTestId('replay-spot')).toBeNull();
     fireEvent.click(btn);
@@ -983,8 +991,27 @@ describe('HandHistory (simulator.md 3.7)', () => {
       ),
     ).toBe('check, 2x');
     render(<HandHistory records={[rec(1)]} rules={rules} />);
-    fireEvent.click(screen.getByRole('button', { name: /#1/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Hand 1,/ }));
     expect(screen.queryByTestId('replay-spot')).toBeNull();
+  });
+  it('lists the newest 10 and the rest behind "Show more"', () => {
+    const many = Array.from({ length: 23 }, (_, i) => rec(23 - i));
+    render(<HandHistory records={many} rules={rules} />);
+    expect(screen.getAllByTestId('hand-history-row')).toHaveLength(10);
+    const more = screen.getByTestId('history-more');
+    expect(more.textContent).toBe('Show 13 more');
+    fireEvent.click(more);
+    expect(screen.getAllByTestId('hand-history-row')).toHaveLength(23);
+    expect(screen.queryByTestId('history-more')).toBeNull();
+  });
+  it('a corrupt regret never crashes a row (it is skipped for the replay street)', () => {
+    const bad = rec(1, {
+      a: [
+        ['p', 'check', 'm', '1/0'],
+        ['f', 'check', 'c', '1/90'],
+      ],
+    });
+    expect(costliestStreet(bad)).toBe('flop');
   });
   it('renders nothing without hands', () => {
     const { container } = render(<HandHistory records={[]} rules={rules} />);

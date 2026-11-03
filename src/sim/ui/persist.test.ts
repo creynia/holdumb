@@ -120,6 +120,28 @@ describe('hand history in the snapshot (simulator.md 3.7)', () => {
     delete snap.history;
     expect(decodeSnapshot(snap, 'trips-8-6-5')!.restore.history).toEqual([]);
   });
+  it('drops repeated hand numbers and rows over the byte budget', () => {
+    const big: HandRecord = {
+      ...record(7),
+      n: 999_999_999,
+      w: [100_000_000, 100_000_000],
+      net: -999_999_999_999,
+      a: [
+        ['p', 'check', 'x', '62927171999/20975724000'],
+        ['f', 'check', 'm', '5149580311/20975724000'],
+        ['r', 'fold', 'm', '999999999999999/999999999999999'],
+      ],
+    };
+    expect(new TextEncoder().encode(JSON.stringify(big)).length).toBeLessThanOrEqual(
+      HISTORY_RECORD_BYTES,
+    );
+    expect(decodeHistory({ v: 1, items: [record(3), record(3), big] }).map((r) => r.n)).toEqual([
+      3, 999_999_999,
+    ]);
+    const huge = { ...record(4), p: 'Qc7d', extra: 'x'.repeat(300) };
+    expect(isHandRecord(huge)).toBe(true);
+    expect(decodeHistory({ v: 1, items: [huge] })).toEqual([]);
+  });
   it('drops malformed records and keeps the good ones', () => {
     const bad: unknown[] = [
       { ...record(2), p: 'QcQc' }, // duplicate card
@@ -129,6 +151,9 @@ describe('hand history in the snapshot (simulator.md 3.7)', () => {
       { ...record(6), a: [['r', 'raise']] }, // bad choice
       { ...record(7), a: [['r', 'fold', 'z', '1/2']] }, // bad tier
       { ...record(8), a: [['r', 'fold', 'm', '0.32']] }, // not a ratio
+      { ...record(12), a: [['r', 'fold', 'm', '1/0']] }, // zero denominator
+      { ...record(13), a: [['r', 'fold', 'm', `${'9'.repeat(100_000)}/7`]] }, // 100 kB regret
+      { ...record(14), a: [['r', 'fold', 'm', '1234567890123456/7']] }, // over 15 digits
       { ...record(9), w: [1000] },
       { ...record(10), net: 1.5 },
       'junk',

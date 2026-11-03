@@ -70,7 +70,8 @@ export interface HandRecord {
 }
 
 export const HISTORY_LIMIT = 50;
-export const HISTORY_RECORD_BYTES = 200;
+/** Bytes of JSON per record: real records stay well under it; decode drops anything larger. */
+export const HISTORY_RECORD_BYTES = 256;
 
 export const STREET_CODE: Record<DecisionStreet, DecisionStreetCode> = {
   preflop: 'p',

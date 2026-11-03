@@ -98,6 +98,49 @@ describe('hand history (simulator.md 3.7): the driver records every settled hand
     expect(d2.view.history).toEqual([]);
   });
 
+  it('a hand reloaded mid-way keeps its notes in line with its decisions', async () => {
+    const d = new SimDriver({
+      mode: 'sandbox',
+      seed: 5,
+      preview,
+      scene: {
+        id: 'sandbox',
+        version: 1,
+        bets: { ante: 1000, trips: 0 },
+        startAt: {
+          street: 'preflop',
+          deal: {
+            player: ['6d', '6c'],
+            dealer: ['Ah', 'Kh'],
+            flop: ['2s', '9c', 'Jd'],
+            turn: '3h',
+            river: '8s',
+          },
+        },
+      },
+    });
+    expect(await d.currentPreview()).not.toBeNull();
+    expect((await d.act({ type: 'check' })).ok).toBe(true); // scored, then the page reloads
+    const snap = d.snapshotData();
+    const d2 = new SimDriver({
+      mode: 'sandbox',
+      seed: 9,
+      preview,
+      restore: { state: snap.state, startEquity: snap.startEquity, totals: snap.totals },
+    });
+    expect(d2.view.state.street).toBe('flop');
+    expect(await d2.currentPreview()).toBeNull(); // no flop EV here
+    expect((await d2.act({ type: 'check' })).ok).toBe(true);
+    const pv = await d2.currentPreview();
+    const fold = pv!.options.find((o) => o.action.type === 'fold')!;
+    expect((await d2.act({ type: 'fold' })).ok).toBe(true);
+    expect(d2.view.history[0]!.a).toEqual([
+      ['p', 'check'],
+      ['f', 'check'],
+      ['r', 'fold', expect.any(String), toRatio(fold.regret)],
+    ]);
+  });
+
   it('auto-play adds nothing: its hands never pass through the driver', async () => {
     const d = river(noPreview);
     await d.act({ type: 'play', multiple: 1 });

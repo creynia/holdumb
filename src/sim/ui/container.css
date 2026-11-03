@@ -273,6 +273,9 @@
 .sim-history-body p {
   margin: 0;
 }
+.sim-history-more {
+  margin-top: 6px;
+}
 .sim-history-replay {
   align-self: flex-start;
   min-height: 44px;

@@ -302,7 +302,9 @@ export class SimDriver {
       this.history = [...(opts.restore.history ?? [])];
       // A restored hand has no earlier previews: it stays out of the luck split.
       if (this.game.hand && !this.game.hand.result) {
-        this.beginHandTrack();
+        // The hand's earlier decisions have no notes (no preview survives a reload): one null
+        // each, so the history record lines notes up with hand.decisions.
+        this.beginHandTrack(this.game.hand.decisions.length);
         this.hand!.scored = false;
       }
     } else {
@@ -522,14 +524,14 @@ export class SimDriver {
 
   // ---------- hand tracking (luck vs mistakes) ----------
 
-  private beginHandTrack(): void {
+  private beginHandTrack(decisionsSoFar = 0): void {
     this.hand = {
       base: null,
       regret: ZERO_CENTS,
       scored: true,
       ante: this.game.bets.ante,
       mistakes: 0,
-      notes: [],
+      notes: Array<null>(decisionsSoFar).fill(null),
     };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {

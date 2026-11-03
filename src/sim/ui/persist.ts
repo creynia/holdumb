@@ -1,6 +1,6 @@
 // Sandbox snapshot: JSON-safe, opaque to the app. The app keeps it in PersistedV1.sandbox
 // (decisions: not a separate storage key). Anything that does not validate is dropped.
-import { HISTORY_LIMIT, PAYTABLE_PRESET_IDS, parseCards } from '../engine';
+import { HISTORY_LIMIT, HISTORY_RECORD_BYTES, PAYTABLE_PRESET_IDS, parseCards } from '../engine';
 import type { Cents, GameState, HandRecord, TripsPaytableId } from '../engine';
 import { frac } from '../math/fraction';
 import type { Fraction } from '../math';
@@ -97,16 +97,30 @@ export function isHandRecord(v: unknown): v is HandRecord {
     if (!['p', 'f', 'r'].includes(dec[0] as string) || !CHOICES.has(dec[1] as string)) return false;
     if (dec.length === 4) {
       if (!TIERS.has(dec[2] as string)) return false;
-      if (typeof dec[3] !== 'string' || !/^-?\d+(\/\d+)?$/.test(dec[3])) return false;
+      // An exact ratio: at most 15 digits each side, and a denominator of at least 1.
+      if (typeof dec[3] !== 'string' || !/^-?\d{1,15}(\/[1-9]\d{0,14})?$/.test(dec[3]))
+        return false;
     }
   }
   return true;
 }
 
-/** The saved history, or none when the block is missing, malformed or of another version. */
+/**
+ * The saved history, or none when the block is missing, malformed or of another version. Rows that
+ * do not validate, repeat a hand number or exceed HISTORY_RECORD_BYTES are dropped.
+ */
 export function decodeHistory(raw: unknown): HandRecord[] {
   if (!isObj(raw) || raw.v !== HISTORY_VERSION || !Array.isArray(raw.items)) return [];
-  return (raw.items as unknown[]).filter(isHandRecord).slice(0, HISTORY_LIMIT);
+  const seen = new Set<number>();
+  const out: HandRecord[] = [];
+  for (const item of raw.items as unknown[]) {
+    if (!isHandRecord(item) || seen.has(item.n)) continue;
+    if (new TextEncoder().encode(JSON.stringify(item)).length > HISTORY_RECORD_BYTES) continue;
+    seen.add(item.n);
+    out.push(item);
+    if (out.length === HISTORY_LIMIT) break;
+  }
+  return out;
 }
 
 /**
