@@ -31,6 +31,12 @@ describe('storage', () => {
     expect(load(m)).toEqual(defaultPersisted());
     expect(sanitize({ version: 2 })).toBeNull();
   });
+  it('sanitizes persistAsked to no | granted | denied (I076)', () => {
+    expect(sanitizeSettings({ persistAsked: 'granted' }).persistAsked).toBe('granted');
+    expect(sanitizeSettings({ persistAsked: 'denied' }).persistAsked).toBe('denied');
+    expect(sanitizeSettings({ persistAsked: 'yes' }).persistAsked).toBe('no');
+    expect(sanitizeSettings({}).persistAsked).toBe('no');
+  });
   it('sanitizes settings (D30) and drops prototype keys', () => {
     const p = sanitize({
       version: 1,

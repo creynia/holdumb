@@ -260,8 +260,7 @@ export function Settings() {
         <h2>Your progress</h2>
         <p class="muted storage-line" data-testid="storage-state">
           {storage === 'persistent' && 'Storage: persistent'}
-          {storage === 'best-effort' &&
-            'Storage: may be cleared by the browser. Install the app to keep progress.'}
+          {storage === 'best-effort' && 'Storage: may be cleared by the browser'}
         </p>
         {!store.persistent && (
           <p role="alert" class="warn">
