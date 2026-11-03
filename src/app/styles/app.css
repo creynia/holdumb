@@ -1003,3 +1003,9 @@ textarea {
   min-height: 4.5em;
   margin: 0.25rem 0 0;
 }
+
+/* Pull-to-refresh on the felt would lose an in-progress scene; Learn keeps normal scrolling. */
+html[data-route='play'],
+html[data-route='play'] body {
+  overscroll-behavior-y: contain;
+}
