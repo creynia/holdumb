@@ -2,7 +2,13 @@
 // the llms files from the same content bundle the app ships (src/content/load.ts), so the text
 // matches the app. Pure: returns strings; build/vite-plugin-seo.ts writes them into dist/.
 import { buildContent, readSources } from '../../src/content/load';
-import { parseChart, parseQuizzes, segment, splitFrontMatter } from '../../src/content/compile';
+import {
+  expandNumbers,
+  parseChart,
+  parseQuizzes,
+  segment,
+  splitFrontMatter,
+} from '../../src/content/compile';
 import { cardFace, cardsHtml, parseGroup, splitInline } from '../../src/content/cards';
 import { TIER_LABEL } from '../../src/content/types';
 import type { ChartBlockData, ContentBundle, Lesson, Quiz } from '../../src/content/types';
@@ -290,7 +296,7 @@ function shiftHeadings(md: string, shift: number): string {
 }
 
 function lessonMarkdown(source: string, id: string): string {
-  const { body } = splitFrontMatter(source);
+  const body = expandNumbers(splitFrontMatter(source).body); // {{num:…}} tokens (I064)
   const out: string[] = [];
   let quizCount = 0;
   const mins = [...body.matchAll(/^(#{1,6})\s/gm)].map((m) => m[1]!.length);
