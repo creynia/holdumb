@@ -240,7 +240,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
     : '';
 
   return (
-    <div class="page">
+    <div class="page drill-page">
       <h1>Drill</h1>
       <div class="segmented" role="group" aria-label="Street">
         {(['mixed', ...DRILL_STREETS] as const).map((s) => (
