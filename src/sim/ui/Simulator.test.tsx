@@ -419,3 +419,28 @@ describe('Simulator container', () => {
     });
   });
 });
+
+describe('Watch closes an open EV sheet (I097)', () => {
+  it('starting Watch closes the EV sheet that a tap opened', async () => {
+    const confirmSettings = { ...settings, evMode: 'before' as const, confirmOn: 'all' as const };
+    const evClient = createEvClient({ mode: 'inthread' });
+    render(
+      <Simulator
+        settings={confirmSettings}
+        evClient={evClient}
+        scene={{ id: 'sandbox', version: 1, seed: 7, bankroll: 50_000, ui: { showSettings: true } }}
+      />,
+    );
+    fireEvent.click(screen.getByText('Deal'));
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
+    );
+    fireEvent.click(document.querySelector('[data-option="play-4"]')!);
+    await waitFor(() => expect(screen.getByTestId('ev-sheet')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('watch-start'));
+    await waitFor(() => expect(screen.queryByTestId('ev-sheet')).toBeNull());
+    await flush();
+    expect(screen.queryByTestId('ev-sheet')).toBeNull();
+    evClient.dispose();
+  });
+});
