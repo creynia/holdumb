@@ -3348,10 +3348,10 @@ exact EV still shown). The tier comes from §8.2.
 | `flop-flush-draw` | "Four to a flush: 2x only with a ten or better of that suit in your hand." |
 | `flop-straight-draw` | "Straight draws: check, and bet 1x on the river if it comes." |
 | `flop-nothing` | "No pair, no draw: check." |
-| `flop-deuces` | "Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board). Hit a set and rule (a) says 2x." |
+| `flop-deuces` | "Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board)." |
 | `river-hidden-pair` | "Hidden pair or better: always bet 1x." |
 | `river-outs-low` / `-edge` / `-high` | "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}." |
-| `river-board-plays` | "When the board plays, bet 1x: it's usually a tie." |
+| `river-board-plays` | "Your best five is the board, so you can tie but never win. Count the dealer's outs: the basic card says bet 1x with fewer than 21 and fold with 21 or more; perfect play folds from 19. Here: {outs}." |
 
 Streaks count `best` and `close` as correct. Accuracy per street is shown as a percentage, and "Review
 misses" replays `small` and worse.

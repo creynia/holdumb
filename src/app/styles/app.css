@@ -950,6 +950,23 @@ textarea {
 [data-view] {
   scroll-margin-top: 16px;
 }
+/* The Drill category label sits in the card's top padding, so it adds no row and the cards and the
+   choice row stay where they were (I015). */
+.drill-spot {
+  position: relative;
+}
+.drill-spot-category {
+  position: absolute;
+  top: 3px;
+  left: 1rem;
+  right: 1rem;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Reserves the storage line's height so the content below does not shift (I076). */
 .storage-line {
