@@ -194,8 +194,11 @@ describe('runWatch (real driver, exact previews)', () => {
       { type: 'deal' },
       { type: 'play', multiple: 4 },
     ]);
-    // Both hands win the 4x Play plus Ante and Blind (dealer 7-high does not qualify: Ante pushes).
+    // Each hand: the 4x Play wins 4 x $10; the dealer's 7-high does not qualify, so the Ante
+    // pushes; a pair is below a straight, so the Blind pushes. Net +$40 a hand, +$80 in all.
     expect(d.view.state.street).toBe('settled');
+    expect(d.view.result?.net).toBe(4_000);
+    expect(d.view.session.net).toBe(8_000);
     expect(d.view.session.hands).toBe(2);
     expect(d.view.session.mistakes).toBe(0);
   });

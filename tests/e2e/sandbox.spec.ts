@@ -207,7 +207,8 @@ test.describe('sandbox', () => {
     });
     await expect(page.locator('button[data-option].is-hl')).toHaveCount(1);
     await expect(page.locator('button[data-option]').first()).toBeDisabled();
-    // The strip sits below the felt (or beside it in landscape) and Stop is a full tap target.
+    // The strip sits below the ActionBar (above the table in landscape), never on the felt, and
+    // Stop is a full tap target.
     const vp = page.viewportSize()!;
     const felt = (await page.locator('svg.sim-felt').boundingBox())!;
     const strip = (await status.boundingBox())!;
