@@ -427,24 +427,26 @@ describe('small pieces', () => {
       'You would have lost $30 (folding saved $10).',
     );
   });
-  it('a silent toast stays visible but is hidden from the live region', () => {
+  it('a spoken toast shows its money to sight only and announces the spoken line', () => {
     render(
       <Toasts
         toasts={[
-          { id: 1, text: 'Folded. Ante -$10, Blind -$10. Net -$20.' },
-          { id: 2, text: 'Folded. Net -$20.', silent: true },
+          {
+            id: 2,
+            text: 'Folded. Ante -$10, Blind -$10. Net -$20.',
+            spoken: 'You folded. Net -$20. The dealer had a pair of tens (qualifies).',
+          },
         ]}
       />,
     );
     expect(
-      screen.getByText('Folded. Net -$20.').closest('.sim-toast')?.getAttribute('aria-hidden'),
+      screen.getByText('Folded. Ante -$10, Blind -$10. Net -$20.').getAttribute('aria-hidden'),
     ).toBe('true');
-    expect(
-      screen
-        .getByText('Folded. Ante -$10, Blind -$10. Net -$20.')
-        .closest('.sim-toast')
-        ?.getAttribute('aria-hidden'),
-    ).toBeNull();
+    const spoken = screen.getByText(
+      'You folded. Net -$20. The dealer had a pair of tens (qualifies).',
+    );
+    expect(spoken.className).toContain('sim-sr');
+    expect(screen.getByRole('log').contains(spoken)).toBe(true);
   });
   it('Table lays out portrait and landscape with the actions present in both', () => {
     for (const o of ['portrait', 'landscape'] as const) {

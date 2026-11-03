@@ -240,9 +240,14 @@ export function describeResult(r: HandResult): string {
   return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
 }
 
+/** The one spoken fold announcement: the real net, then the reveal's dealer and would-have lines. */
+export function foldAnnouncement(r: HandResult): string {
+  return `You folded. Net ${formatMoney(r.net, { sign: true })}. ${foldRevealText(r)}`;
+}
+
 /**
- * D7: what the fold would have been. The money difference is ifPlayed.net - r.net: positive means
- * folding cost that much, negative means folding saved it.
+ * D7: what the fold would have been. The money difference is ifPlayed.net minus the fold's ante and
+ * blind result: positive means folding cost that much, negative means folding saved it.
  */
 export function foldRevealText(r: HandResult): string {
   const d = handName(r.dealer);
@@ -250,7 +255,12 @@ export function foldRevealText(r: HandResult): string {
   const had = `The dealer had ${withArticle(d)} (${q}).`;
   if (!r.ifPlayed) return had;
   const { outcome, net } = r.ifPlayed;
-  const diff = net - r.net;
+  // Trips settles the same whether you fold or play, and ifPlayed leaves it out, so compare
+  // against what the fold itself lost: ante + blind.
+  const folded = r.wagers
+    .filter((w) => w.wager === 'ante' || w.wager === 'blind')
+    .reduce((s, w) => s + w.profit, 0);
+  const diff = net - folded;
   const effect =
     diff < 0
       ? ` (folding saved ${formatMoney(-diff)})`

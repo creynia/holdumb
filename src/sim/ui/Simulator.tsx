@@ -22,7 +22,14 @@ import { Toasts } from './Toasts';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { decodeSnapshot, encodeSnapshot } from './persist';
 import { randomSeed, resolvePractice, resolveSpeed } from './settings';
-import { actionOfKey, describeResult, handName, headline, optionKeyOf } from './text';
+import {
+  actionOfKey,
+  describeResult,
+  foldAnnouncement,
+  handName,
+  headline,
+  optionKeyOf,
+} from './text';
 import type { SimulatorProps } from './types';
 import { betterAlternative } from '../math';
 import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../math';
@@ -34,7 +41,7 @@ interface Toast {
   id: number;
   text: string;
   tone?: 'info' | 'good' | 'bad';
-  silent?: boolean;
+  spoken?: string;
 }
 
 function makeDriver(
@@ -79,18 +86,18 @@ export function Simulator(props: SimulatorProps) {
   latest.current = props;
   const [toast, setToast] = useState<Toast | null>(null);
   const toastId = useRef(0);
-  const pushToast = (text: string, tone?: Toast['tone'], silent?: boolean): void =>
-    setToast({ id: ++toastId.current, text, tone, silent });
+  const pushToast = (text: string, tone?: Toast['tone'], spoken?: string): void =>
+    setToast({ id: ++toastId.current, text, tone, spoken });
 
   const holder = useRef<SimDriver | null>(null);
   if (!holder.current) {
     holder.current = makeDriver(props, mode, (e) => {
       if (e.type === 'hand-settled')
-        // A fold's reveal panel announces the settlement, so its toast stays visual only.
+        // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
         pushToast(
           describeResult(e.result),
           e.result.net > 0 ? 'good' : undefined,
-          e.result.outcome === 'fold',
+          e.result.outcome === 'fold' ? foldAnnouncement(e.result) : undefined,
         );
       else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
       else if (e.type === 'action-rejected' && !holder.current?.view.step)
@@ -360,6 +367,7 @@ export function Simulator(props: SimulatorProps) {
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
           labels={labels}
+          quiet={result?.outcome === 'fold'}
           timeline={timeline}
           nextHand={settled}
           skipped={motion.skipped}

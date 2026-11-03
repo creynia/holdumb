@@ -9,7 +9,11 @@ import { foldRevealText } from './text';
 export function FoldReveal({ result }: { result: HandResult }) {
   const o = result.ifPlayed?.outcome;
   return (
-    <div class={`sim-reveal sim-reveal-${o ?? 'none'}`} role="status" data-testid="fold-reveal">
+    <div
+      class={`sim-reveal sim-reveal-${o ?? 'none'}`}
+      aria-hidden="true"
+      data-testid="fold-reveal"
+    >
       <b>You folded.</b> {foldRevealText(result)}
     </div>
   );
