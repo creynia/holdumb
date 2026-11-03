@@ -929,3 +929,9 @@ textarea {
 [data-view] {
   scroll-margin-top: 16px;
 }
+
+/* Pull-to-refresh on the felt would lose an in-progress scene; Learn keeps normal scrolling. */
+html[data-route='play'],
+html[data-route='play'] body {
+  overscroll-behavior-y: contain;
+}
