@@ -6,7 +6,7 @@ import type { DriverEvent, SceneConfig } from '../../scene';
 import type { LoggedHand } from '../moveLog';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
 import { randomSeed, resolveEvMode } from '../settings';
-import { foldAnnouncement, settledToastText } from '../text';
+import { foldAnnouncement, settledToastText, typographic } from '../text';
 import type { SimulatorProps } from '../types';
 
 export interface Toast {
@@ -60,6 +60,8 @@ export interface SimDriverHandle {
   toast: Toast | null;
   setToast: (t: Toast | null) => void;
   pushToast: (text: string, tone?: Toast['tone'], spoken?: string) => void;
+  /** I080: what the confirmed decision was worth; the result toast leads with it if the hand ends. */
+  narration: { current: string | null };
   /** Runs a driver action and toasts a rejection outside scene steps. */
   act: (a: DriverAction) => ReturnType<SimDriver['act']>;
 }
@@ -72,17 +74,21 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
   const pushToast = (text: string, tone?: Toast['tone'], spoken?: string): void =>
     setToast({ id: ++toastId.current, text, tone, spoken });
 
+  const narration = useRef<string | null>(null);
   const holder = useRef<SimDriver | null>(null);
   if (!holder.current) {
     holder.current = makeDriver(props, mode, (e) => {
-      if (e.type === 'hand-settled')
+      if (e.type === 'hand-settled') {
+        // The decision's narration (I080) leads the result in one toast.
+        const lead = narration.current ? `${narration.current} ` : '';
+        narration.current = null;
         // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
         pushToast(
-          settledToastText(e),
+          typographic(`${lead}${settledToastText(e)}`),
           e.result.net > 0 ? 'good' : undefined,
-          e.result.outcome === 'fold' ? foldAnnouncement(e.result) : undefined,
+          e.result.outcome === 'fold' ? `${lead}${foldAnnouncement(e.result)}` : undefined,
         );
-      else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
+      } else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
       else if (e.type === 'action-rejected' && !holder.current?.view.step)
         pushToast(e.reason, 'bad');
       latest.current.onEvent?.(e);
@@ -105,7 +111,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
     return r;
   };
-  return { d, latest, toast, setToast, pushToast, act };
+  return { d, latest, toast, setToast, pushToast, narration, act };
 }
 
 /**

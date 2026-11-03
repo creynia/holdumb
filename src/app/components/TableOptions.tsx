@@ -3,6 +3,7 @@
 // Settings always shows what the table is doing.
 import { useId } from 'preact/hooks';
 import { useStore } from '../context';
+import { withConfirmEnabled } from '../settings';
 import type { Settings } from '../settings';
 
 const EV_SEGMENTS: readonly { value: Settings['evMode']; label: string }[] = [
@@ -11,22 +12,18 @@ const EV_SEGMENTS: readonly { value: Settings['evMode']; label: string }[] = [
   { value: 'never', label: 'Off' },
 ];
 
-const SCOPE_TEXT: Record<Exclude<Settings['confirmOn'], 'never'>, string> = {
+const SCOPE_TEXT: Record<Settings['confirmTiers'], string> = {
   all: 'All bets',
   costly: 'Medium and bad bets',
   blunder: 'Only bad bets',
 };
 
-/** The bets the Confirm box asks about when it is on. */
-function confirmScope(s: Settings): Exclude<Settings['confirmOn'], 'never'> {
-  return s.confirmOn === 'never' ? 'all' : s.confirmOn;
-}
-
 export function TableOptions() {
   const store = useStore();
   const s = store.settings;
   const hintId = useId();
-  const scope = confirmScope(s);
+  // While Confirm is on its scope is the effective policy; off, the one it turns back on (D40).
+  const scope = s.confirmOn === 'never' ? s.confirmTiers : s.confirmOn;
   return (
     <div class="sim-options" data-testid="table-options">
       <fieldset class="sim-seg">
@@ -53,9 +50,7 @@ export function TableOptions() {
           aria-label="Confirm bets"
           aria-describedby={hintId}
           checked={s.confirmOn !== 'never'}
-          onChange={(e) =>
-            store.updateSettings({ confirmOn: e.currentTarget.checked ? scope : 'never' })
-          }
+          onChange={(e) => store.updateSettings(withConfirmEnabled(s, e.currentTarget.checked))}
           data-testid="confirm-toggle"
         />
         <span>Confirm</span>
