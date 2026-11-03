@@ -13,3 +13,17 @@ test('a drill answer is graded and recorded', async ({ page }) => {
   const answered = await page.getByTestId('drill-stats').textContent();
   expect(answered).toMatch(/river\s*\d+%/);
 });
+
+test('a category deals only that category and the select is tappable', async ({ page }) => {
+  await page.goto('/#/drill?street=flop');
+  const sel = page.getByTestId('drill-categories');
+  await expect(sel).toBeVisible();
+  expect((await sel.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(page.getByTestId('drill-spot')).toBeVisible();
+  await sel.selectOption({ label: 'Flop flush draws' });
+  await expect(page).toHaveURL(/street=flop&category=flop-flush-draw/);
+  await expect(sel).toHaveValue('flop-flush-draw');
+  await expect(page.getByTestId('drill-spot')).toBeVisible();
+  await sel.selectOption({ label: 'All' });
+  await expect(page).not.toHaveURL(/category=/);
+});
