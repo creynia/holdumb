@@ -101,8 +101,8 @@ describe('EvSheet', () => {
     rerender(<EvSheet {...props} selected="play-3" />);
     expect(screen.getByTestId('confirm').textContent).toBe('Confirm Bet 3x');
   });
-  it('confirms in one tap when confirmCostlyMoves is off', () => {
-    const props = sheet({ selected: 'check', confirmCostlyMoves: false });
+  it('confirms in one tap when confirmBlunder is off', () => {
+    const props = sheet({ selected: 'check', confirmBlunder: false });
     fireEvent.click(screen.getByTestId('confirm'));
     expect(props.onConfirm).toHaveBeenCalledWith('check');
   });

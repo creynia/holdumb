@@ -1,5 +1,6 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
 import { PAYTABLE_PRESET_IDS } from '../sim/engine';
+import { CONFIRM_ON, EV_MODES, evModeOfPractice } from '../sim/ui/settings';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
 
@@ -132,9 +133,11 @@ export function sanitizeSettings(raw: unknown): Settings {
     reduceMotion: bool(o.reduceMotion, d.reduceMotion),
     fourColorDeck: bool(o.fourColorDeck, d.fourColorDeck),
     paytable: oneOf(o.paytable, PAYTABLE_PRESET_IDS, d.paytable),
-    practice: bool(o.practice, d.practice),
-    confirmCostlyMoves: bool(o.confirmCostlyMoves, d.confirmCostlyMoves),
-    skipPreview: bool(o.skipPreview, d.skipPreview),
+    // D39 migration: a valid evMode wins; else the legacy practice flag (true -> 'after').
+    evMode: oneOf(o.evMode, EV_MODES, o.practice === true ? evModeOfPractice(true) : d.evMode),
+    // Old records can't tell an explicit confirmCostlyMoves from its old default: all -> 'never'.
+    // The legacy skipPreview flag is dropped.
+    confirmOn: oneOf(o.confirmOn, CONFIRM_ON, d.confirmOn),
     anteUnitCents: wholeDollars(
       o.anteUnitCents,
       LIMITS.anteUnitDollars.min,

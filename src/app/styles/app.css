@@ -576,6 +576,36 @@ textarea {
   width: 22px;
   height: 22px;
 }
+.form fieldset.radios {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.form fieldset.radios legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+.form label.radio {
+  min-height: 44px;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  cursor: pointer;
+}
+.form label.radio input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+.form label.radio small {
+  display: block;
+  font-size: 0.85em;
+}
 
 [data-motion='reduce'] *,
 [data-motion='reduce'] *::before,
