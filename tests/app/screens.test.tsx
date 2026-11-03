@@ -1,11 +1,12 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { cpSync, mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildContent } from '../../src/content/load';
 import { parseCards } from '../../src/sim/engine';
+import { formatMoney } from '../../src/sim';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
 import { AppProviders } from '../../src/app/context';
@@ -559,4 +560,73 @@ describe('Drill', () => {
     expect(el.querySelector('[role="alert"]')).toBeTruthy();
     expect(store.drill.byStreet.flop.answered).toBe(0);
   });
+
+  // ---- money
+  it('no float arithmetic on fractions remains in Drill.tsx', () => {
+    const src = readFileSync(join(process.cwd(), 'src/app/screens/Drill.tsx'), 'utf8');
+    expect(src).not.toMatch(/Number\([^)]*\.num\)|Number\([^)]*\.den\)/);
+  });
+
+  it('the per-hand cost equals the EV sheet cost to the cent over 200 seeded previews', async () => {
+    // exact half-away-from-zero rounding of num/den (den > 0), independent of the app code
+    const roundCents = (n: bigint, d: bigint): bigint => {
+      const a = n < 0n ? -n : n;
+      const q = (2n * a + d) / (2n * d);
+      return n < 0n ? -q : q;
+    };
+    let seed = 20260703;
+    const next = (m: number) => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed % m;
+    };
+    const fraction = () => ({ num: BigInt(next(400000) - 200000), den: BigInt(1 + next(7)) });
+    const cases = 200;
+    for (let i = 0; i < cases; i++) {
+      const x = fraction();
+      const y = fraction();
+      // best is the larger EV, so the cost is non-negative
+      const bestEv = roundCents(x.num, x.den) >= roundCents(y.num, y.den) ? x : y;
+      const otherEv = bestEv === x ? y : x;
+      const pv = {
+        street: 'flop',
+        bestIndex: 0,
+        handClass: 'AKo',
+        options: [
+          {
+            action: { type: 'play', multiple: 2 },
+            label: 'Bet 2x',
+            ev: { num: 1n, den: 1n },
+            evCents: bestEv,
+            assumesBestLater: false,
+            why: { rows: [], casesLabel: 'deals', formula: '' },
+            regret: { num: 0n, den: 1n },
+            tier: 'best',
+          },
+          {
+            action: { type: 'check' },
+            label: 'Check',
+            ev: { num: 1n, den: 1n },
+            evCents: otherEv,
+            assumesBestLater: false,
+            why: { rows: [], casesLabel: 'deals', formula: '' },
+            regret: { num: 1n, den: 1n },
+            tier: 'costly',
+          },
+        ],
+      } as unknown as DecisionPreview;
+      const cost = Number(
+        roundCents(bestEv.num, bestEv.den) - roundCents(otherEv.num, otherEv.den),
+      );
+      document.body.innerHTML = '';
+      const store = new Store(new MemoryStorage());
+      const el = await mountDrill(store, {
+        nextSpot: (r) => [spot('flop', `f:${i}`), r],
+        preview: () => Promise.resolve(pv),
+      });
+      await act(() => btn(el, 'Check').click());
+      await act(() => new Promise((r) => setTimeout(r, 0)));
+      const text = el.querySelector('[data-testid="drill-result"]')!.textContent ?? '';
+      expect(text, `case ${i}`).toContain(`(${formatMoney(cost)} per hand)`);
+    }
+  }, 120_000);
 });

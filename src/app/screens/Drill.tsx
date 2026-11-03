@@ -2,14 +2,17 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   EvSheet,
   cardCode,
+  costCents,
   decisionTier,
-  formatMoney,
+  fmtCostC,
+  fmtFixed,
   gradeSpot,
   nextSpot,
   optionKeyOf,
 } from '../../sim';
 import type {
   DecisionAction,
+  DecisionOption,
   DecisionPreview,
   DecisionStreet,
   DecisionTier,
@@ -92,7 +95,8 @@ export function rngFromSeed(seed: number): RngState {
   return { s: [next(), next(), next(), next()] };
 }
 
-const antes = (f: { num: bigint; den: bigint }) => (Number(f.num) / Number(f.den)).toFixed(3);
+/** Antes to three decimals, exact and rounded half away from zero (same as the EV sheet). */
+const antes = (f: { num: bigint; den: bigint }) => fmtFixed(f, 3);
 
 interface Answer {
   chosen: number;
@@ -177,10 +181,14 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
     answer !== null &&
     perfectBest !== undefined &&
     !sameAction(perfectBest.action, answer.grade.best);
-  const money = (f: { num: bigint; den: bigint }) =>
-    `${antes(f)} antes (${formatMoney(
-      Math.round((Number(f.num) * store.settings.anteUnitCents) / Number(f.den)),
-    )}`;
+  const optOf = (a: DecisionAction) => answer?.preview.options.find((o) => sameAction(o.action, a));
+  const refOpt = answer ? (optOf(answer.grade.best) ?? perfectBest) : undefined;
+  // "N antes ($c" for the gap between a reference option and another (same rounding as the EV sheet)
+  const money = (
+    f: { num: bigint; den: bigint },
+    ref: DecisionOption | undefined,
+    o: DecisionOption,
+  ) => `${antes(f)} antes (${fmtCostC(costCents(ref!, o))}`;
   const hole = spot ? spot.hole.map(cardCode).join('') : '';
   const board = spot ? spot.board.map(cardCode).join('') : '';
 
@@ -281,14 +289,11 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             <strong>{HEADLINE[answer.tier]}</strong>{' '}
             {answer.tier === 'best'
               ? `${chosenOpt.label} is the ${answer.grade.lens === 'practical' ? "card's play" : 'best play'}.`
-              : `${gradeBest} is better by ${money(answer.grade.regret)} per hand).`}
+              : `${gradeBest} is better by ${money(answer.grade.regret, refOpt, chosenOpt)} per hand).`}
             {answer.grade.lens === 'practical' && perfectDiffers && (
               <>
                 {' '}
-                {`Perfect play says ${perfectBest.label} here, by ${money(
-                  answer.preview.options.find((o) => sameAction(o.action, answer.grade.best))
-                    ?.regret ?? chosenOpt.regret,
-                )} per hand). The card's rule is still the one to remember.`}
+                {`Perfect play says ${perfectBest.label} here, by ${money(refOpt!.regret, perfectBest, refOpt!)} per hand). The card's rule is still the one to remember.`}
               </>
             )}
           </p>
