@@ -399,11 +399,27 @@ main:has(> .page-wide) {
 .scene {
   padding: 0.7rem;
 }
+/* Reserves the mounted table's height (I038) so the lazy mount does not shift the lesson text.
+   Portrait: felt (viewBox 390x600, 16px side padding, capped like .sim-table-portrait .sim-felt)
+   plus the step panel and action bar; landscape matches --sim-table-h (100dvh - 100px). */
+.scene-body {
+  container-type: inline-size;
+}
 .scene-placeholder {
-  min-height: 160px;
+  --ph-felt: min((min(100cqw, 42rem) - 32px) * 1.5385, 100dvh - 232px);
+  box-sizing: border-box;
+  height: calc(var(--ph-felt) + 195px);
   display: grid;
   place-items: center;
   color: var(--muted);
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .scene-placeholder:not([data-orientation='portrait']) {
+    height: calc(100dvh - 100px);
+  }
+}
+.scene-placeholder[data-orientation='landscape'] {
+  height: calc(100dvh - 100px);
 }
 .quiz {
   margin: 1rem 0;

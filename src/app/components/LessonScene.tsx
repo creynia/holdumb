@@ -54,7 +54,9 @@ export function LessonScene(props: { lessonId: string; scene: SceneConfig }) {
             onEvent={onEvent}
           />
         ) : (
-          <div class="scene-placeholder">Table loads as you scroll</div>
+          <div class="scene-placeholder" data-orientation={scene.ui?.orientation ?? 'auto'}>
+            Table loads as you scroll
+          </div>
         )}
       </div>
     </section>
