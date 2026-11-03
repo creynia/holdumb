@@ -128,4 +128,10 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh pr edit "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY" --remove-label update-visual || true
+          N: ${{ github.event.pull_request.number }}
+        # A 404 (label already gone) is fine; any other failure is reported, since a label left on
+        # would make a later re-add fire no event.
+        run: |
+          out=$(gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$N/labels/update-visual" 2>&1) && exit 0
+          echo "$out" | grep -q 'HTTP 404' && { echo "label already removed"; exit 0; }
+          echo "::error::could not remove the update-visual label: $out"; exit 1
