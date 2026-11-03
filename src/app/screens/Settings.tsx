@@ -1,3 +1,4 @@
+import { Say } from '../../sim';
 import { useState } from 'preact/hooks';
 import { PAYTABLE_PRESET_IDS, TRIPS_PAYTABLES, formatPct } from '../../sim';
 import type { PaytablePresetId } from '../../sim';
@@ -253,9 +254,7 @@ export function Settings() {
       <section class="card form" aria-label="Your progress">
         <h2>Your progress</h2>
         {!store.persistent && (
-          <p role="alert" class="warn">
-            Progress will not be saved in this copy. Use Export to keep it.
-          </p>
+          <p class="warn">Progress will not be saved in this copy. Use Export to keep it.</p>
         )}
         <div class="row">
           <button
@@ -308,7 +307,12 @@ export function Settings() {
             </button>
           </div>
         )}
-        {msg && <p role="status">{msg}</p>}
+        {msg && (
+          <p data-testid="settings-msg">
+            <Say text={msg} dedupeKey="settings" />
+            {msg}
+          </p>
+        )}
         {confirmReset ? (
           <div class="row">
             <span>Erase all lesson and drill progress?</span>

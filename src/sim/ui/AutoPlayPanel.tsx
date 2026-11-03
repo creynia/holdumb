@@ -14,6 +14,7 @@ import type { TableRules } from '../engine/types';
 import type { SimulateResult, StrategyId, StrategySpec } from '../strategy/types';
 import { BankrollChart } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
+import { Say, announce, muteAnnouncements } from './announcer';
 
 const HAND_CHOICES = [30, 300, 3000] as const;
 const GROUP_LABEL = {
@@ -115,6 +116,9 @@ export function AutoPlayPanel({
     setError(null);
     setResult(null);
     setProgress({ done: 0, total: 1 });
+    // One announcement at the start and one at the end; nothing else speaks while it runs.
+    announce(`Simulating ${hands} hands.`, { force: true });
+    const unmute = muteAnnouncements();
     const others: StrategySpec[] = cmp
       ? (compare ?? [{ id: id === 'basic' ? 'expert' : 'basic', ante, trips }]).map((s) => ({
           ...s,
@@ -138,8 +142,11 @@ export function AutoPlayPanel({
       );
       setResult(res);
       setProgress(null);
+      unmute();
+      announce(`Simulation finished: ${hands} hands. Results are below.`, { force: true });
       onEvent?.({ type: 'auto-play-completed', hands, strategy: id });
     } catch (e) {
+      unmute();
       setProgress(null);
       if ((e as Error).name !== 'AbortError') setError((e as Error).message);
     }
@@ -278,7 +285,12 @@ export function AutoPlayPanel({
           </>
         ) : null}
       </div>
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? (
+        <p>
+          <Say text={error} politeness="assertive" force={true} />
+          {error}
+        </p>
+      ) : null}
       {main && result ? (
         <div data-testid="auto-play-result" style={{ display: 'grid', gap: '8px' }}>
           <BankrollChart series={result.series} bankroll={bankroll} hands={hands} />

@@ -94,7 +94,7 @@ export function App() {
       path={route.path}
       banner={
         store.persistent ? undefined : (
-          <p class="banner" role="status">
+          <p class="banner">
             Progress will not be saved in this copy. Use Settings, then Export, to keep it.
           </p>
         )

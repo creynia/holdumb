@@ -107,7 +107,7 @@ test('update within the HTTP max-age window keeps a consistent offline cache', a
     await page.evaluate(() =>
       navigator.serviceWorker.getRegistration().then((r) => r?.update() as Promise<unknown>),
     );
-    const toast = page.getByRole('status').filter({ hasText: 'Update available' });
+    const toast = page.getByTestId('update-toast');
     await toast.waitFor();
     await Promise.all([
       page.waitForEvent('load'),

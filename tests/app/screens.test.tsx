@@ -316,7 +316,7 @@ describe('Settings', () => {
       ta.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await act(() => btn(el, 'Import').click());
-    expect(el.querySelector('[role="status"]')?.textContent).toContain('not valid');
+    expect(el.querySelector('[data-testid="settings-msg"]')?.textContent).toContain('not valid');
     await act(() => {
       ta.value = src.exportCode();
       ta.dispatchEvent(new Event('input', { bubbles: true }));
@@ -398,11 +398,11 @@ describe('About', () => {
     await act(() => btn(el, 'Check for updates').click());
     await act(() => new Promise((r) => setTimeout(r, 0)));
     expect(check).toHaveBeenCalledTimes(1);
-    expect(el.querySelector('[role="status"]')!.textContent).toContain('latest');
+    expect(el.querySelector('[data-testid="update-status"]')!.textContent).toContain('latest');
     check.mockResolvedValue('failed');
     await act(() => btn(el, 'Check for updates').click());
     await act(() => new Promise((r) => setTimeout(r, 0)));
-    expect(el.querySelector('[role="status"]')!.textContent).toContain('Could not');
+    expect(el.querySelector('[data-testid="update-status"]')!.textContent).toContain('Could not');
   });
 });
 
@@ -619,7 +619,7 @@ describe('Drill', () => {
       await tick();
       const res = el.querySelector('[data-testid="drill-result"]')!;
       expect(res.getAttribute('data-tier')).toBe('best');
-      expect(res.querySelector('[role="status"]')!.textContent).toMatch(
+      expect(res.querySelector('[data-testid="drill-headline"]')!.textContent).toMatch(
         /^Correct! Check is the card's play\. Perfect play says Bet 2x here, by 0\.300 antes \(\$[\d.,]+ per hand\)\. The card's rule is still the one to remember\.$/,
       );
       expect(store.drill.practical.byStreet.flop).toEqual({ answered: 1, correct: 1 });
@@ -641,7 +641,8 @@ describe('Drill', () => {
           timeout: 60_000,
         });
         ev.dispose();
-        return el.querySelector('[data-testid="drill-result"] [role="status"]')!.textContent;
+        return el.querySelector('[data-testid="drill-result"] [data-testid="drill-headline"]')!
+          .textContent;
       };
       it("choosing the card's action names perfect play, exactly", async () => {
         expect(await run('Bet 2x')).toBe(
@@ -761,7 +762,9 @@ describe('Drill', () => {
     const el = await mountDrill(store, d);
     await act(() => btn(el, 'Check').click());
     await tick();
-    expect(el.querySelector('[role="alert"]')).toBeTruthy();
+    expect(el.querySelector('.drill-spot .warn')?.textContent).toContain(
+      'Could not work out the EV',
+    );
     expect(store.drill.byStreet.flop.answered).toBe(0);
   });
 

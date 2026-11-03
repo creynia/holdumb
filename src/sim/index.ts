@@ -6,6 +6,7 @@ export * from './strategy';
 export * from './scene';
 export * from './worker';
 export { Simulator } from './ui/Simulator';
+export { Say, announce, muteAnnouncements, useAnnounce } from './ui/announcer';
 export { EvSheet } from './ui/EvSheet';
 export { costCents, fmtCostC, fmtFixed, optionKeyOf } from './ui/text';
 export { StrategyChart } from './ui/StrategyChart';

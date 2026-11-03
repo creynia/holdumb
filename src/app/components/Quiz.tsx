@@ -1,3 +1,4 @@
+import { Say } from '../../sim';
 import { useState } from 'preact/hooks';
 import type { Quiz as QuizData } from '../../content/types';
 import { Cards, InlineText } from './Cards';
@@ -57,7 +58,8 @@ export function Quiz(props: {
           Check answer
         </button>
       ) : (
-        <div role="status" class={`quiz-result ${correct ? 'ok' : 'no'}`}>
+        <div class={`quiz-result ${correct ? 'ok' : 'no'}`} data-testid="quiz-result">
+          <Say text={correct ? 'Correct.' : 'Not quite.'} dedupeKey="quiz" />
           <strong>{correct ? 'Correct.' : 'Not quite.'}</strong>{' '}
           <InlineText text={quiz.explanation} />
           {!correct && (
