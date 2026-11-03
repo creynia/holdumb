@@ -98,14 +98,14 @@
   overflow-y: auto;
 }
 /* The open EV sheet in landscape covers the whole rail (not the felt) while it is open, so its
-   Confirm is always on screen. `--sim-table-bottom-cover` is how much of the table the app's
-   bottom tab bar hides (app.css sets it where the tab bar shows in landscape). */
+   Confirm is always on screen. (Short landscape has no bottom tab bar since I030, so nothing
+   hides the rail's bottom edge.) */
 .sim-rail-sheet {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: var(--sim-table-bottom-cover, 0px);
+  bottom: 0;
   z-index: 10;
   box-sizing: border-box;
   padding: 8px;
