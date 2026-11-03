@@ -46,8 +46,24 @@ describe('Simulator container', () => {
     expect(screen.queryByTestId('opts')).toBeNull();
     c.evClient.dispose();
   });
-  it('sandbox: bets are preset, Deal shows the preflop decision with EV before confirming', async () => {
+  it('sandbox: one tap acts with the default settings (no sheet, D40)', async () => {
     const { evClient } = mount({ id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 });
+    fireEvent.click(screen.getByText('Deal'));
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
+    );
+    fireEvent.click(document.querySelector('[data-option="play-4"]')!);
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
+    );
+    expect(screen.queryByTestId('ev-sheet')).toBeNull();
+    evClient.dispose();
+  });
+  it('sandbox with confirmOn all: Deal shows the preflop decision with EV before confirming', async () => {
+    const { evClient } = mount(
+      { id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 },
+      { settings: { ...settings, confirmOn: 'all' } },
+    );
     expect(screen.getByTestId('bankroll').textContent).toBe('$480');
     fireEvent.click(screen.getByText('Deal'));
     await waitFor(() => expect(document.querySelector('[data-option="play-4"]')).toBeTruthy());
@@ -82,25 +98,29 @@ describe('Simulator container', () => {
     evClient.dispose();
   });
   it('a worse option shows the better alternative in the sheet', async () => {
-    const { evClient } = mount({
-      id: 'sandbox',
-      version: 1,
-      startAt: {
-        street: 'river',
-        deal: {
-          player: ['3c', '4d'],
-          flop: ['Ah', 'Ks', 'Qd'],
-          turn: '9c',
-          river: '7h',
-          dealer: ['Td', 'Ts'],
+    const { evClient } = mount(
+      {
+        id: 'sandbox',
+        version: 1,
+        startAt: {
+          street: 'river',
+          deal: {
+            player: ['3c', '4d'],
+            flop: ['Ah', 'Ks', 'Qd'],
+            turn: '9c',
+            river: '7h',
+            dealer: ['Td', 'Ts'],
+          },
         },
       },
-    });
+      { settings: { ...settings, confirmOn: 'all' } },
+    );
     await waitFor(() =>
       expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
     );
     fireEvent.click(document.querySelector('[data-option="play-1"]')!);
     await waitFor(() => expect(screen.getByTestId('alternative')).toBeTruthy());
+    expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river');
     evClient.dispose();
   });
   it('a scene step refuses the wrong move with its hint and no retry button', async () => {
@@ -184,9 +204,7 @@ describe('Simulator container', () => {
     await waitFor(() =>
       expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
     );
-    fireEvent.click(document.querySelector('[data-option="fold"]')!);
-    await flush();
-    fireEvent.click(screen.getByTestId('confirm'));
+    fireEvent.click(document.querySelector('[data-option="fold"]')!); // one tap acts (D40)
     await waitFor(() =>
       expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
     );
@@ -391,9 +409,7 @@ describe('Simulator container', () => {
       fireEvent.click(screen.getByText('Deal'));
       await waitFor(() => expect(screen.queryByTestId('ev-details')).toBeTruthy());
       await ready();
-      fireEvent.click(document.querySelector('[data-option="play-4"]')!);
-      await flush();
-      fireEvent.click(screen.getByTestId('confirm'));
+      fireEvent.click(document.querySelector('[data-option="play-4"]')!); // one tap acts (D40)
       await waitFor(() =>
         expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
       );

@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
 import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
-import type { LoggedHand } from '../moveLog';
+import type { LoggedHand } from '../moveLogData';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
 import { randomSeed, resolveEvMode, resolveEvShown } from '../settings';
 import { foldAnnouncement, handVerdictText, settledToastText, typographic } from '../text';
