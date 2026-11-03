@@ -8,7 +8,7 @@ import { MemoryStorage } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
 import { buildContent } from '../../src/content/load';
 import { parseCards } from '../../src/sim/engine';
-import { riverFacts } from '../../src/sim';
+import { gradeSpot, riverFacts } from '../../src/sim';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import type { DrillCategoryId } from '../../src/sim/strategy';
 
@@ -62,6 +62,7 @@ function preview(
 async function answer(s: DrillSpot, p: DecisionPreview, pick: string) {
   const deps: DrillDeps = {
     nextSpot: (rng) => [s, rng],
+    gradeSpot,
     preview: () => Promise.resolve(p),
     seed: 1,
   };
