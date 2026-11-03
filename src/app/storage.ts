@@ -1,5 +1,7 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
 import { PAYTABLE_PRESET_IDS } from '../sim/engine';
+import { DRILL_CATEGORY_IDS } from '../sim/strategy';
+import type { DrillCategoryId } from '../sim/strategy';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
 
@@ -65,6 +67,8 @@ export const MAX_RECENT_MISSES = 50;
 export interface DrillStats {
   bestStreak: number;
   byStreet: Record<DrillStreet, { answered: number; correct: number }>;
+  /** per spot category (I016); absent key = never answered. Records written before I016 lack it. */
+  byCategory: Partial<Record<DrillCategoryId, { answered: number; correct: number }>>;
   /** spot codes (strategy/drill.ts), newest first */
   recentMisses: string[];
 }
@@ -86,6 +90,7 @@ export function emptyDrill(): DrillStats {
       flop: { answered: 0, correct: 0 },
       river: { answered: 0, correct: 0 },
     },
+    byCategory: {},
     recentMisses: [],
   };
 }
@@ -166,6 +171,17 @@ function sanitizeDrill(raw: unknown): DrillStats {
       if (!isObj(v)) continue;
       const answered = clampInt(v.answered, 0, 10_000_000, 0);
       d.byStreet[s] = {
+        answered,
+        correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered),
+      };
+    }
+  if (isObj(raw.byCategory))
+    for (const id of DRILL_CATEGORY_IDS) {
+      const v = raw.byCategory[id];
+      if (!isObj(v)) continue;
+      const answered = clampInt(v.answered, 0, 10_000_000, 0);
+      if (answered === 0) continue;
+      d.byCategory[id] = {
         answered,
         correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered),
       };

@@ -6,7 +6,7 @@ summary: "What a normal hour looks like, and how much to bring."
 minutes: 9
 ---
 
-A 2.19% edge is tiny next to the swings. In one hand you can win 6 antes or lose 6, and rarely win
+A 2.18% edge is tiny next to the swings. In one hand you can win 6 antes or lose 6, and rarely win
 hundreds (a royal flush pays 500 to 1 on the Blind). The **standard deviation** of one hand is about
 **4.94 antes**. Over an hour of 30 hands it's about **27 antes**, while the expected loss is only 0.66
 antes. In the short run, **luck is about 40 times bigger than the edge**.

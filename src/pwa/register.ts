@@ -82,3 +82,8 @@ export function registerSW(): void {
       });
   });
 }
+
+/** Test hook: pretend a new service worker is waiting (the real apply is a no-op). */
+export function simulateUpdateAvailable(): void {
+  listeners.forEach((l) => l(() => undefined));
+}
