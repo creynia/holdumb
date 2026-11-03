@@ -12,6 +12,10 @@ import { fracToNumber } from '../strategy/fraction';
 import { formatPct } from '../engine/money';
 import type { TableRules } from '../engine/types';
 import type { SimulateResult, StrategyId, StrategySpec } from '../strategy/types';
+import type { SixCardSetting } from '../engine/sixcard';
+import { neg, scale } from '../math/fraction';
+import type { Fraction } from '../math/types';
+import { sixCardEdgeOf } from '../scene/driver';
 import { BankrollChart } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
 import { Say, announce, muteAnnouncements } from './announcer';
@@ -48,6 +52,8 @@ export interface AutoPlayPanelProps {
   /** A scene's starting stake and seed (the lesson copy quotes results for these). */
   bankroll?: number;
   seed?: number;
+  /** I062: the table's Six Card Bonus setting; auto-play settles it at each deal like the table. */
+  sixCard?: SixCardSetting | null;
   onEvent?: (e: SimulatorEvent) => void;
 }
 
@@ -75,6 +81,7 @@ export function AutoPlayPanel({
   sessionOptions,
   bankroll: sceneBankroll,
   seed: sceneSeed,
+  sixCard,
   onEvent,
 }: AutoPlayPanelProps) {
   const handChoices: readonly number[] = handOptions?.length
@@ -94,6 +101,8 @@ export function AutoPlayPanel({
   const [cmp, setCmp] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [result, setResult] = useState<SimulateResult | null>(null);
+  /** I062: the Six Card edge of the last run, loaded on demand (it is not in the first paint). */
+  const [sixEdge, setSixEdge] = useState<Fraction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const ctl = useRef<AbortController | null>(null);
   useEffect(() => () => ctl.current?.abort(), []);
@@ -151,9 +160,12 @@ export function AutoPlayPanel({
           bankroll,
           rules,
           compare: others,
+          ...(sixCard ? { sixCard: { bet: sixCard.bet, paytable: sixCard.paytable } } : {}),
         },
         { key: 'auto-play', signal: ac.signal, onProgress: setProgress },
       );
+      // The Six Card rules are registered whenever a bet is set (they load with the Six Card UI).
+      setSixEdge(sixCard ? sixCardEdgeOf(sixCard.paytable) : null);
       setResult(res);
       setProgress(null);
       unmute();
@@ -169,7 +181,11 @@ export function AutoPlayPanel({
   const main = result?.series[0];
   // Busted or stopped sessions play fewer hands: expected result = per-hand EV x hands played.
   const perHand = main ? main.expected[1]! - main.expected[0]! : 0;
-  const exactNet = main ? perHand * (main.handsPlayed / sessions) : 0;
+  // I062: the Six Card bets actually taken expect −edge × wagered (exact), per session.
+  const six = main?.sixCard;
+  const sixExpected =
+    six && sixEdge ? fracToNumber(scale(neg(sixEdge), six.wageredCents)) / sessions : 0;
+  const exactNet = main ? perHand * (main.handsPlayed / sessions) + sixExpected : 0;
   const simNet = main ? main.meanFinal - bankroll : 0;
   const shown = shownNet(exactNet, simNet);
   const running = progress !== null;
@@ -365,6 +381,14 @@ export function AutoPlayPanel({
               </li>
             )}
             {trips > 0 ? <li>Trips hits: {main.tripsHits}</li> : null}
+            {six ? (
+              <li data-testid="auto-play-six-card">
+                Six Card{sessions > 1 ? ' (all sessions)' : ''}: {six.taken}{' '}
+                {six.taken === 1 ? 'bet' : 'bets'}, {formatMoney(six.wageredCents)} wagered, net{' '}
+                {formatMoney(six.profitCents, { sign: true })}, {six.hits} paid
+                {six.skipped ? `, ${six.skipped} skipped (kept a 4x bet)` : ''}
+              </li>
+            ) : null}
             <li>Blind bonus hits: {main.blindBonusHits}</li>
           </ul>
           <OutcomeHistogram series={main} />

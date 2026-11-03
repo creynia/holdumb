@@ -125,7 +125,7 @@ and **every strategy chart and number in this file is for `blind-standard`**.
 | `trips-7-6-5` | 50 | 40 | 30 | 7 | 6 | 5 | 3 | 115779/2572780 = 4.500% | e.g. Sun International guide |
 | `trips-8-6-4` | 50 | 40 | 30 | 8 | 6 | 4 | 3 | 545459/8361535 = 6.523% | Cheaper variant |
 
-**Mentioned only, not simulated (D5).** Lessons 20 and 21 cover these. Their tables vary from casino to casino.
+**Covered in lessons (D5); Six Card Bonus is also simulated (D5a).** Lessons 20 and 21 cover these. Their tables vary from casino to casino. The Six Card Bonus can also be switched on as an optional side bet at the Play table (D5a, I062): your 2 hole cards plus 4 bonus cards, settled with the deal. Progressive and Bad Beat stay lesson-only.
 
 | Side bet | Cards used | Example paytable | Edge (exact, for that table) |
 |---|---|---|---|
@@ -2572,7 +2572,7 @@ steps:
 
 ### Lesson 20: `other-side-bets`: Six Card Bonus, progressives and Bad Beat
 
-**Front matter:** `chapter: perfect-fun` · `minutes: 7` · summary: "The bets the app doesn't deal, and what they cost."
+**Front matter:** `chapter: perfect-fun` · `minutes: 7` · summary: "Side bets beyond Trips, and what they cost."
 
 **Objectives**
 
@@ -2582,7 +2582,7 @@ steps:
 
 **Lesson**
 
-Some UTH tables offer more side bets. The app doesn't deal them, but here's what they cost.
+Some UTH tables offer more side bets. Here's what they cost. You can try the Six Card Bonus on the Play table (switch it on under the table); the others are explained here only.
 
 **Six Card Bonus.** It pays on the best five cards out of six: your two hole cards plus four more. On the
 common 1000/200/100/20/15/10/7 table (royal, straight flush, quads, full house, flush, straight, trips),

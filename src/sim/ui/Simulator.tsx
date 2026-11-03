@@ -16,6 +16,7 @@ import { MoveLog } from './MoveLog';
 import { SessionPanel } from './SessionPanel';
 import { SimAutoPlay } from './SimAutoPlay';
 import { SimTools } from './SimTools';
+import { SixCardPanelLazy } from './SixCardPanelLazy';
 import { StatusBar } from './StatusBar';
 import { StepPanel } from './StepPanel';
 import { Table, useOrientation } from './Table';
@@ -222,7 +223,11 @@ export function Simulator(props: SimulatorViewProps) {
       data-mode={mode}
       data-ev={view.preview.status}
       data-equity={eq}
-      style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
+      style={
+        orientation === 'landscape'
+          ? '--sim-table-h: calc(100dvh - var(--chrome-h, 100px))'
+          : undefined
+      }
     >
       {orientation === 'portrait' || autoOnly ? stepPanel : null}
       {autoOnly ? null : table}
@@ -242,6 +247,7 @@ export function Simulator(props: SimulatorViewProps) {
           <WatchControls watch={watch} disabled={view.pendingStart} />
         </SimTools>
       ) : null}
+      {sandbox && scene.ui?.showSettings ? <SixCardPanelLazy d={d} /> : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
       {sandbox ? <MoveLog hands={moveLog} evMode={settings.evMode} /> : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />
