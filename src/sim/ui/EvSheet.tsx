@@ -1,8 +1,11 @@
 import './sim.css';
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
 import type { OptionKey } from '../scene';
-import type { DecisionPreview } from '../math';
+import { riverFacts } from '../math';
+import type { DecisionPreview, PreviewRequest } from '../math';
 import { alternativeCopy } from './altCopy';
+import { DealerOuts } from './DealerOuts';
 import { EvOptionList } from './EvOptionList';
 import type { BetterAlternative } from '../math';
 import { TierBadge } from './TierBadge';
@@ -35,8 +38,8 @@ export interface EvSheetProps {
   progress?: number;
   /** `sheet`: modal dialog (portrait); `rail`: panel in the landscape rail; `inline`: plain panel. */
   variant?: 'sheet' | 'rail' | 'inline';
-  /** Red-tier moves need a second tap (D24, default on). */
-  confirmCostlyMoves?: boolean;
+  /** Red-tier moves need a second tap ("Do it anyway"; D24, D39 confirmOn). */
+  confirmBlunder?: boolean;
   /** Practice mode (D11): hide EVs until the move is confirmed. */
   hideEv?: boolean;
   /** Set once confirmed in practice mode: shows the result card and the full sheet. */
@@ -52,13 +55,23 @@ export interface EvSheetProps {
   allowed?: readonly OptionKey[];
   /** math.betterAlternative(...) for the selected option; renders curriculum 8.4 copy. */
   alternative?: BetterAlternative | null;
+  /** The cards behind the preview. On the river it adds the dealer-outs facts (lesson 12). */
+  request?: PreviewRequest | null;
 }
 
 const FOCUSABLE =
   'button:not([disabled]),[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
 
 /** Result of a practice-mode move, e.g. "Best play" or "Mistake: Bet 2x was worth $0.48 more". */
-function ResultCard({ preview, chosen }: { preview: DecisionPreview; chosen: OptionKey }) {
+function ResultCard({
+  preview,
+  chosen,
+  children,
+}: {
+  preview: DecisionPreview;
+  chosen: OptionKey;
+  children?: ComponentChildren;
+}) {
   const best = bestOf(preview);
   const o = preview.options.find((x) => optionKeyOf(x.action) === chosen);
   if (!o) return null;
@@ -72,6 +85,7 @@ function ResultCard({ preview, chosen }: { preview: DecisionPreview; chosen: Opt
           ? `${o.label} was the best play.`
           : `${best.label} was worth ${fmtCostC(cost)} more than ${o.label}.`}
       </p>
+      {children}
     </div>
   );
 }
@@ -86,7 +100,7 @@ export function EvSheet({
   onCancel,
   progress,
   variant = 'sheet',
-  confirmCostlyMoves = true,
+  confirmBlunder = true,
   hideEv,
   chosen,
   onContinue,
@@ -96,6 +110,7 @@ export function EvSheet({
   handsPerHour,
   allowed,
   alternative,
+  request,
 }: EvSheetProps) {
   const preview = isUsablePreview(rawPreview) ? rawPreview : null;
   const failed = !!error || (!!rawPreview && !preview);
@@ -136,8 +151,7 @@ export function EvSheet({
   const best = preview ? bestOf(preview) : null;
   const isBest = !!opt && !!best && opt.tier === 'best';
   const cost = opt && best ? costCents(best, opt) : null;
-  const needsSecondTap =
-    !!opt && opt.tier === 'blunder' && confirmCostlyMoves && !hidden && !confirmed;
+  const needsSecondTap = !!opt && opt.tier === 'blunder' && confirmBlunder && !hidden && !confirmed;
   const label = OPTION_LABELS[selected];
 
   const confirm = () => {
@@ -181,6 +195,23 @@ export function EvSheet({
     preview && opt && handsPerHour && !isBest
       ? wrongEveryTimePerHour(preview, opt, handsPerHour)
       : null;
+  // River facts (lesson 12): on every river preview, hidden only while practice mode hides the EV.
+  // 47 hand evaluations, so cheap enough to recompute on each render.
+  const river =
+    preview?.street === 'river' &&
+    request?.street === 'river' &&
+    request.board.length === 5 &&
+    !hidden
+      ? riverFacts(request.hole, request.board)
+      : null;
+  const outs =
+    river && request ? (
+      <DealerOuts
+        facts={river}
+        request={request}
+        mode={confirmed || readOnly ? 'after' : 'before'}
+      />
+    ) : null;
 
   const body = (
     <div
@@ -228,7 +259,13 @@ export function EvSheet({
               ) : null}
             </p>
           )}
-          {confirmed ? <ResultCard preview={preview} chosen={chosen} /> : null}
+          {confirmed ? (
+            <ResultCard preview={preview} chosen={chosen}>
+              {outs}
+            </ResultCard>
+          ) : (
+            outs
+          )}
           <EvOptionList
             preview={preview}
             selected={selected}

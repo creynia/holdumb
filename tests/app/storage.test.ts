@@ -8,6 +8,7 @@ import {
   load,
   migrate,
   sanitize,
+  sanitizeSettings,
   save,
 } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
@@ -49,9 +50,8 @@ describe('storage', () => {
     })!;
     expect(p.settings).toMatchObject({
       paytable: 'trips-8-6-5',
-      practice: false,
-      confirmCostlyMoves: true,
-      skipPreview: false,
+      evMode: 'before',
+      confirmOn: 'never',
       handsPerHour: 500,
       anteUnitCents: 1200,
       theme: 'system',
@@ -59,6 +59,84 @@ describe('storage', () => {
     expect(Object.keys(p.lessons)).toEqual(['ok']);
     expect(p.drill.byStreet.flop).toEqual({ answered: 2, correct: 2 });
     expect(p.drill.recentMisses).toEqual(['a']);
+  });
+  it('drill lens and per-lens stats round-trip; a pre-lens record gets perfect', () => {
+    const p = sanitize({
+      version: 1,
+      drill: {
+        lens: 'practical',
+        byStreet: { flop: { answered: 3, correct: 2 } },
+        byCategory: { 'flop-nothing': { answered: 2, correct: 1 } },
+        practical: { byStreet: { flop: { answered: 5, correct: 9 }, bogus: { answered: 1 } } },
+      },
+    })!;
+    expect(p.drill.lens).toBe('practical');
+    // pre-lens category stats migrate into the perfect lens, not the basic-card one
+    expect(p.drill.byCategory['flop-nothing']).toEqual({ answered: 2, correct: 1 });
+    expect(p.drill.practical.byCategory).toEqual({});
+    expect(p.drill.byStreet.flop).toEqual({ answered: 3, correct: 2 });
+    expect(p.drill.practical.byStreet.flop).toEqual({ answered: 5, correct: 5 });
+    expect(decodeImport(encodeExport(p))).toEqual(p);
+    const old = sanitize({
+      version: 1,
+      drill: { bestStreak: 4, byStreet: { river: { answered: 2, correct: 1 } } },
+    })!;
+    expect(old.drill.lens).toBe('perfect');
+    expect(old.drill.bestStreak).toBe(4);
+    expect(old.drill.byStreet.river).toEqual({ answered: 2, correct: 1 });
+    expect(old.drill.practical.byStreet.river).toEqual({ answered: 0, correct: 0 });
+  });
+
+  describe('D39 migration of the legacy EV flags', () => {
+    const ev = (raw: Record<string, unknown>) => {
+      const s = sanitizeSettings(raw);
+      return [s.evMode, s.confirmOn];
+    };
+    it('practice: true -> evMode after', () => {
+      expect(ev({ practice: true })).toEqual(['after', 'never']);
+    });
+    it('practice: false or missing -> evMode before', () => {
+      expect(ev({ practice: false })).toEqual(['before', 'never']);
+      expect(ev({})).toEqual(['before', 'never']);
+      expect(ev({ practice: 'yes' })).toEqual(['before', 'never']);
+    });
+    it('every old record -> confirmOn never, whatever confirmCostlyMoves said', () => {
+      expect(ev({ confirmCostlyMoves: true })).toEqual(['before', 'never']);
+      expect(ev({ confirmCostlyMoves: false })).toEqual(['before', 'never']);
+    });
+    it('drops skipPreview and the other legacy keys', () => {
+      const s = sanitizeSettings({ practice: true, confirmCostlyMoves: true, skipPreview: true });
+      expect(Object.keys(s)).not.toContain('skipPreview');
+      expect(Object.keys(s)).not.toContain('practice');
+      expect(Object.keys(s)).not.toContain('confirmCostlyMoves');
+      expect(s.evMode).toBe('after');
+    });
+    it('a valid evMode / confirmOn wins over the legacy keys', () => {
+      expect(ev({ practice: true, evMode: 'never', confirmOn: 'costly' })).toEqual([
+        'never',
+        'costly',
+      ]);
+      expect(ev({ practice: false, evMode: 'after', confirmOn: 'all' })).toEqual(['after', 'all']);
+      expect(ev({ evMode: 'before', confirmOn: 'blunder', confirmCostlyMoves: false })).toEqual([
+        'before',
+        'blunder',
+      ]);
+    });
+    it('unknown strings fall back to the defaults', () => {
+      expect(ev({ evMode: 'sometimes', confirmOn: 'maybe' })).toEqual(['before', 'never']);
+      expect(ev({ evMode: 1, confirmOn: null })).toEqual(['before', 'never']);
+    });
+    it('is idempotent', () => {
+      for (const raw of [
+        {},
+        { practice: true, confirmCostlyMoves: false, skipPreview: true },
+        { evMode: 'never', confirmOn: 'all' },
+        { evMode: 'junk', practice: true },
+      ]) {
+        const once = sanitizeSettings(raw);
+        expect(sanitizeSettings(once)).toEqual(once);
+      }
+    });
   });
   it('migrates a pre-category drill record keeping streaks and byStreet', () => {
     const old = {

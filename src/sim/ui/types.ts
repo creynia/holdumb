@@ -12,13 +12,16 @@ export interface SimSettings {
   /** Cents per ante unit; per-hour lines scale by it (D30). */
   anteUnitCents: number;
   handsPerHour: number;
-  /** Red-tier (blunder) moves need a second tap (D24). */
-  confirmCostlyMoves: boolean;
-  /** Hide EV until you confirm (D11). */
-  practice: boolean;
-  /** Skip the EV preview step and act directly (D30). */
-  skipPreview: boolean;
+  /** When the table shows decision EVs: before you choose, only after, or never (D11, D39). */
+  evMode: EvMode;
+  /** Which decision tiers ask for a confirm step before acting (D24, D39). */
+  confirmOn: ConfirmOn;
 }
+
+/** EV visibility (D11, D39). */
+export type EvMode = 'before' | 'after' | 'never';
+/** Confirm policy (D24, D39): every bet, costly + blunder, blunder only, or no confirm step. */
+export type ConfirmOn = 'all' | 'costly' | 'blunder' | 'never';
 
 export const DEFAULT_SIM_SETTINGS: SimSettings = {
   animationSpeed: 'normal',
@@ -26,9 +29,8 @@ export const DEFAULT_SIM_SETTINGS: SimSettings = {
   paytable: 'trips-8-6-5',
   anteUnitCents: 1_000,
   handsPerHour: 30,
-  confirmCostlyMoves: true,
-  practice: false,
-  skipPreview: false,
+  evMode: 'before',
+  confirmOn: 'never',
 };
 
 /** simulator.md §4.3 */
@@ -61,6 +63,6 @@ export interface SimulatorProps {
   snapshot?: unknown;
   /** Sandbox only: called with a JSON-safe snapshot after every action. */
   onSnapshot?: (snapshot: unknown) => void;
-  /** Sandbox: the table's Practice checkbox. The app writes it to settings (the source of truth). */
+  /** Sandbox: the table's Practice checkbox (on = EV after). The app writes evMode to settings. */
   onPracticeChange?: (on: boolean) => void;
 }

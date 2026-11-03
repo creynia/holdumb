@@ -10,7 +10,15 @@ import { formatMoney } from '../../src/sim';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
 import { AppProviders } from '../../src/app/context';
-import { DRILL_CATEGORY_IDS, nextSpot as realNextSpot } from '../../src/sim';
+import {
+  DRILL_CATEGORY_IDS,
+  gradeSpot as realGradeSpot,
+  nextSpot as realNextSpot,
+} from '../../src/sim';
+import { spotFromCode } from '../../src/sim';
+import { createEvClient } from '../../src/sim/worker';
+import { waitFor } from '@testing-library/preact';
+import { weakestCategory } from '../../src/app/drillCategories';
 import { Drill, rngFromSeed, type DrillDeps } from '../../src/app/screens/Drill';
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
@@ -252,14 +260,45 @@ describe('Settings', () => {
       trips.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(store.settings.paytable).toBe('trips-9-7-4');
-    const boxes = [...el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
-    const practice = boxes.find((b) => b.parentElement?.textContent?.includes('Practice'))!;
+    const legends = [...el.querySelectorAll('fieldset > legend')].map((l) => l.textContent);
+    expect(legends).toEqual(['Show EV', 'Ask me to confirm']);
+    const radios = (name: string) => [
+      ...el.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${name}"]`),
+    ];
+    const labelOf = (r: HTMLInputElement) => r.closest('label')!.textContent;
+    expect(radios('ev-mode').map(labelOf)).toEqual([
+      expect.stringContaining('Before I choose'),
+      expect.stringContaining('After I choose'),
+      expect.stringContaining('Never'),
+    ]);
+    expect(radios('confirm-on').map(labelOf)).toEqual([
+      expect.stringContaining('All bets'),
+      expect.stringContaining('Medium and bad bets'),
+      expect.stringContaining('Only bad bets'),
+      expect.stringContaining('Never'),
+    ]);
+    expect(labelOf(radios('confirm-on')[1]!)).toContain('more than 0.10 Ante');
+    expect(el.querySelector('#confirm-on-note')!.textContent).toBe(
+      'Confirm options apply when EV is shown before the move.',
+    );
+    // Defaults: EV before, no confirm step.
+    expect(radios('ev-mode').find((r) => r.checked)!.value).toBe('before');
+    expect(radios('confirm-on').find((r) => r.checked)!.value).toBe('never');
     await act(() => {
-      practice.checked = true;
-      practice.dispatchEvent(new Event('change', { bubbles: true }));
+      radios('ev-mode')[2]!.click();
     });
-    expect(store.settings.practice).toBe(true);
-    expect(boxes.length).toBeGreaterThanOrEqual(5); // practice, confirm, skip, reduce motion, four-colour
+    expect(store.settings.evMode).toBe('never');
+    await act(() => {
+      radios('confirm-on')[1]!.click();
+    });
+    expect(store.settings.confirmOn).toBe('costly');
+    expect(radios('confirm-on').find((r) => r.checked)!.value).toBe('costly');
+    // The three old checkboxes are gone; reduce motion and four-colour remain.
+    const boxes = [...el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    expect(boxes.map(labelOf)).toEqual([
+      expect.stringContaining('Reduce motion'),
+      expect.stringContaining('Four-colour deck'),
+    ]);
   });
   it('applies the theme and four-colour deck to the document', async () => {
     const { store } = await mount('#/settings');
@@ -383,7 +422,6 @@ describe('Drill', () => {
     ({
       street: 'flop',
       bestIndex: bestIdx,
-      handClass: 'AKo',
       options: [
         {
           action: { type: 'play', multiple: 2 },
@@ -411,6 +449,7 @@ describe('Drill', () => {
   function setup(bestIdx: 0 | 1, deps?: Partial<DrillDeps>) {
     const d: DrillDeps = {
       nextSpot: (rng) => [spot('flop', 'f:x'), rng],
+      gradeSpot: realGradeSpot,
       preview: () => Promise.resolve(preview(bestIdx)),
       ...deps,
     };
@@ -461,7 +500,7 @@ describe('Drill', () => {
     const res = el.querySelector('[data-testid="drill-result"]')!;
     expect(res.getAttribute('data-tier')).toBe('best');
     expect(btn(res as HTMLElement, 'See the chart').getAttribute('href')).toBe(
-      '#/strategy?highlight=AKo',
+      '#/strategy?view=flop',
     );
     expect(btn(res as HTMLElement, 'Play it out').getAttribute('href')).toMatch(
       /^#\/play\?hole=AsKd&board=/,
@@ -473,6 +512,49 @@ describe('Drill', () => {
         (b) => (b as HTMLButtonElement).disabled,
       ),
     ).toBe(true);
+  });
+  const ACTIONS = {
+    preflop: [{ type: 'play', multiple: 4 }, { type: 'play', multiple: 3 }, { type: 'check' }],
+    flop: [{ type: 'play', multiple: 2 }, { type: 'check' }],
+    river: [{ type: 'play', multiple: 1 }, { type: 'fold' }],
+  } as unknown as Record<
+    'preflop' | 'flop' | 'river',
+    DecisionPreview['options'][number]['action'][]
+  >;
+  it('See the chart: preflop highlights the hand, flop and river open their own view', async () => {
+    for (const [street, handClass, want] of [
+      ['preflop', 'AKs', '#/strategy?highlight=AKs'],
+      ['flop', undefined, '#/strategy?view=flop'],
+      ['river', undefined, '#/strategy?view=river'],
+    ] as const) {
+      document.body.innerHTML = '';
+      const { store, d } = setup(0, {
+        nextSpot: (r) => [spot(street, 'x'), r],
+        preview: () =>
+          Promise.resolve({
+            ...preview(0),
+            street,
+            handClass,
+            options: ACTIONS[street].map((action) => ({ ...preview(0).options[0]!, action })),
+          } as unknown as DecisionPreview),
+      });
+      const el = await mountDrill(store, d);
+      await act(() => (el.querySelector('.choice-row button') as HTMLButtonElement).click());
+      await tick();
+      const res = el.querySelector('[data-testid="drill-result"]') as HTMLElement;
+      expect(btn(res, 'See the chart').getAttribute('href'), street).toBe(want);
+    }
+  });
+  it('Strategy: view=river scrolls the river section into view, unknown views do nothing', async () => {
+    const spy = vi.fn();
+    Element.prototype.scrollIntoView = spy;
+    const { el } = await mount('#/strategy?view=river');
+    const sec = el.querySelector('[data-view="river"]') as HTMLElement;
+    expect(spy.mock.contexts[0]).toBe(sec);
+    spy.mockClear();
+    document.body.innerHTML = '';
+    await mount('#/strategy?view=bogus');
+    expect(spy).not.toHaveBeenCalled();
   });
   it('close counts as correct, costly does not, and misses are remembered (D33)', async () => {
     const { store, d } = setup(1); // best = Check; Bet 2x is "costly"
@@ -496,7 +578,7 @@ describe('Drill', () => {
     });
     const el = await mountDrill(store, d);
     expect(el.querySelector('[data-testid="drill-unavailable"]')).toBeTruthy();
-    expect(el.querySelectorAll('.segmented .seg').length).toBe(4);
+    expect(el.querySelectorAll('[aria-label="Street"] .seg').length).toBe(4);
     expect(el.querySelector('[data-testid="drill-stats"]')).toBeTruthy();
   });
   it('street filter is read from the query', async () => {
@@ -504,6 +586,102 @@ describe('Drill', () => {
     const { store, d } = setup(0, { nextSpot });
     await mountDrill(store, d, 'street=river&focus=a,b');
     expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'river', focus: ['a', 'b'] });
+  });
+  describe('grading lens', () => {
+    // Bet 2x is perfect-best by 0.300 antes over Check, which is what the basic card plays here.
+    const differing = (): DecisionPreview => {
+      const p = preview(0);
+      p.options[1]!.regret = frac(30);
+      p.options[1]!.tier = 'costly';
+      return p;
+    };
+    const btnIn = (el: HTMLElement, group: string, name: string) =>
+      [...el.querySelectorAll<HTMLButtonElement>(`[aria-label="${group}"] button`)].find(
+        (b) => b.textContent === name,
+      )!;
+
+    it('defaults to perfect: the basic card play is a Mistake', async () => {
+      const { store, d } = setup(0, { preview: () => Promise.resolve(differing()) });
+      const el = await mountDrill(store, d);
+      expect(store.drill.lens).toBe('perfect');
+      await act(() => btn(el, 'Check').click());
+      await tick();
+      expect(el.querySelector('[data-testid="drill-result"]')!.getAttribute('data-tier')).toBe(
+        'costly',
+      );
+    });
+    it('practical: the basic card play is Correct! and names perfect play and its regret', async () => {
+      const { store, d } = setup(0, { preview: () => Promise.resolve(differing()) });
+      const el = await mountDrill(store, d);
+      await act(() => btnIn(el, 'Grade by', 'Basic card').click());
+      expect(store.drill.lens).toBe('practical');
+      await act(() => btn(el, 'Check').click());
+      await tick();
+      const res = el.querySelector('[data-testid="drill-result"]')!;
+      expect(res.getAttribute('data-tier')).toBe('best');
+      expect(res.querySelector('[role="status"]')!.textContent).toMatch(
+        /^Correct! Check is the card's play\. Perfect play says Bet 2x here, by 0\.300 antes \(\$[\d.,]+ per hand\)\. The card's rule is still the one to remember\.$/,
+      );
+      expect(store.drill.practical.byStreet.flop).toEqual({ answered: 1, correct: 1 });
+      expect(store.drill.byStreet.flop).toEqual({ answered: 0, correct: 0 });
+    });
+    describe('pinned spot f:2dJd.4h6d9d (flush draw: the card bets 2x, perfect checks)', () => {
+      // The real engine: Check 26929/142692 is best; Bet 2x 273331/2140380 costs 0.061 antes.
+      const run = async (choice: string) => {
+        const ev = createEvClient({ mode: 'inthread' });
+        const spot = spotFromCode('f:2dJd.4h6d9d');
+        const { store, d } = setup(1, {
+          nextSpot: (r) => [spot, r],
+          preview: (req) => ev.run('preview', req),
+        });
+        const el = await mountDrill(store, d);
+        await act(() => btnIn(el, 'Grade by', 'Basic card').click());
+        await act(() => btn(el, choice).click());
+        await waitFor(() => expect(el.querySelector('[data-testid="drill-result"]')).toBeTruthy(), {
+          timeout: 60_000,
+        });
+        ev.dispose();
+        return el.querySelector('[data-testid="drill-result"] [role="status"]')!.textContent;
+      };
+      it("choosing the card's action names perfect play, exactly", async () => {
+        expect(await run('Bet 2x')).toBe(
+          "Correct! Bet 2x is the card's play. Perfect play says Check here, by 0.061 antes ($0.61 per hand). The card's rule is still the one to remember.",
+        );
+      }, 90_000);
+      it('choosing the perfect action does not claim it is the card play', async () => {
+        expect(await run('Check')).toBe(
+          'Correct! Check is the best play (the card says Bet 2x here).',
+        );
+      }, 90_000);
+    });
+    it('lenses never mix: categories, misses, streaks and the weakest line are per lens', () => {
+      const store = new Store(new MemoryStorage());
+      store.setDrillLens('practical');
+      for (let i = 0; i < 5; i++) store.recordDrill('flop', false, `f:${i}`, 'flop-flush-draw');
+      expect(store.drill.practical.byCategory['flop-flush-draw']).toEqual({
+        answered: 5,
+        correct: 0,
+      });
+      expect(store.drill.practical.recentMisses).toHaveLength(5);
+      expect(store.drill.byCategory).toEqual({});
+      expect(store.drill.recentMisses).toEqual([]);
+      expect(weakestCategory(store.drill)?.id).toBe('flop-flush-draw');
+      store.setDrillLens('perfect');
+      expect(weakestCategory(store.drill)).toBeNull();
+      store.recordDrill('flop', true, 'f:9', 'flop-flush-draw');
+      expect(store.drillStreak).toBe(1);
+      store.setDrillLens('practical');
+      expect(store.drillStreak).toBe(0);
+      expect(store.drill.bestStreak).toBe(1);
+      expect(store.drill.practical.bestStreak).toBe(0);
+    });
+    it('the lens persists in the store and survives a reload', () => {
+      const mem = new MemoryStorage();
+      const a = new Store(mem);
+      a.setDrillLens('practical');
+      a.flush();
+      expect(new Store(mem).drill.lens).toBe('practical');
+    });
   });
   it("?category= restricts the filter and lists only that street's categories", async () => {
     const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('flop', 'f:1'), r]);
@@ -647,6 +825,7 @@ describe('Drill', () => {
       const store = new Store(new MemoryStorage());
       const el = await mountDrill(store, {
         nextSpot: (r) => [spot('flop', `f:${i}`), r],
+        gradeSpot: realGradeSpot,
         preview: () => Promise.resolve(pv),
       });
       await act(() => btn(el, 'Check').click());

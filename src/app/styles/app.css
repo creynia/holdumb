@@ -399,12 +399,6 @@ main:has(> .page-wide) {
 .scene {
   padding: 0.7rem;
 }
-.scene-placeholder {
-  min-height: 160px;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
 .quiz {
   margin: 1rem 0;
 }
@@ -576,6 +570,40 @@ textarea {
   width: 22px;
   height: 22px;
 }
+.form fieldset.radios {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.form fieldset.radios legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+.form label.radio {
+  min-height: 44px;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  cursor: pointer;
+}
+.form label.radio input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+.form fieldset.radios .radios-note {
+  margin: 0 0 0.25rem;
+  font-size: 0.85em;
+}
+.form label.radio small {
+  display: block;
+  font-size: 0.85em;
+}
 
 [data-motion='reduce'] *,
 [data-motion='reduce'] *::before,
@@ -678,6 +706,10 @@ textarea {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin: 0.6rem 0;
+}
+.seg-label {
+  align-self: center;
+  font-weight: 600;
 }
 .seg {
   flex: 1 1 auto;
@@ -912,4 +944,9 @@ textarea {
 }
 .skip-link:focus {
   transform: none;
+}
+
+/* Strategy sections reached from Drill ("See the chart") land below the top edge, with a gap. */
+[data-view] {
+  scroll-margin-top: 16px;
 }
