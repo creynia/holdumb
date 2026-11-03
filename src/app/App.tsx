@@ -59,6 +59,13 @@ export function App() {
     });
     document.title = name ? `${name} · holdumb` : HOME_TITLE;
   }, [route.path, content]);
+  // Route class on <html> so CSS can scope behaviour (overscroll) to the Play table only.
+  useEffect(() => {
+    document.documentElement.dataset.route = route.path.split('/')[1] || 'home';
+    return () => {
+      delete document.documentElement.dataset.route;
+    };
+  }, [route.path]);
   // One anonymous page view per route (path only; query strings are dropped).
   useEffect(() => trackPage(pagePath(location.pathname, route.path)), [route.path]);
   // Move focus to the page after a route change (not on first load).
