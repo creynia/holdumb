@@ -30,6 +30,8 @@ export function useOrientation(pref: 'auto' | Orientation = 'auto'): Orientation
 export interface TableProps {
   orientation: Orientation;
   status?: ComponentChildren;
+  /** Sandbox quick options (I090): above the status bar in portrait, under it in the rail. */
+  options?: ComponentChildren;
   felt: ComponentChildren;
   actions: ComponentChildren;
   chips?: ComponentChildren;
@@ -50,6 +52,7 @@ export interface TableProps {
 export function Table({
   orientation,
   status,
+  options,
   felt,
   actions,
   chips,
@@ -64,6 +67,7 @@ export function Table({
         <aside class="sim-rail" aria-label="Controls">
           <div class="sim-rail-actions">{actions}</div>
           {status}
+          {options}
           {/* It scrolls when the rail is short, so keyboard users can reach it (axe). */}
           <div class="sim-rail-body" tabIndex={0} role="group" aria-label="Table details">
             {chips}
@@ -77,6 +81,7 @@ export function Table({
   }
   return (
     <section class="sim-table sim-table-portrait" aria-label="Table">
+      {options}
       {status}
       <div class="sim-table-felt">{felt}</div>
       <div class="sim-table-actions">{actions}</div>

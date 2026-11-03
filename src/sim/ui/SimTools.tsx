@@ -1,17 +1,14 @@
-// Sandbox tools under the table: the practice-mode toggle, New session and Top up (I083).
+// Sandbox tools under the table: New session and Top up (I083). Show EV and Confirm live in the
+// table's options row (I090).
 import { useState } from 'preact/hooks';
 import { formatMoney } from '../engine';
 import type { Cents } from '../engine';
 import type { SimDriver } from '../scene';
 import { BankrollPicker } from './BankrollPicker';
 import { DEFAULT_TOP_UP_CENTS } from './bankroll';
-import type { SimulatorProps } from './types';
 
 export interface SimToolsProps {
   d: SimDriver;
-  practice: boolean;
-  /** The app's handler (settings are the source of truth); without it the table keeps its own. */
-  onPracticeChange: SimulatorProps['onPracticeChange'];
   /** The default bankroll: what New session offers first. */
   bankroll: Cents;
   /** Remembers a chosen starting bankroll as the new default (app settings). */
@@ -20,33 +17,13 @@ export interface SimToolsProps {
   short?: boolean;
 }
 
-export function SimTools({
-  d,
-  practice,
-  onPracticeChange,
-  bankroll,
-  onBankrollChange,
-  short,
-}: SimToolsProps) {
+export function SimTools({ d, bankroll, onBankrollChange, short }: SimToolsProps) {
   const [panel, setPanel] = useState<'new' | 'top-up' | null>(null);
   const [chosen, setChosen] = useState<Cents | null>(null);
   const base = chosen ?? bankroll;
   const toggle = (p: 'new' | 'top-up') => setPanel((cur) => (cur === p ? null : p));
   return (
     <div class="sim-tools">
-      <label>
-        <input
-          type="checkbox"
-          checked={practice}
-          onChange={(e) =>
-            onPracticeChange
-              ? onPracticeChange(e.currentTarget.checked)
-              : d.setPractice(e.currentTarget.checked)
-          }
-          data-testid="practice-toggle"
-        />
-        Practice mode (hide EV until I confirm)
-      </label>
       <button
         type="button"
         class="sim-btn sim-btn-secondary"

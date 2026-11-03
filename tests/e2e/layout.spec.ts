@@ -58,10 +58,37 @@ async function check(page: Page, street: string, w: number, h: number) {
   // ... and at least 8px above the tab bar (hidden at >= 768px wide).
   if (tab) expect(act!.bottom, `${where}: bar vs tab bar`).toBeLessThanOrEqual(tab.top - 8);
   if (w < h) {
-    // Portrait: the whole felt is on screen above the bar, and at least 300px wide as drawn.
+    // Portrait: the whole felt is on screen above the bar, and as drawn at least 270px wide at
+    // 360x740 and 300px at 390x844 (the table options row takes its 52px from the felt, I090).
     expect(felt!.top, `${where}: felt top`).toBeGreaterThanOrEqual(top!.bottom);
     expect(felt!.bottom, `${where}: felt bottom`).toBeLessThanOrEqual(act!.top);
-    expect(await drawnFeltWidth(page), `${where}: felt width`).toBeGreaterThanOrEqual(300);
+    expect(await drawnFeltWidth(page), `${where}: felt width`).toBeGreaterThanOrEqual(
+      w < 390 ? 270 : 300,
+    );
+    // Every bet circle's hit box stays a 44px target at that scale.
+    for (const hit of await page.locator('[data-hit]').all()) {
+      const b = (await hit.boundingBox())!;
+      expect(b.width, `${where}: hit width`).toBeGreaterThanOrEqual(44);
+      expect(b.height, `${where}: hit height`).toBeGreaterThanOrEqual(44);
+    }
+  }
+  // The table options row (I090) is on screen and covers no circle, card, board or the bar.
+  const opts = await box(page, '.sim-options');
+  expect(opts, `${where}: options row`).not.toBeNull();
+  expect(opts!.top, `${where}: options top`).toBeGreaterThanOrEqual(top!.bottom);
+  expect(opts!.bottom, `${where}: options bottom`).toBeLessThanOrEqual(tab ? tab.top : h);
+  const rects = await page.evaluate(() =>
+    [...document.querySelectorAll('.sim-actions, [data-hit], g.sim-card, .sim-felt .sim-slot')].map(
+      (e) => {
+        const r = e.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+      },
+    ),
+  );
+  for (const r of rects) {
+    const overlap =
+      r.left < opts!.right && r.right > opts!.left && r.top < opts!.bottom && r.bottom > opts!.top;
+    expect(overlap, `${where}: options row overlaps ${JSON.stringify(r)}`).toBe(false);
   }
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
