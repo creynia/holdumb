@@ -1246,3 +1246,31 @@ html[data-route='play'] body {
   white-space: nowrap;
   pointer-events: none;
 }
+/* Learn: "Your skills" (I069). Status is always a word; colour only backs it up. */
+.skill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.skill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+.skill-detail {
+  flex: 1 1 auto;
+}
+.skill-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  flex-basis: 100%;
+}
+.skill-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

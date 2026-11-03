@@ -418,6 +418,95 @@ describe('Simulator container', () => {
       evClient.dispose();
     });
   });
+
+  describe('hand verdict line (I059)', () => {
+    const RIVER_19: SceneConfig = {
+      id: 'sandbox',
+      version: 1,
+      startAt: {
+        street: 'river',
+        deal: {
+          player: ['Qc', '7d'],
+          flop: ['Kd', 'Jh', '9s'],
+          turn: '5c',
+          river: '2d',
+          dealer: ['Td', 'Ts'],
+        },
+      },
+    };
+    const playRiver = async (
+      option: string,
+      extra: Partial<Parameters<typeof Simulator>[0]> = {},
+      scene = RIVER_19,
+    ) => {
+      const m = mount(scene, extra);
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
+      );
+      fireEvent.click(document.querySelector(`[data-option="${option}"]`)!);
+      await flush();
+      const confirm = screen.queryByTestId('confirm');
+      if (confirm) fireEvent.click(confirm);
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
+      );
+      return m;
+    };
+    it('a best play: "Played it right" rides on the one result toast', async () => {
+      const { evClient } = await playRiver('play-1');
+      const toast = document.querySelectorAll('.sim-toast');
+      expect(toast).toHaveLength(1);
+      expect(toast[0]!.textContent).toMatch(
+        /Played it right\. Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\./,
+      );
+      evClient.dispose();
+    });
+    it('a single mistake is not described twice: the narration has the cost, the verdict the figures', async () => {
+      const { evClient } = await playRiver('fold');
+      const text = document.querySelector('.sim-toast')!.textContent;
+      expect(text).toMatch(
+        /^Fold: (a small mistake|a mistake|a big mistake), costs \$[\d.,]+ against /,
+      );
+      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
+      expect(text).not.toMatch(/on average/);
+      evClient.dispose();
+    });
+    it('hidden when EV is never shown; shown with EV after the move', async () => {
+      const never = await playRiver('fold', { settings: { ...settings, evMode: 'never' } });
+      expect(document.querySelector('.sim-toast')!.textContent).not.toMatch(/Played it right|cost/);
+      never.evClient.dispose();
+      cleanup();
+      const after = await playRiver('fold', { settings: { ...settings, evMode: 'after' } });
+      // the reveal card has the cost, so the toast carries only the figures
+      const text = document.querySelector('.sim-toast')!.textContent;
+      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
+      expect(text).not.toMatch(/cost/);
+      after.evClient.dispose();
+    });
+    it('a lesson scene shows it only with ui.verdict', async () => {
+      const lesson = (verdict: boolean | undefined): SceneConfig =>
+        ({
+          ...RIVER_19,
+          showEV: true,
+          ...(verdict === undefined ? {} : { ui: { verdict } }),
+          steps: [
+            {
+              id: 'go',
+              text: 'Fold.',
+              allowedActions: ['fold', 'play'],
+              completeWhen: { street: 'settled' },
+            },
+          ],
+        }) as unknown as SceneConfig;
+      const off = await playRiver('fold', {}, lesson(undefined));
+      expect(document.querySelector('.sim-toast')?.textContent ?? '').not.toMatch(/cost \$/);
+      off.evClient.dispose();
+      cleanup();
+      const on = await playRiver('fold', {}, lesson(true));
+      expect(document.querySelector('.sim-toast')!.textContent).toMatch(/Your river Fold cost/);
+      on.evClient.dispose();
+    });
+  });
 });
 
 describe('Watch closes an open EV sheet (I097)', () => {

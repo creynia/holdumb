@@ -161,6 +161,10 @@ export function Settings() {
 
       <section class="card form" aria-label="Table">
         <h2>Table</h2>
+        <p class="muted" data-testid="keyboard-shortcuts">
+          Keyboard shortcuts on the table: <kbd>4</kbd> <kbd>3</kbd> <kbd>2</kbd> <kbd>1</kbd> bet,{' '}
+          <kbd>C</kbd> check, <kbd>F</kbd> fold, <kbd>D</kbd> or <kbd>Enter</kbd> deal.
+        </p>
         <label>
           Trips paytable
           <select
