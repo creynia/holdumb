@@ -925,7 +925,35 @@ textarea {
   min-height: 44px;
 }
 
+/* Skip link: hidden until it takes keyboard focus (I072). */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  font-weight: 600;
+  transform: translateY(-250%);
+}
+.skip-link:focus {
+  transform: none;
+}
+
 /* Strategy sections reached from Drill ("See the chart") land below the top edge, with a gap. */
 [data-view] {
   scroll-margin-top: 16px;
+}
+
+/* Reserves the storage line's height so the content below does not shift (I076). */
+.storage-line {
+  /* Three lines: the longest copy (with the install hint) at 360px. Same height in every state. */
+  min-height: 4.5em;
+  margin: 0.25rem 0 0;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateN, parseCards, resolveRules, settleHand } from '../engine';
+import { PAYTABLE_PRESET_IDS } from '../engine/paytables';
 import type { HandResult } from '../engine';
 import {
   FOLDED_RESULT,
@@ -20,6 +21,7 @@ import {
   basicRiverLine,
   dealerOutsLine,
   describeResult,
+  tablesFor,
   hiddenPairLine,
   outGroupText,
   outsDetailText,
@@ -86,6 +88,110 @@ describe('prose', () => {
   it('describes a settled hand', () => {
     expect(describeResult(WON_RESULT)).toBe(
       "Your pair of kings beats the dealer's pair of nines. Ante +$10, Blind push (needs a straight), Play +$40. Net +$50.",
+    );
+  });
+  it('names the paying hand and its odds on blind and trips wins (I011)', () => {
+    const withWager = (
+      category: HandResult['player']['category'],
+      wager: 'blind' | 'trips',
+      result: 'win' | 'lose',
+      profit: number,
+    ): HandResult => ({
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category },
+      wagers: [
+        {
+          wager,
+          amount: 1000,
+          result,
+          profit,
+          reason: wager === 'blind' ? 'blind-bonus' : 'trips-pays',
+        },
+      ],
+      net: profit,
+    });
+    expect(describeResult(withWager('royal-flush', 'blind', 'win', 500000))).toContain(
+      'Blind +$5,000 (royal flush pays 500 to 1)',
+    );
+    expect(describeResult(withWager('straight', 'blind', 'win', 1000))).toContain(
+      'Blind +$10 (straight pays 1 to 1)',
+    );
+    expect(describeResult(withWager('trips', 'trips', 'win', 3000))).toContain(
+      'Trips +$30 (three of a kind pays 3 to 1 on Trips 8/6/5)',
+    );
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).toContain('Trips -$5');
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).not.toContain('pays');
+  });
+  it('reads the odds from the active Trips preset, not a fixed string (I011)', () => {
+    const fullHouseTrips: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'full-house' },
+      wagers: [{ wager: 'trips', amount: 1000, result: 'win', profit: 9000, reason: 'trips-pays' }],
+      net: 9000,
+    };
+    expect(describeResult(fullHouseTrips, tablesFor('trips-9-7-4'))).toContain(
+      'full house pays 9 to 1 on Trips 9/7/4',
+    );
+  });
+  it('a straight flush is never named as a flush (I011 review)', () => {
+    const sf: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'straight-flush' },
+      wagers: [
+        { wager: 'blind', amount: 1000, result: 'win', profit: 50000, reason: 'blind-bonus' },
+      ],
+      net: 50000,
+    };
+    const text = describeResult(sf);
+    expect(text).toContain('Blind +$500 (straight flush pays 50 to 1)');
+    expect(text).not.toContain('(flush pays');
+  });
+  it('each Trips preset names itself and its own odds (I011 review)', () => {
+    for (const id of PAYTABLE_PRESET_IDS) {
+      const t = tablesFor(id);
+      const odds = t.trips.pays['trips'];
+      const r: HandResult = {
+        ...WON_RESULT,
+        player: { ...WON_RESULT.player, category: 'trips' },
+        wagers: [
+          { wager: 'trips', amount: 1000, result: 'win', profit: 3000, reason: 'trips-pays' },
+        ],
+        net: 3000,
+      };
+      expect(describeResult(r, t)).toContain(
+        `Trips +$30 (three of a kind pays ${odds![0]} to ${odds![1]} on ${t.trips.label})`,
+      );
+    }
+  });
+  it('a Blind push adds no odds (I011 review)', () => {
+    const push: HandResult = {
+      ...WON_RESULT,
+      wagers: [
+        {
+          wager: 'blind',
+          amount: 1000,
+          result: 'push',
+          profit: 0,
+          reason: 'blind-push-under-straight',
+        },
+      ],
+      net: 0,
+    };
+    expect(describeResult(push)).toContain('Blind push (needs a straight).');
+    expect(describeResult(push)).not.toContain('pays');
+  });
+  it('the odds come from the preset the hand settled at, not a different one (I011 review)', () => {
+    const win: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'full-house' },
+      wagers: [{ wager: 'trips', amount: 1000, result: 'win', profit: 9000, reason: 'trips-pays' }],
+      net: 9000,
+    };
+    expect(describeResult(win, tablesFor('trips-8-6-5'))).toContain(
+      'full house pays 8 to 1 on Trips 8/6/5',
+    );
+    expect(describeResult(win, tablesFor('trips-9-7-4'))).toContain(
+      'full house pays 9 to 1 on Trips 9/7/4',
     );
   });
   it('makes a fold toast carry only the money (the reveal has the rest)', () => {
