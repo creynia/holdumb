@@ -60,6 +60,33 @@ describe('storage', () => {
     expect(p.drill.byStreet.flop).toEqual({ answered: 2, correct: 2 });
     expect(p.drill.recentMisses).toEqual(['a']);
   });
+  it('drill lens and per-lens stats round-trip; a pre-lens record gets perfect', () => {
+    const p = sanitize({
+      version: 1,
+      drill: {
+        lens: 'practical',
+        byStreet: { flop: { answered: 3, correct: 2 } },
+        byCategory: { 'flop-nothing': { answered: 2, correct: 1 } },
+        practical: { byStreet: { flop: { answered: 5, correct: 9 }, bogus: { answered: 1 } } },
+      },
+    })!;
+    expect(p.drill.lens).toBe('practical');
+    // pre-lens category stats migrate into the perfect lens, not the basic-card one
+    expect(p.drill.byCategory['flop-nothing']).toEqual({ answered: 2, correct: 1 });
+    expect(p.drill.practical.byCategory).toEqual({});
+    expect(p.drill.byStreet.flop).toEqual({ answered: 3, correct: 2 });
+    expect(p.drill.practical.byStreet.flop).toEqual({ answered: 5, correct: 5 });
+    expect(decodeImport(encodeExport(p))).toEqual(p);
+    const old = sanitize({
+      version: 1,
+      drill: { bestStreak: 4, byStreet: { river: { answered: 2, correct: 1 } } },
+    })!;
+    expect(old.drill.lens).toBe('perfect');
+    expect(old.drill.bestStreak).toBe(4);
+    expect(old.drill.byStreet.river).toEqual({ answered: 2, correct: 1 });
+    expect(old.drill.practical.byStreet.river).toEqual({ answered: 0, correct: 0 });
+  });
+
   describe('D39 migration of the legacy EV flags', () => {
     const ev = (raw: Record<string, unknown>) => {
       const s = sanitizeSettings(raw);

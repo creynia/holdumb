@@ -10,14 +10,21 @@ import {
   WON_RESULT,
   frac,
 } from './fixtures';
+import { groupOuts, riverFacts } from '../math';
+import type { Card } from '../engine';
 import {
   withArticle,
   OPTION_LABELS,
   OPTION_ORDER,
   actionOfKey,
   ariaForOption,
+  basicRiverLine,
+  dealerOutsLine,
   describeResult,
   tablesFor,
+  hiddenPairLine,
+  outGroupText,
+  outsDetailText,
   fmtAnteUnits,
   fmtCentsFraction,
   fmtCost,
@@ -345,5 +352,47 @@ describe('result text names the deciding card', () => {
     expect(describeResult(r)).toMatch(
       /^Your king-queen-jack-nine-six high beats the dealer's king-queen-jack-nine-five high\. /,
     );
+  });
+});
+
+describe('river dealer outs copy (lesson 12)', () => {
+  const spot = (h: string, b: string) => {
+    const hole = parseCards(h) as [Card, Card];
+    const board = parseCards(b);
+    return { hole, board, f: riverFacts(hole, board) };
+  };
+  it('names the count out of 45, the ranks grouped, the hidden pair and the basic card', () => {
+    const { hole, board, f } = spot('Qc 7d', 'Kd Jh 9s 5c 2d');
+    expect(dealerOutsLine(f)).toBe('Dealer outs: 19 of 45');
+    expect(outsDetailText(f, hole, board)).toBe(
+      'any ace (4), any king (3), any jack (3), any nine (3), any five (3), any two (3)',
+    );
+    expect(hiddenPairLine(f)).toBe('Hidden pair or better: no');
+    expect(basicRiverLine(f)).toBe('Basic card: bet 1x (outs < 21)');
+  });
+  it('says fold with 21 or more outs and no hidden pair', () => {
+    const { hole, board, f } = spot('Jc 9d', '8s 8h 5c 3d 2s');
+    expect(dealerOutsLine(f)).toBe('Dealer outs: 23 of 45');
+    expect(outsDetailText(f, hole, board)).toContain('any eight (2)');
+    expect(basicRiverLine(f)).toBe('Basic card: fold (21+ outs, no hidden pair)');
+  });
+  it('a hidden pair plays whatever the count, and partial ranks name the card', () => {
+    const { hole, board, f } = spot('6d 5s', 'Kh 6h 8h 7c Qh');
+    expect(hiddenPairLine(f)).toBe('Hidden pair or better: yes');
+    expect(basicRiverLine(f)).toBe('Basic card: bet 1x (hidden pair)');
+    const groups = groupOuts(f.outCards, hole, board);
+    expect(outGroupText(groups[0]!)).toBe('the ace of hearts');
+    expect(outGroupText(groups[1]!)).toBe('any king (3)');
+    expect(outGroupText({ rank: 7, all: false, cards: parseCards('9h 9c') })).toBe(
+      'the nine of hearts or clubs',
+    );
+    expect(outGroupText({ rank: 7, all: false, cards: parseCards('9h 9d 9c') })).toBe(
+      'the nine of hearts, diamonds or clubs',
+    );
+  });
+  it('says so when nothing beats you', () => {
+    const { hole, board, f } = spot('4c 3d', 'As Ks Qs Jd Th');
+    expect(dealerOutsLine(f)).toBe('Dealer outs: 0 of 45');
+    expect(outsDetailText(f, hole, board)).toBe('no single card beats you');
   });
 });

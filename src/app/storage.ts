@@ -65,14 +65,30 @@ export type DrillStreet = 'preflop' | 'flop' | 'river';
 export const DRILL_STREETS: readonly DrillStreet[] = ['preflop', 'flop', 'river'];
 export const MAX_RECENT_MISSES = 50;
 
-export interface DrillStats {
+export type DrillLens = 'perfect' | 'practical';
+type StreetCounts = Record<DrillStreet, { answered: number; correct: number }>;
+
+/** Everything graded under one lens. */
+export interface LensStats {
   bestStreak: number;
-  byStreet: Record<DrillStreet, { answered: number; correct: number }>;
+  byStreet: StreetCounts;
   /** per spot category (I016); absent key = never answered. Records written before I016 lack it. */
   byCategory: Partial<Record<DrillCategoryId, { answered: number; correct: number }>>;
   /** spot codes (strategy/drill.ts), newest first */
   recentMisses: string[];
 }
+
+/**
+ * The top-level fields are the perfect-play lens (the only one before I017, so old records migrate
+ * into it unchanged); `practical` holds the basic-card lens. Switching lenses never mixes them.
+ */
+export interface DrillStats extends LensStats {
+  lens: DrillLens;
+  practical: LensStats;
+}
+
+/** Stats of the lens currently selected. */
+export const lensStats = (d: DrillStats): LensStats => (d.lens === 'practical' ? d.practical : d);
 
 export interface PersistedV1 {
   version: 1;
@@ -83,17 +99,21 @@ export interface PersistedV1 {
   sandbox?: unknown;
 }
 
+const emptyStreets = (): StreetCounts => ({
+  preflop: { answered: 0, correct: 0 },
+  flop: { answered: 0, correct: 0 },
+  river: { answered: 0, correct: 0 },
+});
+
+const emptyLens = (): LensStats => ({
+  bestStreak: 0,
+  byStreet: emptyStreets(),
+  byCategory: {},
+  recentMisses: [],
+});
+
 export function emptyDrill(): DrillStats {
-  return {
-    bestStreak: 0,
-    byStreet: {
-      preflop: { answered: 0, correct: 0 },
-      flop: { answered: 0, correct: 0 },
-      river: { answered: 0, correct: 0 },
-    },
-    byCategory: {},
-    recentMisses: [],
-  };
+  return { ...emptyLens(), lens: 'perfect', practical: emptyLens() };
 }
 
 export function defaultPersisted(): PersistedV1 {
@@ -164,20 +184,23 @@ export function sanitizeSettings(raw: unknown): Settings {
   };
 }
 
-function sanitizeDrill(raw: unknown): DrillStats {
-  const d = emptyDrill();
+function sanitizeStreets(raw: unknown): StreetCounts {
+  const out = emptyStreets();
+  if (!isObj(raw)) return out;
+  for (const s of DRILL_STREETS) {
+    const v = raw[s];
+    if (!isObj(v)) continue;
+    const answered = clampInt(v.answered, 0, 10_000_000, 0);
+    out[s] = { answered, correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered) };
+  }
+  return out;
+}
+
+function sanitizeLens(raw: unknown): LensStats {
+  const d = emptyLens();
   if (!isObj(raw)) return d;
   d.bestStreak = clampInt(raw.bestStreak, 0, 1_000_000, 0);
-  if (isObj(raw.byStreet))
-    for (const s of DRILL_STREETS) {
-      const v = raw.byStreet[s];
-      if (!isObj(v)) continue;
-      const answered = clampInt(v.answered, 0, 10_000_000, 0);
-      d.byStreet[s] = {
-        answered,
-        correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered),
-      };
-    }
+  d.byStreet = sanitizeStreets(raw.byStreet);
   if (isObj(raw.byCategory))
     for (const id of DRILL_CATEGORY_IDS) {
       const v = raw.byCategory[id];
@@ -194,6 +217,15 @@ function sanitizeDrill(raw: unknown): DrillStats {
       .filter((x): x is string => typeof x === 'string' && x.length <= 64)
       .slice(0, MAX_RECENT_MISSES);
   return d;
+}
+
+function sanitizeDrill(raw: unknown): DrillStats {
+  if (!isObj(raw)) return emptyDrill();
+  return {
+    ...sanitizeLens(raw),
+    lens: raw.lens === 'practical' ? 'practical' : 'perfect',
+    practical: sanitizeLens(raw.practical),
+  };
 }
 
 /** Validates arbitrary parsed JSON into PersistedV1; malformed parts fall back to defaults. */
