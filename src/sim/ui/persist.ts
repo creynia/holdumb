@@ -16,7 +16,7 @@ export interface SandboxSnapshot {
   evMode: EvMode;
 }
 
-/** `evMode` defaults to the driver's practice flag ('after' when on, else 'before'). */
+/** `evMode` defaults to the driver's table mode. */
 export function encodeSnapshot(d: SimDriver, evMode?: EvMode): SandboxSnapshot {
   const s = d.snapshotData();
   return {
@@ -24,7 +24,7 @@ export function encodeSnapshot(d: SimDriver, evMode?: EvMode): SandboxSnapshot {
     state: s.state,
     startEquity: s.startEquity,
     totals: s.totals,
-    evMode: evMode ?? evModeOfPractice(s.practice),
+    evMode: evMode ?? s.evMode,
   };
 }
 

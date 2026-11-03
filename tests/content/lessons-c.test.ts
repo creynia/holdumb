@@ -70,10 +70,10 @@ describe('lessons 15-23 (content-c)', () => {
       expect(known.has(id)).toBe(true);
   });
 
-  it('D35: l23-s1 is practice mode; l17-s2 / l21-s1 refer to D32 summaries', () => {
+  it('D35/D39: l23-s1 shows EV after you choose; l17-s2 / l21-s1 refer to D32 summaries', () => {
     const sc = (id: string) =>
       lessons.flatMap((l) => l.blocks.flatMap((b) => (b.kind === 'scene' && b.scene.id === id ? [b.scene] : [])))[0]!;
-    expect(sc('l23-s1').practice).toBe(true);
+    expect(sc('l23-s1').evMode).toBe('after');
     expect(JSON.stringify(sc('l17-s2'))).toContain('survival curve');
     expect(JSON.stringify(sc('l17-s2'))).toContain('bust rate');
     expect(JSON.stringify(sc('l21-s1'))).toContain('Trips hits');

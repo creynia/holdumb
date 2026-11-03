@@ -1170,8 +1170,7 @@ title: Preflop calls
 bankroll: 100000
 bets: { ante: 1000 }
 seed: 701
-showEV: true
-practice: true
+evMode: after # D39 (was practice: true, D35 S4)
 steps:
   - id: h1
     text: "Six hands. Make each preflop call from the eight rules; the EV sheet appears after you confirm. Hand 1: ace-three offsuit."
@@ -2811,8 +2810,7 @@ title: Five hands for the road
 bankroll: 100000
 bets: { ante: 1000, trips: 500 }
 seed: 2301
-showEV: true
-practice: true
+evMode: after # D39 (was practice: true, D35 S4)
 ui: { showSession: true }
 steps:
   - id: play

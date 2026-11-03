@@ -26,8 +26,11 @@ import {
   observe,
 } from './runner';
 import type { SceneContext } from './runner';
+import { sceneEvMode, stepConfirmOn, stepEvMode } from './modes';
 import type {
   CircleId,
+  ConfirmOn,
+  EvMode,
   OptionKey,
   SceneConfig,
   SceneInput,
@@ -128,6 +131,11 @@ export interface DriverView {
   /** Clear (betting) / Change bets (settled) is gated by the scene. */
   clearLocked: boolean;
   preview: PreviewState;
+  /** EV visibility for the current step (D39): the scene's in a lesson, the table's in the sandbox. */
+  evMode: EvMode;
+  /** Confirm policy for the current step (D39); in the sandbox the container applies the user's. */
+  confirmOn: ConfirmOn;
+  /** Legacy alias: evMode === 'after' (hide EV until confirm). */
   practice: boolean;
   rejection: Rejection | null;
   session: SessionView;
@@ -142,6 +150,9 @@ export interface DriverOptions {
   seed: number;
   /** Trips paytable for the sandbox (scenes use their own `rules.trips`, default 8-6-5). */
   paytable?: TripsPaytableId;
+  /** Sandbox only: the table's EV mode. In a lesson the scene decides and this is ignored (D39). */
+  evMode?: EvMode;
+  /** Legacy alias for `evMode: 'after'` (sandbox only). */
   practice?: boolean;
   onEvent?: (e: DriverEvent) => void;
   restore?: { state: GameState; startEquity: Cents; totals: SessionTotals };
@@ -194,7 +205,7 @@ export class SimDriver {
   private pvAbort: AbortController | null = null;
   private pendingStart: SceneStep['startAt'] | null = null;
   private rejection: Rejection | null = null;
-  private practice: boolean;
+  private evMode: EvMode;
   private version = 0;
   private listeners = new Set<() => void>();
   private cached: DriverView | null = null;
@@ -205,7 +216,10 @@ export class SimDriver {
     this.opts = opts;
     this.mode = opts.mode;
     this.scene = opts.scene ?? { id: 'sandbox', version: 1 };
-    this.practice = !!(opts.practice || this.scene.practice);
+    this.evMode =
+      opts.mode === 'sandbox'
+        ? (opts.evMode ?? (opts.practice ? 'after' : sceneEvMode(this.scene)))
+        : sceneEvMode(this.scene);
     const sc = this.scene;
     if (opts.restore) {
       this.game = opts.restore.state;
@@ -264,6 +278,7 @@ export class SimDriver {
     if (this.cached) return this.cached;
     const step = currentStep(this.scene, this.rt);
     const gate = activeGate(this.scene, this.rt);
+    const modeNow = this.mode === 'sandbox' ? this.evMode : stepEvMode(this.scene, step);
     const st = this.game.street;
     const decision = isDecision(st);
     const opts = decision ? gatedOptions(gate, st) : undefined;
@@ -293,7 +308,9 @@ export class SimDriver {
           ? !gateAllows(gate, { type: 'clear' })
           : !gateAllows(gate, { type: 'set-bet', wager: 'ante', amount: 0 }),
       preview: this.pv,
-      practice: this.practice,
+      evMode: modeNow,
+      confirmOn: stepConfirmOn(this.scene, step),
+      practice: modeNow === 'after',
       rejection: this.rejection,
       session: {
         ...t,
@@ -310,19 +327,26 @@ export class SimDriver {
     state: GameState;
     startEquity: Cents;
     totals: SessionTotals;
-    practice: boolean;
+    evMode: EvMode;
   } {
     return {
       state: this.game,
       startEquity: this.startEq,
       totals: this.totals,
-      practice: this.practice,
+      evMode: this.evMode,
     };
   }
 
-  setPractice(on: boolean): void {
-    this.practice = on;
+  /** The table's EV mode (sandbox; a lesson keeps its scene's mode). */
+  setEvMode(mode: EvMode): void {
+    if (this.mode !== 'sandbox' || mode === this.evMode) return;
+    this.evMode = mode;
     this.notify();
+  }
+
+  /** Legacy alias: on = 'after', off = 'before'. */
+  setPractice(on: boolean): void {
+    this.setEvMode(on ? 'after' : 'before');
   }
 
   dispose(): void {
