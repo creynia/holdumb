@@ -114,3 +114,11 @@
 .sim-rail > .sim-rail-body {
   flex: 1 1 auto;
 }
+
+/* Quick double taps must not zoom the table (touch-action does not affect scrolling or pinch). */
+.sim-container,
+.sim-act,
+.sim-rack-chip,
+.sim-hit {
+  touch-action: manipulation;
+}

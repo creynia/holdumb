@@ -1,21 +1,29 @@
 import { Link } from '../components/Link';
 import { OfflineLink } from '../components/OfflineLink';
 import { ProgressRing } from '../components/ProgressRing';
-import { useContent, useStore } from '../context';
+import { useProvidedContent, useStore } from '../context';
+import { useRouteContent } from '../lazy';
 import { hasPerfectStrategyBadge, nextLesson, overallProgress } from '../store';
 
 export function Home() {
-  const content = useContent();
+  // Home is in the entry chunk and paints at once; the lesson-derived bits (progress ring, the
+  // next lesson, the badge) fill in when the lesson bundle arrives, in boxes that hold their size.
+  const content = useRouteContent(useProvidedContent(), true);
   const store = useStore();
-  const next = nextLesson(content, store);
-  const nextL = content.lessons.find((l) => l.id === next);
-  const { done, total } = overallProgress(content, store);
-  const badge = hasPerfectStrategyBadge(content, store);
-  const started = done > 0 || content.lessons.some((l) => store.status(l.id) === 'progress');
+  const next = content ? nextLesson(content, store) : undefined;
+  const nextL = content?.lessons.find((l) => l.id === next);
+  const { done, total } = content ? overallProgress(content, store) : { done: 0, total: 0 };
+  const badge = content ? hasPerfectStrategyBadge(content, store) : false;
+  const started =
+    !!content && (done > 0 || content.lessons.some((l) => store.status(l.id) === 'progress'));
   return (
     <div class="page">
       <section class="hero">
-        <ProgressRing done={done} total={total} />
+        {content ? (
+          <ProgressRing done={done} total={total} />
+        ) : (
+          <span class="ring ring-skel" aria-hidden="true" />
+        )}
         <div>
           <h1>Learn Ultimate Texas Hold&apos;em&reg;</h1>
           <p class="muted">Lessons, odds and a practice table. Nothing here costs real money.</p>
@@ -27,7 +35,9 @@ export function Home() {
           or better.
         </p>
       )}
-      {nextL ? (
+      {!content ? (
+        <div class="skel-block" aria-hidden="true" />
+      ) : nextL ? (
         <Link to={`/learn/${nextL.id}`} class="btn btn-big">
           {started ? 'Continue' : 'Start'}: {nextL.title}
         </Link>

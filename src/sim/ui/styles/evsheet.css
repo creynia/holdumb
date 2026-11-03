@@ -148,3 +148,7 @@
   border-radius: 12px;
   background: var(--sim-surface-2);
 }
+.sim-flop-rule {
+  font-size: 0.9rem;
+  color: var(--muted);
+}

@@ -42,6 +42,31 @@ test.describe('sandbox', () => {
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
   });
 
+  test('the flop sheet names the basic-card rule and whether perfect agrees (I058)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?hole=9s7d&board=9hKc2s&dealer=QdJd&street=flop&speed=instant');
+    await ready(page);
+    await opt(page, 'play-2').click();
+    const line = page.getByTestId('flop-rule');
+    await expect(line).toContainText('Basic card: rule (b), a hidden pair of nines: Bet 2x.');
+    await expect(line).toContainText(/Perfect play (agrees|prefers Check)/);
+  });
+
+  test('with "After I choose" the rule line appears only after the move (I058)', async ({
+    page,
+  }) => {
+    await page.goto('/#/settings');
+    await page.getByRole('radio', { name: 'After I choose' }).check();
+    await page.goto('/#/play?hole=9s7d&board=9hKc2s&dealer=QdJd&street=flop&speed=instant');
+    await ready(page);
+    await opt(page, 'play-2').click();
+    await expect(page.getByTestId('ev-sheet')).toBeVisible();
+    await expect(page.getByTestId('flop-rule')).toHaveCount(0);
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('flop-rule')).toContainText('Basic card: rule (b)');
+  });
+
   test('by default a blunder acts on Confirm with no second tap (D39)', async ({ page }) => {
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);
@@ -172,6 +197,7 @@ test.describe('sandbox', () => {
   });
 
   test('tap targets are at least 44 px and the action buttons are on screen', async ({ page }) => {
+    // The bet circles are 39px at 667x375 (I032, layout): this test fails there until it lands.
     await page.goto('/#/play?seed=7&speed=instant');
     await page.locator('button[data-action="deal"]').click();
     await ready(page);

@@ -11,6 +11,7 @@ import { CHIP_DENOMS } from './ChipStack';
 import { EvSheet } from './EvSheet';
 import { Felt } from './Felt';
 import { FoldReveal } from './FoldReveal';
+import { MoveLog } from './MoveLog';
 import { SessionPanel } from './SessionPanel';
 import { SimAutoPlay } from './SimAutoPlay';
 import { SimTools } from './SimTools';
@@ -21,8 +22,11 @@ import { Toasts } from './Toasts';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
+import { useMoveLog } from './hooks/useMoveLog';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
+import { decodeMoveLog } from './moveLog';
+import { decodeSnapshot } from './persist';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
@@ -50,7 +54,13 @@ export function Simulator(props: SimulatorProps) {
 
   const ev = useEvSheet(sim, practice, orientation, evShown, decision);
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
-  useSandboxSync(sim, sandbox, baseScene, settings);
+  // The move log is the sandbox's (Play); a restored session brings its log back.
+  const moveLog = useMoveLog(view, () =>
+    sandbox && !baseScene.startAt && decodeSnapshot(props.snapshot, settings.paytable)
+      ? decodeMoveLog((props.snapshot as { log?: unknown }).log)
+      : [],
+  );
+  useSandboxSync(sim, sandbox, baseScene, settings, moveLog);
 
   const timeline = buildTimeline(view.lastEvents, resolveSpeed(settings, scene));
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
@@ -179,6 +189,7 @@ export function Simulator(props: SimulatorProps) {
         />
       ) : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
+      {sandbox ? <MoveLog hands={moveLog} evMode={settings.evMode} /> : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />
     </div>
   );
