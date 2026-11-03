@@ -652,7 +652,7 @@ describe('Drill', () => {
       await act(() => btn(el, 'Check').click());
       await act(() => new Promise((r) => setTimeout(r, 0)));
       const text = el.querySelector('[data-testid="drill-result"]')!.textContent ?? '';
-      expect(text, `case ${i}`).toContain(`(${formatMoney(cost)} per hand)`);
+      expect(text, `case ${i}`).toContain(`(${formatMoney(cost)}) more on average`);
     }
   }, 120_000);
 });

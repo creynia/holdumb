@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EvSheet, cardCode, costCents, fmtCostC, fmtFixed, nextSpot, optionKeyOf } from '../../sim';
+import {
+  EvSheet,
+  cardCode,
+  costCents,
+  fmtCostC,
+  fmtFixed,
+  nextSpot,
+  optionKeyOf,
+  riverFacts,
+} from '../../sim';
 import type {
   DecisionAction,
   DecisionPreview,
@@ -11,7 +20,7 @@ import type {
 } from '../../sim';
 import { Cards } from '../components/Cards';
 import { Link } from '../components/Link';
-import { useStore } from '../context';
+import { useContent, useStore } from '../context';
 import { getEvClient } from '../evClient';
 import { navigate } from '../router';
 import { DRILL_STREETS } from '../storage';
@@ -67,6 +76,28 @@ const HEADLINE = {
   blunder: 'Big mistake.',
 } as const;
 
+/** curriculum.md 9.2: the sentence under the headline, per tier. */
+export function gradingBody(
+  tier: keyof typeof HEADLINE,
+  reminder: string,
+  bestLabel: string,
+  chosenLabel: string,
+  regret: string,
+  cost: string,
+): string {
+  const tail = reminder ? ` ${reminder}` : '';
+  switch (tier) {
+    case 'best':
+      return reminder || `${chosenLabel} is the best play.`;
+    case 'close':
+      return `${bestLabel} is better by just ${regret} antes (${cost}). Either is fine.`;
+    case 'small':
+      return `${bestLabel} is better by ${regret} antes (${cost} per hand).${tail}`;
+    default:
+      return `${bestLabel} earns ${regret} antes (${cost}) more on average.${tail}`;
+  }
+}
+
 /**
  * splitmix32 -> the engine's four-word RNG state. Seeding after SplitMix (Steele, Lea and Flood,
  * 2014), mixing with the MurmurHash3 fmix32 constants 0x85ebca6b / 0xc2b2ae35 (Austin Appleby,
@@ -95,6 +126,7 @@ interface Answer {
 export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const deps = props.deps ?? defaultDrillDeps;
   const store = useStore();
+  const content = useContent();
   const q = props.query.get('street');
   const qStreet: DecisionStreet | 'mixed' =
     q === 'preflop' || q === 'flop' || q === 'river' ? q : 'mixed';
@@ -169,6 +201,13 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const best = answer?.preview.options[answer.preview.bestIndex];
   const hole = spot ? spot.hole.map(cardCode).join('') : '';
   const board = spot ? spot.board.map(cardCode).join('') : '';
+  // curriculum.md 9.2: the category's reminder (river categories name the dealer-outs count).
+  const reminder = spot
+    ? (content.drill[spot.category] ?? '').replace(
+        '{outs}',
+        spot.street === 'river' ? String(riverFacts(spot.hole, spot.board).outs) : '',
+      )
+    : '';
 
   return (
     <div class="page">
@@ -219,6 +258,9 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       {spot && (
         <section class="card drill-spot" data-testid="drill-spot" data-street={spot.street}>
           <h2 class="sr">Your hand</h2>
+          <p class="drill-spot-category muted" data-testid="drill-category-label">
+            {DRILL_CATEGORY_LABELS[spot.category]}
+          </p>
           <div class="drill-cards">
             <Cards cards={spot.hole} />
             {spot.board.length > 0 && <Cards cards={spot.board} />}
@@ -249,11 +291,14 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         <section class="card drill-result" data-testid="drill-result" data-tier={chosenOpt.tier}>
           <p role="status">
             <strong>{HEADLINE[chosenOpt.tier]}</strong>{' '}
-            {chosenOpt.tier === 'best'
-              ? `${chosenOpt.label} is the best play.`
-              : `${best.label} is better by ${antes(chosenOpt.regret)} antes (${fmtCostC(
-                  costCents(best, chosenOpt),
-                )} per hand).`}
+            {gradingBody(
+              chosenOpt.tier,
+              reminder,
+              best.label,
+              chosenOpt.label,
+              antes(chosenOpt.regret),
+              fmtCostC(costCents(best, chosenOpt)),
+            )}
           </p>
           <EvSheet
             preview={answer.preview}
