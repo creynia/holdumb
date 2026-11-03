@@ -40,9 +40,11 @@
   scroll-margin-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 /* The controls row comes first and never moves; the hand's toast (if any) follows below it. */
+/* Buttons sit at the top of the row: the text beside them may wrap ("· paused" on narrow phones),
+   and that must never move Pause or Stop. */
 .sim-watch-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   min-height: 52px;

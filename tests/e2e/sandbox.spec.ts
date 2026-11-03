@@ -241,10 +241,12 @@ test.describe('sandbox', () => {
         const r = el.getBoundingClientRect();
         return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height };
       });
+    // Portrait: the strip takes the rack's place at the bottom of the table section, so everything
+    // above it (status, felt, ActionBar) must stay put. Landscape: the whole table and rail.
     const boxes = async () => ({
-      table: await doc('.sim-table'),
+      table: await doc(landscape ? '.sim-table' : '.sim-table-felt'),
       actions: await doc('.sim-actions'),
-      rail: landscape ? await doc('.sim-rail') : null,
+      rail: await doc(landscape ? '.sim-rail' : '.sim-status'),
     });
     const near = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
       Math.abs(a.x - b.x) <= 1 &&
@@ -263,7 +265,7 @@ test.describe('sandbox', () => {
     const during = await boxes();
     expect(near(during.table, before.table)).toBe(true);
     expect(near(during.actions, before.actions)).toBe(true);
-    if (landscape) expect(near(during.rail!, before.rail!)).toBe(true);
+    expect(near(during.rail, before.rail)).toBe(true);
     // The strip never sits on the felt; Pause / Stop are full tap targets, on screen above any
     // tab bar.
     const felt = (await page.locator('svg.sim-felt').boundingBox())!;
@@ -290,7 +292,7 @@ test.describe('sandbox', () => {
     const after = await boxes();
     expect(near(after.table, before.table)).toBe(true);
     expect(near(after.actions, before.actions)).toBe(true);
-    if (landscape) expect(near(after.rail!, before.rail!)).toBe(true);
+    expect(near(after.rail, before.rail)).toBe(true);
     // One announcement per hand, each naming perfect play's moves.
     const said = await page.evaluate(() => (window as unknown as { __said: string[] }).__said);
     expect(said).toHaveLength(3);
