@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../src/app/App';
+import { preloadRoutes } from '../../src/app/lazy';
 import { AppProviders } from '../../src/app/context';
 import { MemoryStorage } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
@@ -13,6 +14,7 @@ async function mount(hash: string) {
   location.hash = hash;
   const el = document.createElement('div');
   document.body.appendChild(el);
+  await preloadRoutes(false);
   await act(() => {
     render(
       <AppProviders content={content} store={new Store(new MemoryStorage())}>

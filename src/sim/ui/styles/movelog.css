@@ -1,0 +1,69 @@
+/* Move log (I081): a disclosure under the session panel, outside the table. */
+.sim-movelog {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--sim-border);
+  border-radius: 10px;
+  min-width: 0;
+}
+.sim-movelog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+.sim-movelog-head::-webkit-details-marker {
+  display: none;
+}
+.sim-movelog-head::before {
+  content: '\25B8';
+  margin-right: 4px;
+}
+.sim-movelog[open] > .sim-movelog-head::before {
+  content: '\25BE';
+}
+.sim-movelog-head > span:first-child {
+  margin-right: auto;
+}
+.sim-movelog-head:focus-visible,
+.sim-movelog-hands:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.sim-movelog-count {
+  font-weight: 400;
+  color: var(--muted);
+}
+.sim-movelog-empty {
+  margin: 0;
+  padding: 0 12px 10px;
+  color: var(--muted);
+}
+.sim-movelog-hands {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.sim-movelog-hand + .sim-movelog-hand {
+  border-top: 1px solid var(--sim-border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.sim-movelog-title {
+  margin: 0 0 2px;
+  font-weight: 700;
+}
+.sim-movelog-lines {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}

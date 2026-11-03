@@ -12,6 +12,7 @@ const shared = {
   },
   resolve: {
     alias: {
+      '#screens': fileURLToPath(new URL('./src/app/screens-lazy.tsx', import.meta.url)),
       '#ev-worker': fileURLToPath(
         new URL('./src/sim/worker/transport-inthread.ts', import.meta.url),
       ),

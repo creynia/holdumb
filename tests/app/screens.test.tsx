@@ -9,6 +9,7 @@ import { parseCards } from '../../src/sim/engine';
 import { formatMoney } from '../../src/sim';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
+import { preloadRoutes } from '../../src/app/lazy';
 import { AppProviders } from '../../src/app/context';
 import {
   DRILL_CATEGORY_IDS,
@@ -40,6 +41,7 @@ async function mount(hash: string, store = new Store(new MemoryStorage())) {
   location.hash = hash;
   const el = document.createElement('div');
   document.body.appendChild(el);
+  await preloadRoutes(false);
   await act(() => {
     render(
       <AppProviders content={content} store={store}>
@@ -57,6 +59,101 @@ const btn = (el: HTMLElement, text: string | RegExp) =>
 
 beforeEach(() => {
   document.body.innerHTML = '';
+});
+
+describe('error boundary', () => {
+  /** A store whose sandbox snapshot is corrupt: /play throws while rendering, until it is reset. */
+  class BrokenSandboxStore extends Store {
+    broken = true;
+    override get sandbox(): unknown {
+      if (this.broken) throw new Error('corrupt sandbox');
+      return undefined;
+    }
+    override setSandbox(snap: unknown) {
+      if (snap === undefined) this.broken = false;
+      super.setSandbox(snap);
+    }
+  }
+
+  it('shows the fallback, keeps the tab bar alive, and Reset table remounts /play', async () => {
+    const store = new BrokenSandboxStore(new MemoryStorage());
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { el } = await mount('#/play', store);
+    const screen = el.querySelector('[data-testid="error-screen"]');
+    expect(screen?.textContent).toContain('This screen hit a problem');
+    expect(el.querySelector('[data-testid="error-build-sha"]')?.textContent).toBeTruthy();
+    expect(el.querySelector('[data-testid="simulator"]')).toBeNull();
+    // The tab bar still renders and responds to clicks.
+    expect(el.querySelectorAll('nav.tabbar a')).toHaveLength(4);
+    await act(() => {
+      el.querySelector<HTMLElement>('nav.tabbar a[href="#/learn"]')!.click();
+    });
+    await waitFor(() => expect(location.hash).toBe('#/learn'));
+    await waitFor(() => expect(el.querySelector('[data-testid="error-screen"]')).toBeNull());
+    // Back on /play it fails again; Reset table clears the snapshot and remounts the table.
+    await act(() => {
+      location.hash = '#/play';
+    });
+    await waitFor(() => expect(el.querySelector('[data-testid="error-screen"]')).not.toBeNull());
+    store.setSandbox({ stale: true });
+    store.broken = true;
+    await act(() => {
+      btn(el, 'Reset table').click();
+    });
+    expect(store.broken).toBe(false);
+    expect(store.sandbox).toBeUndefined();
+    expect(el.querySelector('[data-testid="error-screen"]')).toBeNull();
+    expect(el.querySelector('nav.tabbar')).not.toBeNull();
+  });
+
+  it('offers Reset table only on /play; elsewhere it is Reload only and nothing is wiped', async () => {
+    class BrokenStatusStore extends Store {
+      override status(): ReturnType<Store['status']> {
+        throw new Error('broken learn');
+      }
+    }
+    const store = new BrokenStatusStore(new MemoryStorage());
+    store.setSandbox({ keep: 'me' });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { el } = await mount('#/learn', store);
+    expect(el.querySelector('[data-testid="error-screen"]')).not.toBeNull();
+    expect(btn(el, 'Reload')).toBeTruthy();
+    expect(btn(el, 'Reset table')).toBeUndefined();
+    expect(store.sandbox).toEqual({ keep: 'me' });
+  });
+
+  it('ignores the harmless ResizeObserver error', async () => {
+    const { el } = await mount('#/more');
+    await act(() => {
+      window.dispatchEvent(
+        new ErrorEvent('error', {
+          message: 'ResizeObserver loop completed with undelivered notifications.',
+        }),
+      );
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+  });
+
+  it('shows one top-bar notice at a time: the update toast wins over the error toast', async () => {
+    const { simulateUpdateAvailable } = await import('../../src/pwa/register');
+    const { el } = await mount('#/more');
+    await act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')).not.toBeNull();
+    await act(() => simulateUpdateAvailable());
+    expect(el.querySelector('.pwa-toast')).not.toBeNull();
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+  });
+
+  it('shows a toast for an uncaught window error', async () => {
+    const { el } = await mount('#/more');
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+    await act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')?.textContent).toContain('went wrong');
+  });
 });
 
 describe('shell', () => {
@@ -471,17 +568,17 @@ describe('Drill', () => {
   }
   const tick = () => act(() => new Promise((r) => setTimeout(r, 0)));
 
-  it('deals a spot with the D31 labels for its street', async () => {
+  it('deals a spot with the D31 labels in the table slot order (I012)', async () => {
     const { store, d } = setup(0);
     const el = await mountDrill(store, d);
     const labels = [...el.querySelectorAll('.choice-row button')].map((b) => b.textContent);
-    expect(labels).toEqual(['Bet 2x', 'Check']);
+    expect(labels).toEqual(['Check', 'Bet 2x']);
     expect(el.querySelectorAll('[data-testid="drill-spot"] .cards').length).toBe(2);
   });
   it('river and preflop use their own choices; never "Raise"', async () => {
     for (const [street, want] of [
-      ['river', ['Bet 1x', 'Fold']],
-      ['preflop', ['Bet 4x', 'Bet 3x', 'Check']],
+      ['river', ['Fold', 'Bet 1x']],
+      ['preflop', ['Check', 'Bet 3x', 'Bet 4x']],
     ] as const) {
       document.body.innerHTML = '';
       const { store, d } = setup(0, { nextSpot: (r) => [spot(street, 'x'), r] });
@@ -831,7 +928,7 @@ describe('Drill', () => {
       await act(() => btn(el, 'Check').click());
       await act(() => new Promise((r) => setTimeout(r, 0)));
       const text = el.querySelector('[data-testid="drill-result"]')!.textContent ?? '';
-      expect(text, `case ${i}`).toContain(`(${formatMoney(cost)} per hand)`);
+      expect(text, `case ${i}`).toContain(`(${formatMoney(cost)}) more on average`);
     }
   }, 120_000);
 });

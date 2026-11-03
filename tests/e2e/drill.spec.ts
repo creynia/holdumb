@@ -148,3 +148,35 @@ for (const vp of [
     });
   }
 }
+
+// I015: the category label must not move the cards or the choice row (it sits in the card padding).
+for (const vp of [
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+]) {
+  test(`the category label adds no space above the choices at ${vp.width}x${vp.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    await page.goto('/#/drill?street=flop');
+    await expect(page.getByTestId('drill-spot')).toBeVisible();
+    const label = page.getByTestId('drill-category-label');
+    await expect(label).toBeVisible();
+    const rowWith = (await page.locator('.choice-row').boundingBox())!;
+    const cardsWith = (await page.locator('.drill-cards').boundingBox())!;
+    const spotWith = (await page.getByTestId('drill-spot').boundingBox())!;
+    const lb = (await label.boundingBox())!;
+    // inside the card, above the cards, not overlapping them
+    expect(lb.y).toBeGreaterThanOrEqual(spotWith.y);
+    expect(lb.y + lb.height).toBeLessThanOrEqual(cardsWith.y);
+    await label.evaluate((e) => ((e as HTMLElement).style.display = 'none'));
+    const rowWithout = (await page.locator('.choice-row').boundingBox())!;
+    const cardsWithout = (await page.locator('.drill-cards').boundingBox())!;
+    expect(Math.abs(rowWith.y - rowWithout.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(cardsWith.y - cardsWithout.y)).toBeLessThanOrEqual(1);
+    // the choices stay on screen where main had them
+    expect(rowWith.y + rowWith.height).toBeLessThanOrEqual(vp.height);
+  });
+}
