@@ -2,6 +2,8 @@
 // Pure; a generator, so the runner can slice it and cancel it by abandoning it (gen.return()).
 import type { Progress } from '../engine/job';
 import { applyAction, createGame, equity, visibleView } from '../engine/game';
+import { applySixCard } from '../engine/sixcard';
+import type { SixCardSetting } from '../engine/sixcard';
 import { validateAction } from '../engine/validate';
 import { HAND_CATEGORIES } from '../engine/types';
 import type { DecisionAction, GameState, PlayMultiple } from '../engine/types';
@@ -27,6 +29,8 @@ function affordable(state: GameState, want: DecisionAction): DecisionAction {
   return want;
 }
 
+type SixTotals = NonNullable<SessionSeries['sixCard']>;
+
 interface SessionOut {
   eq: Int32Array; // length hands + 1
   bustedAt: number; // index into eq, or -1
@@ -35,6 +39,7 @@ interface SessionOut {
   cats: Int32Array;
   bonus: number;
   trips: number;
+  six: SixTotals;
 }
 
 function* session(
@@ -54,6 +59,7 @@ function* session(
     cats: new Int32Array(10),
     bonus: 0,
     trips: 0,
+    six: { taken: 0, skipped: 0, wageredCents: 0, profitCents: 0, hits: 0 },
   };
   const threshold = 6 * spec.ante + spec.trips;
   const start = req.bankroll;
@@ -90,7 +96,7 @@ function* session(
     if (stopped) {
       out.eq[h] = out.eq[h - 1]!;
     } else {
-      state = dealAndPlay(state, (v) => strat.decide(v));
+      state = dealAndPlay(state, (v) => strat.decide(v), req.sixCard, out.six);
       const res = state.hand!.result!;
       out.played++;
       out.outcomes[res.outcome]++;
@@ -111,10 +117,23 @@ function* session(
 function dealAndPlay(
   state: GameState,
   decide: (v: ReturnType<typeof visibleView>) => DecisionAction,
+  sixCard: SixCardSetting | undefined,
+  six: SixTotals,
 ): GameState {
   const dealt = applyAction(state, { type: 'deal' });
   if (!dealt.ok) throw new Error(`simulate: ${dealt.error.message}`);
   let s = dealt.state;
+  if (sixCard) {
+    // I062: the side bet settles with the deal, exactly as the table does (engine/sixcard.ts).
+    const r = applySixCard(s, sixCard);
+    s = r.state;
+    if (r.outcome?.kind === 'settled') {
+      six.taken++;
+      six.wageredCents += r.outcome.result.bet;
+      six.profitCents += r.outcome.result.profit;
+      if (r.outcome.result.profit > 0) six.hits++;
+    } else if (r.outcome?.kind === 'skipped') six.skipped++;
+  }
   while (s.street === 'preflop' || s.street === 'flop' || s.street === 'river') {
     const a = affordable(s, decide(visibleView(s)));
     const r = applyAction(s, a);
@@ -158,6 +177,7 @@ export function* simulateJob(
     let handsPlayed = 0;
     let bonus = 0;
     let trips = 0;
+    const six: SixTotals = { taken: 0, skipped: 0, wageredCents: 0, profitCents: 0, hits: 0 };
     for (let i = 0; i < n; i++) {
       const s = yield* session(req, spec, i, tick);
       matrix.set(s.eq, i * cols);
@@ -165,6 +185,8 @@ export function* simulateJob(
       handsPlayed += s.played;
       bonus += s.bonus;
       trips += s.trips;
+      for (const k of ['taken', 'skipped', 'wageredCents', 'profitCents', 'hits'] as const)
+        six[k] += s.six[k];
       for (const k of ['win', 'lose', 'tie', 'fold'] as const) outcomes[k] += s.outcomes[k];
       for (let c = 0; c < 10; c++) byCategory[c]! += s.cats[c]!;
       if (s.bustedAt >= 0) bustedAt.push(s.bustedAt);
@@ -194,6 +216,7 @@ export function* simulateJob(
       byCategory,
       blindBonusHits: bonus,
       tripsHits: trips,
+      ...(req.sixCard ? { sixCard: six } : {}),
     };
     if (n === 1) out.equity = matrix;
     else {

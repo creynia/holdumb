@@ -23,6 +23,7 @@ export function SimAutoPlay({ d, scene, sandbox, settings, evClient }: SimAutoPl
         compare={ap?.compare}
         bankroll={scene.bankroll}
         seed={scene.seed}
+        sixCard={sandbox ? d.view.sixCard.setting : null}
         handOptions={ap?.handOptions}
         sessionOptions={ap?.sessions}
         onEvent={(e) => {

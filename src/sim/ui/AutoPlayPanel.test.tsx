@@ -176,3 +176,69 @@ describe('strategy note under the select', () => {
     evClient.dispose();
   });
 });
+
+describe('AutoPlayPanel with the Six Card Bonus on (I062)', () => {
+  it("sends the table's Six Card setting and counts it in the summary and the exact figure", async () => {
+    const inner = createEvClient({ mode: 'inthread' });
+    const sent: unknown[] = [];
+    const evClient: typeof inner = {
+      ...inner,
+      run: ((kind: string, req: unknown, o: unknown) => {
+        if (kind === 'simulate') sent.push(req);
+        return (inner.run as (k: string, r: unknown, o: unknown) => Promise<unknown>)(kind, req, o);
+      }) as typeof inner.run,
+    };
+    render(
+      <AutoPlayPanel
+        evClient={evClient}
+        settings={DEFAULT_SIM_SETTINGS}
+        sixCard={{ bet: 500, paytable: 'six-card-1000-200-100' }}
+      />,
+    );
+    fireEvent.click(screen.getByText('Run'));
+    await waitFor(() => expect(screen.getByTestId('auto-play-result')).toBeTruthy(), {
+      timeout: 10_000,
+    });
+    expect(sent).toHaveLength(1);
+    expect((sent[0] as { sixCard?: unknown }).sixCard).toEqual({
+      bet: 500,
+      paytable: 'six-card-1000-200-100',
+    });
+    // 30 hands at $5 with a $500 rack and a $10 Ante: every bet is taken.
+    const line = screen.getByTestId('auto-play-six-card').textContent;
+    expect(line).toMatch(/^Six Card: 30 bets, \$150 wagered, net [+−-]?\$[\d,.]+, \d+ paid$/);
+    // Expected (exact) = main game + −edge × wagered: 30 × perHand − 150 × 12816/149695 × 100¢.
+    const main = strategyMetrics(
+      { id: 'expert', ante: 1000, trips: 0 },
+      { tripsPaytable: DEFAULT_SIM_SETTINGS.paytable },
+      DEFAULT_SIM_SETTINGS.handsPerHour,
+    );
+    const perHand = fracToNumber(main.evPerHourCents) / DEFAULT_SIM_SETTINGS.handsPerHour;
+    const want = Math.round(30 * perHand - (15_000 * 12816) / 149695);
+    const shown = screen.getByText(/Expected result \(exact\):/).textContent;
+    const cents = Math.round(Number(shown.replace(/[^\d.]/g, '')) * 100);
+    expect(shown).toMatch(/[-−]\$/);
+    expect(cents).toBe(-want);
+    inner.dispose();
+  });
+
+  it('with no Six Card setting the request carries no sixCard and no line shows', async () => {
+    const inner = createEvClient({ mode: 'inthread' });
+    const sent: unknown[] = [];
+    const evClient: typeof inner = {
+      ...inner,
+      run: ((kind: string, req: unknown, o: unknown) => {
+        if (kind === 'simulate') sent.push(req);
+        return (inner.run as (k: string, r: unknown, o: unknown) => Promise<unknown>)(kind, req, o);
+      }) as typeof inner.run,
+    };
+    render(<AutoPlayPanel evClient={evClient} settings={DEFAULT_SIM_SETTINGS} sixCard={null} />);
+    fireEvent.click(screen.getByText('Run'));
+    await waitFor(() => expect(screen.getByTestId('auto-play-result')).toBeTruthy(), {
+      timeout: 10_000,
+    });
+    expect('sixCard' in (sent[0] as object)).toBe(false);
+    expect(screen.queryByTestId('auto-play-six-card')).toBeNull();
+    inner.dispose();
+  });
+});

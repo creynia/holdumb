@@ -6,7 +6,7 @@
 import { FULL_DECK } from './cards';
 import { evaluateN } from './evaluator';
 import { seedRng, shuffle } from './rng';
-import type { Card, Cents, Deal, EvaluatedHand, HandCategory } from './types';
+import type { Card, Cents, Deal, EvaluatedHand, GameState, HandCategory } from './types';
 
 export type SixCardPaytableId = 'six-card-1000-200-100' | 'six-card-1000-200-50';
 
@@ -103,5 +103,45 @@ export function settleSixCard(
     hand,
     profit: sixCardPay(SIX_CARD_PAYTABLES[paytable], hand.category, bet),
     paytable,
+  };
+}
+
+// ---------- at the table (shared by the driver and the auto-play job) ----------
+
+export interface SixCardSetting {
+  bet: Cents;
+  paytable: SixCardPaytableId;
+}
+
+export type SixCardOutcome =
+  { kind: 'settled'; result: SixCardResult } | { kind: 'skipped'; bet: Cents; reason: string };
+
+/** A valid Six Card bet: whole dollars from $1 to $25. */
+export function validSixCardBet(bet: Cents): boolean {
+  return Number.isInteger(bet) && bet % 100 === 0 && bet >= SIX_CARD_MIN && bet <= SIX_CARD_MAX;
+}
+
+/**
+ * Settles the Six Card bet on a hand that was just dealt. It is only taken when, after it, the
+ * rack still covers a 4x Play bet, so the side bet can never block the main game's best move.
+ * The manual table (scene driver) and auto-play (strategy/simulate.ts) both call this right after
+ * `deal`, so the same seed gives the same bonus cards and the same money hand for hand.
+ */
+export function applySixCard(
+  state: GameState,
+  setting: SixCardSetting | null | undefined,
+): { state: GameState; outcome: SixCardOutcome | null } {
+  const hand = state.hand;
+  if (!setting || !hand || state.street !== 'preflop') return { state, outcome: null };
+  const { bet, paytable } = setting;
+  if (state.bankroll - bet < 4 * state.bets.ante)
+    return {
+      state,
+      outcome: { kind: 'skipped', bet, reason: 'Six Card skipped: keep enough for a 4x bet.' },
+    };
+  const result = settleSixCard(hand.deal, state.seed, hand.n, bet, paytable);
+  return {
+    state: { ...state, bankroll: state.bankroll + result.profit },
+    outcome: { kind: 'settled', result },
   };
 }

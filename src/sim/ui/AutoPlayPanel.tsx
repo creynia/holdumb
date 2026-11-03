@@ -12,6 +12,9 @@ import { fracToNumber } from '../strategy/fraction';
 import { formatPct } from '../engine/money';
 import type { TableRules } from '../engine/types';
 import type { SimulateResult, StrategyId, StrategySpec } from '../strategy/types';
+import type { SixCardSetting } from '../engine/sixcard';
+import { sixCardEdge } from '../math/edges';
+import { neg, scale } from '../math/fraction';
 import { BankrollChart } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
 
@@ -47,6 +50,8 @@ export interface AutoPlayPanelProps {
   /** A scene's starting stake and seed (the lesson copy quotes results for these). */
   bankroll?: number;
   seed?: number;
+  /** I062: the table's Six Card Bonus setting; auto-play settles it at each deal like the table. */
+  sixCard?: SixCardSetting | null;
   onEvent?: (e: SimulatorEvent) => void;
 }
 
@@ -74,6 +79,7 @@ export function AutoPlayPanel({
   sessionOptions,
   bankroll: sceneBankroll,
   seed: sceneSeed,
+  sixCard,
   onEvent,
 }: AutoPlayPanelProps) {
   const handChoices: readonly number[] = handOptions?.length
@@ -147,6 +153,7 @@ export function AutoPlayPanel({
           bankroll,
           rules,
           compare: others,
+          ...(sixCard ? { sixCard: { bet: sixCard.bet, paytable: sixCard.paytable } } : {}),
         },
         { key: 'auto-play', signal: ac.signal, onProgress: setProgress },
       );
@@ -162,7 +169,13 @@ export function AutoPlayPanel({
   const main = result?.series[0];
   // Busted or stopped sessions play fewer hands: expected result = per-hand EV x hands played.
   const perHand = main ? main.expected[1]! - main.expected[0]! : 0;
-  const exactNet = main ? perHand * (main.handsPlayed / sessions) : 0;
+  // I062: the Six Card bets actually taken expect −edge × wagered (exact), per session.
+  const six = main?.sixCard;
+  const sixExpected =
+    six && sixCard
+      ? fracToNumber(scale(neg(sixCardEdge(sixCard.paytable).edge), six.wageredCents)) / sessions
+      : 0;
+  const exactNet = main ? perHand * (main.handsPlayed / sessions) + sixExpected : 0;
   const simNet = main ? main.meanFinal - bankroll : 0;
   const shown = shownNet(exactNet, simNet);
   const running = progress !== null;
@@ -353,6 +366,14 @@ export function AutoPlayPanel({
               </li>
             )}
             {trips > 0 ? <li>Trips hits: {main.tripsHits}</li> : null}
+            {six ? (
+              <li data-testid="auto-play-six-card">
+                Six Card{sessions > 1 ? ' (all sessions)' : ''}: {six.taken}{' '}
+                {six.taken === 1 ? 'bet' : 'bets'}, {formatMoney(six.wageredCents)} wagered, net{' '}
+                {formatMoney(six.profitCents, { sign: true })}, {six.hits} paid
+                {six.skipped ? `, ${six.skipped} skipped (kept a 4x bet)` : ''}
+              </li>
+            ) : null}
             <li>Blind bonus hits: {main.blindBonusHits}</li>
           </ul>
           <OutcomeHistogram series={main} />
