@@ -8,10 +8,16 @@ import { describe, expect, it } from 'vitest';
  * Budgets (bytes). The "entry" is everything the first paint loads eagerly: the module script in
  * dist/index.html plus its static modulepreloads (route chunks and the lesson bundle are lazy,
  * I039). Loosen only with a reason in the PR.
+ *
+ * 2026-11-03: raised from 200 kB / 80 kB gzip to 215 kB / 85 kB. Six Card auto-play (I062), hand
+ * history (I055) and Watch (I078) each add 3-6 kB of code the table needs on every settle or
+ * reload; lazy-loading their views saves under 1 kB because the shared engine/math modules are
+ * re-chunked into an extra preload. The structural fix is keeping the Play code out of the Home
+ * route's preloads (follow-up item).
  */
 const BUDGET = {
-  entryRaw: 200_000,
-  entryGzip: 80_000,
+  entryRaw: 215_000,
+  entryGzip: 85_000,
   cssRaw: 40_000,
   workerRaw: 60_000,
 };
