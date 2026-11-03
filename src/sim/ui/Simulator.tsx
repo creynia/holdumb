@@ -23,8 +23,8 @@ import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
-import { resolvePractice, resolveSpeed } from './settings';
-import { autoOnlyOf, evShownOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
+import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
+import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
 
 export function Simulator(props: SimulatorProps) {
@@ -43,7 +43,7 @@ export function Simulator(props: SimulatorProps) {
   const street = state.street;
   const settled = street === 'settled';
   const decision = isDecisionStreet(street);
-  const evShown = evShownOf(view);
+  const evShown = resolveEvShown(settings, scene, sandbox, step?.showEV);
   // The app's settings are the source of truth for practice mode; the table follows them at once.
   const practice =
     sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
@@ -105,6 +105,7 @@ export function Simulator(props: SimulatorProps) {
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
           labels={resultLabels(result)}
+          quiet={result?.outcome === 'fold'}
           timeline={timeline}
           nextHand={settled}
           skipped={motion.skipped}

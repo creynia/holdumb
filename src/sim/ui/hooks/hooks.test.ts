@@ -1,14 +1,14 @@
-// useSimDriver, useBetHandlers and usePreviewBar (useEvSheet has its own file).
+// useSimDriver, useSandboxSync, useBetHandlers and usePreviewBar (useEvSheet has its own file).
 import { act, cleanup, renderHook, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SceneConfig, SimDriver } from '../../scene';
 import { createEvClient } from '../../worker/client';
-import { evShownOf, isDecisionStreet } from '../simView';
+import { isDecisionStreet } from '../simView';
 import { DEFAULT_SIM_SETTINGS } from '../types';
-import type { SimulatorProps } from '../types';
+import type { SimSettings, SimulatorProps } from '../types';
 import { useBetHandlers } from './useBetHandlers';
 import { usePreviewBar } from './usePreviewBar';
-import { useSimDriver } from './useSimDriver';
+import { useSandboxSync, useSimDriver } from './useSimDriver';
 
 const settings = { ...DEFAULT_SIM_SETTINGS, animationSpeed: 'instant' as const };
 const sandbox: SceneConfig = { id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 };
@@ -29,9 +29,8 @@ function props(scene: SceneConfig, extra: Partial<SimulatorProps> = {}): Simulat
 describe('useSimDriver', () => {
   it('builds one driver, presets the ante, emits ready and disposes on unmount', () => {
     const onEvent = vi.fn();
-    const { result, rerender, unmount } = renderHook(() =>
-      useSimDriver(props(sandbox, { onEvent }), 'sandbox'),
-    );
+    const p = props(sandbox, { onEvent });
+    const { result, rerender, unmount } = renderHook(() => useSimDriver(p, 'sandbox'));
     const d = result.current.d;
     expect(d.view.state.bets.ante).toBe(1_000);
     expect(onEvent).toHaveBeenCalledWith({ type: 'ready' });
@@ -43,30 +42,51 @@ describe('useSimDriver', () => {
   });
 
   it('toasts the result when a hand settles and clears it on the next deal', async () => {
-    const { result } = renderHook(() =>
-      useSimDriver(
-        props({
-          id: 'sandbox',
-          version: 1,
-          startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } },
-        }),
-        'sandbox',
-      ),
-    );
+    const p = props({
+      id: 'sandbox',
+      version: 1,
+      startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } },
+    });
+    const { result } = renderHook(() => useSimDriver(p, 'sandbox'));
     expect(result.current.toast).toBeNull();
     await act(async () => {
       await result.current.act({ type: 'play', multiple: 4 });
     });
     await waitFor(() => expect(result.current.toast).not.toBeNull());
     expect(result.current.toast!.text.length).toBeGreaterThan(0);
+    expect(result.current.toast!.spoken).toBeUndefined();
     await act(async () => {
       await result.current.act({ type: 'deal' });
     });
     expect(result.current.toast).toBeNull();
   });
 
+  it('a fold toast carries the spoken fold announcement; a win has none', async () => {
+    const p = props({
+      id: 'sandbox',
+      version: 1,
+      startAt: {
+        street: 'river',
+        deal: {
+          player: ['3c', '4d'],
+          flop: ['Ah', 'Ks', 'Qd'],
+          turn: '9c',
+          river: '7h',
+          dealer: ['Td', 'Ts'],
+        },
+      },
+    });
+    const { result } = renderHook(() => useSimDriver(p, 'sandbox'));
+    await act(async () => {
+      await result.current.act({ type: 'fold' });
+    });
+    await waitFor(() => expect(result.current.toast).not.toBeNull());
+    expect(result.current.toast!.spoken).toBeTruthy();
+  });
+
   it('act() toasts a rejected action outside scene steps', async () => {
-    const { result } = renderHook(() => useSimDriver(props(sandbox), 'sandbox'));
+    const p = props(sandbox);
+    const { result } = renderHook(() => useSimDriver(p, 'sandbox'));
     let r: Awaited<ReturnType<SimDriver['act']>> | undefined;
     await act(async () => {
       r = await result.current.act({ type: 'check' });
@@ -76,10 +96,60 @@ describe('useSimDriver', () => {
   });
 });
 
+describe('useSandboxSync', () => {
+  function mount(scene: SceneConfig, extra: Partial<SimulatorProps> = {}) {
+    const base = props(scene, extra);
+    return renderHook(
+      ({ s }: { s: SimSettings }) => {
+        const sim = useSimDriver({ ...base, settings: s }, 'sandbox');
+        useSandboxSync(sim, true, scene, s);
+        return sim;
+      },
+      { initialProps: { s: base.settings } },
+    );
+  }
+
+  it('saves a snapshot on mount and after every action', async () => {
+    const onSnapshot = vi.fn();
+    const { result } = mount(sandbox, { onSnapshot });
+    const before = onSnapshot.mock.calls.length;
+    expect(before).toBeGreaterThan(0);
+    await act(async () => {
+      await result.current.act({ type: 'set-bet', wager: 'trips', amount: 500 });
+    });
+    await waitFor(() => expect(onSnapshot.mock.calls.length).toBeGreaterThan(before));
+    const last = onSnapshot.mock.calls.at(-1)![0] as unknown;
+    expect(JSON.stringify(last)).toContain('500');
+    expect((last as { evMode: string }).evMode).toBe('before');
+  });
+
+  it('saves nothing for a preset (startAt) hand', () => {
+    const onSnapshot = vi.fn();
+    mount(
+      { id: 'sandbox', version: 1, startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } } },
+      { onSnapshot },
+    );
+    expect(onSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('the table follows the EV-mode setting live', async () => {
+    const { result, rerender } = mount(sandbox);
+    expect(result.current.d.view.practice).toBe(false);
+    const setPractice = vi.spyOn(result.current.d, 'setPractice');
+    rerender({ s: { ...settings, evMode: 'after' } });
+    await waitFor(() => expect(setPractice).toHaveBeenLastCalledWith(true));
+    expect(result.current.d.view.practice).toBe(true);
+    rerender({ s: { ...settings, evMode: 'before' } });
+    await waitFor(() => expect(setPractice).toHaveBeenLastCalledWith(false));
+    expect(result.current.d.view.practice).toBe(false);
+  });
+});
+
 describe('useBetHandlers', () => {
   function mount() {
+    const p = props(sandbox);
     return renderHook(() => {
-      const sim = useSimDriver(props(sandbox), 'sandbox');
+      const sim = useSimDriver(p, 'sandbox');
       return { sim, bets: useBetHandlers(sim.d, sim.act, 500) };
     });
   }
@@ -111,7 +181,11 @@ describe('useBetHandlers', () => {
 
 describe('usePreviewBar', () => {
   const usePreviewBarOf = (v: SimDriver['view']) =>
-    usePreviewBar(v.preview, isDecisionStreet(v.state.street), evShownOf(v));
+    usePreviewBar(
+      v.preview,
+      isDecisionStreet(v.state.street),
+      (v.step?.showEV ?? v.scene.showEV) !== false,
+    );
   type View = SimDriver['view'];
   const view = (street: string, status: string, showEV?: boolean): View =>
     ({

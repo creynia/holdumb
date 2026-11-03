@@ -7,7 +7,8 @@ import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../../m
 import type { EvSheetProps } from '../EvSheet';
 import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
-import { actionOfKey, headline, optionKeyOf } from '../text';
+import { needsConfirm } from '../settings';
+import { actionOfKey, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
 /** The preview request for the decision on the table now, or null between decisions. */
@@ -53,7 +54,6 @@ export function useEvSheet(
 ): EvSheetState {
   const { d, pushToast, act } = sim;
   const settings = sim.latest.current.settings;
-  const sandbox = d.mode === 'sandbox';
   const { scene, state, preview: pv } = d.view;
   // Changes on every new hand or street; closes an open (non-reveal) sheet.
   const handKey = `${state.hand?.n ?? 0}:${state.street}`;
@@ -76,15 +76,7 @@ export function useEvSheet(
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
   };
   const onOption = (k: OptionKey) => {
-    if (!evShown || (sandbox && settings.skipPreview && !practice)) {
-      const v = d.view.preview.value;
-      const o = v?.options.find((x) => optionKeyOf(x.action) === k);
-      if (o?.tier === 'blunder' && settings.confirmCostlyMoves && evShown) {
-        setOpen(k);
-        d.previewed(k, false);
-        return;
-      }
-      if (v && o && evShown) pushToast(headline(v, v.options.indexOf(o)));
+    if (!evShown) {
       void act(actionOfKey(k));
       return;
     }
@@ -127,7 +119,7 @@ export function useEvSheet(
               0,
             );
           },
-          confirmCostlyMoves: settings.confirmCostlyMoves,
+          confirmBlunder: needsConfirm(settings.confirmOn, 'blunder'),
           hideEv: practice,
           alternative,
           chosen: reveal?.chosen ?? null,

@@ -2,7 +2,8 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SceneConfig } from '../../scene';
 import { createEvClient } from '../../worker/client';
-import { evShownOf, isDecisionStreet } from '../simView';
+import { resolveEvShown } from '../settings';
+import { isDecisionStreet } from '../simView';
 import { DEFAULT_SIM_SETTINGS } from '../types';
 import type { SimulatorProps } from '../types';
 import { useEvSheet } from './useEvSheet';
@@ -33,7 +34,7 @@ function mount(practice: boolean) {
       sim,
       practice,
       'portrait',
-      evShownOf(sim.d.view),
+      resolveEvShown(settings, sim.d.view.scene, true, sim.d.view.step?.showEV),
       isDecisionStreet(sim.d.view.state.street),
     );
     return { sim, ev };

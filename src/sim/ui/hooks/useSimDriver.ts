@@ -5,13 +5,14 @@ import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
 import { randomSeed, resolvePractice } from '../settings';
-import { describeResult } from '../text';
+import { describeResult, foldAnnouncement } from '../text';
 import type { SimulatorProps } from '../types';
 
 export interface Toast {
   id: number;
   text: string;
   tone?: 'info' | 'good' | 'bad';
+  spoken?: string;
 }
 
 export type SimMode = 'sandbox' | 'scene';
@@ -56,7 +57,7 @@ export interface SimDriverHandle {
   latest: { current: SimulatorProps };
   toast: Toast | null;
   setToast: (t: Toast | null) => void;
-  pushToast: (text: string, tone?: Toast['tone']) => void;
+  pushToast: (text: string, tone?: Toast['tone'], spoken?: string) => void;
   /** Runs a driver action and toasts a rejection outside scene steps. */
   act: (a: DriverAction) => ReturnType<SimDriver['act']>;
 }
@@ -66,14 +67,19 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
   latest.current = props;
   const [toast, setToast] = useState<Toast | null>(null);
   const toastId = useRef(0);
-  const pushToast = (text: string, tone?: Toast['tone']): void =>
-    setToast({ id: ++toastId.current, text, tone });
+  const pushToast = (text: string, tone?: Toast['tone'], spoken?: string): void =>
+    setToast({ id: ++toastId.current, text, tone, spoken });
 
   const holder = useRef<SimDriver | null>(null);
   if (!holder.current) {
     holder.current = makeDriver(props, mode, (e) => {
       if (e.type === 'hand-settled')
-        pushToast(describeResult(e.result), e.result.net > 0 ? 'good' : undefined);
+        // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
+        pushToast(
+          describeResult(e.result),
+          e.result.net > 0 ? 'good' : undefined,
+          e.result.outcome === 'fold' ? foldAnnouncement(e.result) : undefined,
+        );
       else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
       else if (e.type === 'action-rejected' && !holder.current?.view.step)
         pushToast(e.reason, 'bad');
@@ -113,9 +119,9 @@ export function useSandboxSync(
   const { d, latest } = h;
   const persistable = sandbox && !baseScene.startAt && !!latest.current.onSnapshot;
   useEffect(() => {
-    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d));
+    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode));
   }, [d.view.eventSeq, persistable, d]);
   useEffect(() => {
     if (sandbox) d.setPractice(resolvePractice(settings, baseScene));
-  }, [settings.practice, sandbox, d]);
+  }, [settings.evMode, sandbox, d]);
 }

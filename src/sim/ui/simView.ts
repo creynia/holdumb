@@ -1,15 +1,11 @@
-// Pure helpers for the Simulator: decision streets, EV visibility, auto-play-only scenes, felt
+// Pure helpers for the Simulator: decision streets, auto-play-only scenes, felt
 // labels and highlights.
 import type { HandResult } from '../engine';
-import type { CircleId, OptionKey, SceneConfig, SimDriver } from '../scene';
+import type { CircleId, OptionKey, SceneConfig } from '../scene';
 import { handName } from './text';
 
 export const isDecisionStreet = (s: string): boolean =>
   s === 'preflop' || s === 'flop' || s === 'river';
-
-/** Whether EVs are shown at all (a step's showEV wins over the scene's). */
-export const evShownOf = (view: SimDriver['view']): boolean =>
-  (view.step?.showEV ?? view.scene.showEV) !== false;
 
 /** An auto-play-only scene: no table, just the auto-play panel (and the step text). */
 export const autoOnlyOf = (scene: SceneConfig): boolean =>
