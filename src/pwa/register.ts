@@ -66,7 +66,7 @@ export function makeForegroundChecker(
     if (!reg || now - last < FOREGROUND_CHECK_MS) return false;
     last = now;
     void reg.update().catch(() => {
-      /* a failed background check is retried on the next foreground */
+      /* a failed check still uses up this hour; the next check is at the next foreground an hour on */
     });
     return true;
   };
