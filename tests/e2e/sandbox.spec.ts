@@ -762,3 +762,47 @@ for (const vp of [
     expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(46);
   });
 }
+
+// I047: keyboard shortcuts press the same buttons as a tap (one-tap and confirm rules included).
+test.describe('keyboard shortcuts', () => {
+  const ready = (page: import('@playwright/test').Page) =>
+    expect(page.getByTestId('simulator')).toHaveAttribute('data-ev', 'ready', { timeout: 20_000 });
+  test('D deals, then 4 bets 4x and the hand settles, as for a click', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop', 'a keyboard is a desktop thing');
+    await page.goto('/#/play?seed=3&speed=instant');
+    const sim = page.getByTestId('simulator');
+    await expect(sim).toHaveAttribute('data-street', 'betting');
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('d');
+    await expect(sim).toHaveAttribute('data-street', 'preflop');
+    await ready(page);
+    await page.keyboard.press('4');
+    await expect(sim).toHaveAttribute('data-street', 'settled');
+    // Rebet & Deal from the keyboard too (Enter on the page).
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('Enter');
+    await expect(sim).toHaveAttribute('data-street', 'preflop');
+    await ready(page);
+    await page.keyboard.press('c');
+    await expect(sim).toHaveAttribute('data-street', 'flop');
+  });
+  test('no shortcut fires while an input has focus, nor for an option not offered', async ({
+    page,
+  }, info) => {
+    test.skip(info.project.name !== 'desktop', 'a keyboard is a desktop thing');
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+    const sim = page.getByTestId('simulator');
+    await ready(page);
+    await page.getByRole('radio', { name: 'Before' }).focus();
+    await page.keyboard.press('c');
+    await page.keyboard.press('4');
+    await expect(sim).toHaveAttribute('data-street', 'flop');
+    // 4 is not offered on the flop: nothing happens.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('4');
+    await page.waitForTimeout(300);
+    await expect(sim).toHaveAttribute('data-street', 'flop');
+    await page.keyboard.press('2');
+    await expect(sim).toHaveAttribute('data-street', 'settled');
+  });
+});
