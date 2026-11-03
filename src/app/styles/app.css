@@ -918,7 +918,11 @@ textarea {
 .cite-btn::before {
   content: '';
   position: absolute;
-  inset: -16px -17px;
+  /* the button box is 0 tall (.cite has line-height 0), so centre a fixed 44px height on it */
+  top: 50%;
+  height: 44px;
+  margin-top: -22px;
+  inset-inline: -17px;
 }
 /* Adjacent citations ([2][3]) get a small gap and trimmed hit areas so they never overlap. */
 .cite + .cite {
