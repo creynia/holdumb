@@ -7,6 +7,7 @@ import type { Fraction } from '../math';
 import { EMPTY_TOTALS, MAX_MISTAKE_SPOTS } from '../scene';
 import type { SessionTotals, SimDriver } from '../scene';
 import type { LoggedHand } from './moveLog';
+import { spotCode, spotFromCode } from '../strategy';
 import { EV_MODES, evModeOfPractice } from './settings';
 import type { EvMode } from './types';
 
@@ -92,12 +93,21 @@ export function decodeTotals(raw: Record<string, unknown>): SessionTotals {
   return totals as unknown as SessionTotals;
 }
 
-/** Saved mistake spot codes: only well-formed strings, at most MAX_MISTAKE_SPOTS, no repeats. */
+/**
+ * Saved mistake spot codes: each must parse as a real spot (cards, street and board agree); the
+ * canonical code is kept, repeats dropped, at most MAX_MISTAKE_SPOTS.
+ */
 function decodeSpots(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
   for (const c of raw) {
-    if (typeof c === 'string' && /^[pfr]:[^.]*\.[^.]*$/.test(c) && !out.includes(c)) out.push(c);
+    if (typeof c !== 'string') continue;
+    try {
+      const code = spotCode(spotFromCode(c));
+      if (!out.includes(code)) out.push(code);
+    } catch {
+      // not a spot: dropped
+    }
   }
   return out.slice(0, MAX_MISTAKE_SPOTS);
 }

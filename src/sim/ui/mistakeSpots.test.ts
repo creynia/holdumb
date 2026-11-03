@@ -55,9 +55,11 @@ describe('table mistakes become Drill spots', () => {
   it('checking AA preflop (a blunder) records the preflop spot; the best move records nothing', async () => {
     const bad = driver(AA_PREFLOP);
     const pv = await bad.currentPreview();
-    const check = pv!.options.find((o) => o.action.type === 'check')!;
-    expect(check.tier).toBe('blunder');
-    await bad.act({ type: 'check' });
+    const threeX = pv!.options.find((o) => o.action.type === 'play' && o.action.multiple === 3)!;
+    expect(threeX.tier).toBe('blunder');
+    // Bet 3x settles the hand at once (a scored hand), so the spot is committed.
+    await bad.act({ type: 'play', multiple: 3 });
+    expect(bad.view.state.street).toBe('settled');
     expect(bad.view.session.mistakeSpots).toEqual(['p:AsAh.']);
     const spot = spotFromCode('p:AsAh.');
     expect(spot.street).toBe('preflop');
@@ -88,39 +90,87 @@ describe('table mistakes become Drill spots', () => {
     expect(dec?.restore.mistakeSpots).toEqual(['r:Qc7d.KdJh9s5c2d']);
     delete snap.mistakeSpots;
     expect(decodeSnapshot(snap, 'trips-8-6-5')?.restore.mistakeSpots).toEqual([]);
-    snap.mistakeSpots = ['p:AsAh.', 'junk', 7, 'p:AsAh.', 'f:2dJd.4h6d9d'];
+  });
+  it('restores only codes that parse as real spots, canonical and without repeats', () => {
+    const d = driver(RIVER_19_OUTS);
+    const snap = JSON.parse(JSON.stringify(encodeSnapshot(d))) as Record<string, unknown>;
+    snap.mistakeSpots = [
+      'p:AsAh.',
+      'junk',
+      7,
+      'p:AsAh.',
+      'f:2dJd.4h6d9d',
+      'p:AsAh.&street=river', // injected query text
+      'r:Qc7d.KdJh9s5c', // river with a four-card board
+      'p:AsAs.', // duplicate card
+      'p:AsAh.Kd', // preflop with a board
+    ];
     expect(decodeSnapshot(snap, 'trips-8-6-5')?.restore.mistakeSpots).toEqual([
       'p:AsAh.',
       'f:2dJd.4h6d9d',
     ]);
   });
-  it('keeps at most 20 distinct spots, newest first', async () => {
+  it('a hand with a mistake and then a failed preview adds no spots (it is unscored)', async () => {
+    // AA: check preflop (blunder, EV known), then check the flop where the preview fails.
+    const d = driver(AA_PREFLOP);
+    await d.currentPreview();
+    await d.act({ type: 'check' });
+    expect(d.view.state.street).toBe('flop');
+    await d.currentPreview(); // rejects: no flop EV here
+    await d.act({ type: 'check' });
+    await d.currentPreview();
+    await d.act({ type: 'play', multiple: 1 });
+    expect(d.view.state.street).toBe('settled');
+    expect(d.view.session.scored).toBe(0);
+    expect(d.view.session.mistakes).toBe(0);
+    expect(d.view.session.mistakeSpots).toEqual([]);
+  });
+  it('a new session clears the list', async () => {
+    const d = driver(RIVER_19_OUTS);
+    await d.currentPreview();
+    await d.act({ type: 'fold' });
+    expect(d.view.session.mistakeSpots).toHaveLength(1);
+    d.newSession(50_000);
+    expect(d.view.session.mistakeSpots).toEqual([]);
+    expect(encodeSnapshot(d).mistakeSpots).toEqual([]);
+  });
+  it('keeps at most 20 distinct spots, newest first, across hands', async () => {
     const R = '23456789TJQKA';
     const fake = (n: number): string[] =>
       Array.from(
         { length: n },
         (_, i) => `p:${R[i % 13]}${'cs'[Math.floor(i / 13)]}${R[(i + 5) % 13]}d.`,
       );
-    const mid = driver(RIVER_19_OUTS);
-    await mid.currentPreview();
-    const snap = JSON.parse(JSON.stringify(encodeSnapshot(mid))) as Record<string, unknown>;
-    const CODE = 'r:Qc7d.KdJh9s5c2d';
+    // Settle one hand (a fold), then restore that settled table with 20 saved spots.
+    const first = driver(RIVER_19_OUTS);
+    await first.currentPreview();
+    await first.act({ type: 'fold' });
+    const snap = JSON.parse(JSON.stringify(encodeSnapshot(first))) as Record<string, unknown>;
+    // The next hand is dealt from the restored RNG; its worst option is always a mistake.
     const play = async (saved: string[]) => {
       snap.mistakeSpots = saved;
       const dec = decodeSnapshot(snap, 'trips-8-6-5')!;
       const d = driver({}, dec.restore);
-      await d.currentPreview();
-      await d.act({ type: 'fold' });
-      return d.view.session.mistakeSpots;
+      expect((await d.act({ type: 'deal' })).ok).toBe(true);
+      const pv = (await d.currentPreview())!;
+      const worst = pv.options
+        .filter((o) => o.action.type === 'play') // a bet settles the hand at once
+        .sort((x, y) => Number(y.regret.num * x.regret.den - x.regret.num * y.regret.den))[0]!;
+      expect(['small', 'costly', 'blunder']).toContain(worst.tier);
+      const hole = d.view.state.hand!.deal.player;
+      expect((await d.act(worst.action as never)).ok).toBe(true);
+      expect(d.view.state.street).toBe('settled');
+      const spots = d.view.session.mistakeSpots;
+      expect(spotFromCode(spots[0]!).hole).toEqual(hole);
+      return spots;
     };
     const twenty = fake(20);
     const a = await play(twenty);
     expect(a).toHaveLength(20);
-    expect(a[0]).toBe(CODE);
+    const CODE = a[0]!;
     expect(a.slice(1)).toEqual(twenty.slice(0, 19));
     // the same spot again moves to the front without a repeat
-    const withCode = [...twenty.slice(0, 19), CODE];
-    const b = await play(withCode);
+    const b = await play([...twenty.slice(0, 19), CODE]);
     expect(b).toHaveLength(20);
     expect(b[0]).toBe(CODE);
     expect(b.filter((c) => c === CODE)).toHaveLength(1);

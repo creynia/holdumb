@@ -238,6 +238,8 @@ export class SimDriver {
     scored: boolean;
     ante: number;
     mistakes: number;
+    /** Drill spots of this hand's mistakes, in order; kept only if the hand ends scored. */
+    spots: string[];
   } | null = null;
   private lastEvents: GameEvent[] = [];
   private eventSeq = 0;
@@ -496,6 +498,7 @@ export class SimDriver {
       scored: true,
       ante: this.game.bets.ante,
       mistakes: 0,
+      spots: [],
     };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
@@ -514,19 +517,16 @@ export class SimDriver {
       this.noteMistakeSpot();
     }
   }
-  /** Remembers the decision on the table now as a Drill spot (the full board, so it replays). */
+  /** Notes the decision on the table now as a Drill spot (the full board, so it replays). */
   private noteMistakeSpot(): void {
     const deal = this.game.hand?.deal;
-    if (!deal) return;
+    if (!deal || !this.hand) return;
     const street = this.game.street;
     if (street !== 'preflop' && street !== 'flop' && street !== 'river') return;
     const hole: [Card, Card] = [deal.player[0], deal.player[1]];
     const board = deal.board.slice(0, street === 'preflop' ? 0 : street === 'flop' ? 3 : 5);
     const code = spotCode({ street, hole, board, category: categorize(hole, board) });
-    this.mistakeSpots = [code, ...this.mistakeSpots.filter((c) => c !== code)].slice(
-      0,
-      MAX_MISTAKE_SPOTS,
-    );
+    if (!this.hand.spots.includes(code)) this.hand.spots.push(code);
   }
   private finishHandTrack(result: HandResult): void {
     const h = this.hand;
@@ -559,6 +559,12 @@ export class SimDriver {
       t.expectedCents = add(t.expectedCents, h.base);
       t.mistakeCents = add(t.mistakeCents, h.regret);
       t.mistakes = t.mistakes + h.mistakes;
+      // Same rule as the mistake count: only a fully scored hand feeds the review list.
+      for (const code of h.spots)
+        this.mistakeSpots = [code, ...this.mistakeSpots.filter((c) => c !== code)].slice(
+          0,
+          MAX_MISTAKE_SPOTS,
+        );
       t.scoredMainCents += main;
       t.scoredAnteCents += h.ante;
     }
@@ -741,6 +747,7 @@ export class SimDriver {
     });
     this.startEq = bankroll;
     this.totals = { ...EMPTY_TOTALS };
+    this.mistakeSpots = [];
     this.hand = null;
     this.lastEvents = [];
     this.eventSeq++;
