@@ -12,7 +12,9 @@ test('a lesson scene completes in the UI and the lesson shows Done', async ({ pa
   // Once dealt, the player holds exactly two face-up cards (the dealer's two stay face down).
   await expect(scene.locator('g.sim-card:not(.sim-card-back)')).toHaveCount(2);
   await expect(scene.locator('g.sim-card-back')).toHaveCount(2);
-  // The deal is locked while a decision is waiting.
+  // The deal is locked while a decision is waiting. A tap is taken once the double-tap guard has
+  // passed after Deal (D40).
+  await expect(scene.getByTestId('simulator')).toHaveAttribute('data-ev', 'ready');
   await scene.locator('button[data-option="play-4"]').click();
   await expect(scene.getByTestId('step-panel')).toContainText(/Step 3 of 3/);
   // The finished hand shows both hole cards, the dealer's two and the whole board.

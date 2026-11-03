@@ -105,7 +105,11 @@ export function useEvSheet(
     const h = setTimeout(() => setGuard(0), TAP_GUARD_MS);
     return () => clearTimeout(h);
   }, [guard]);
+  // The render that first shows a new street already counts as guarded (before the effect runs).
+  const guardKey = useRef(handKey);
+  const streetJustChanged = guardKey.current !== handKey;
   useEffect(() => {
+    guardKey.current = handKey;
     // A new street or hand (a Deal tap included) starts the guard; the first render does not.
     if (mounted.current) startGuard();
     mounted.current = true;
@@ -269,5 +273,5 @@ export function useEvSheet(
           allowed: d.view.allowedOptions,
         }
       : null;
-  return { open, evMode, guarding: guard > 0, onOption, openDetails, sheet };
+  return { open, evMode, guarding: guard > 0 || streetJustChanged, onOption, openDetails, sheet };
 }

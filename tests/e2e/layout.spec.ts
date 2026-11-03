@@ -87,7 +87,10 @@ for (const [w, h] of VIEWPORTS) {
       ['check', 'river'],
       ['fold', 'settled'],
     ] as const) {
-      // One tap acts with the default confirm policy (D40).
+      // One tap acts with the default confirm policy (D40), once the double-tap guard has passed.
+      await expect(page.locator('[data-testid="simulator"][data-ev="ready"]')).toBeVisible({
+        timeout: 20_000,
+      });
       await page.locator(`button[data-option="${k}"]`).click();
       await expect(sim).toHaveAttribute('data-street', next);
       await expect(page.getByTestId('ev-sheet')).toHaveCount(0);

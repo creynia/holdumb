@@ -28,7 +28,7 @@ test.describe('axe: no serious or critical issues', () => {
       await page.goto('/#/play?seed=7&speed=instant');
       await clean(page);
       await page.locator('button[data-action="deal"]').click();
-      if (evMode !== 'never') await ready(page);
+      await ready(page); // also past the double-tap guard after Deal (D40)
       await clean(page);
       await page.locator('button[data-option="check"]').click();
       await expect(page.getByTestId('ev-sheet')).toBeVisible();

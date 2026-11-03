@@ -54,6 +54,10 @@ async function street(page: Page, s: string) {
  * the sheet (D40): measuring the open sheet is part of the slot check, and it must not be optional.
  */
 async function decide(page: Page, option: string, next: string, whileOpen?: () => Promise<void>) {
+  // "ready" also means the double-tap guard has passed, so the tap is taken (D40).
+  await expect(page.locator('[data-testid="simulator"][data-ev="ready"]')).toBeVisible({
+    timeout: 20_000,
+  });
   await page.locator(`.sim-actions [data-option="${option}"]`).click();
   const confirm = page.getByTestId('confirm');
   await expect(confirm).toBeVisible();
