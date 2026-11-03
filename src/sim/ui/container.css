@@ -191,6 +191,54 @@
 .sim-rail > * {
   flex: none;
 }
+<<<<<<< HEAD
 .sim-rail > .sim-rail-body {
   flex: 1 1 auto;
+=======
+.sim-bankroll-short {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex-basis: 100%;
+}
+.sim-bankroll-picker {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--sim-border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.sim-bankroll-picker p {
+  margin: 0;
+}
+.sim-bankroll-title {
+  font-weight: 700;
+}
+.sim-bankroll-presets,
+.sim-bankroll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sim-bankroll-presets .sim-btn[aria-pressed='true'] {
+  outline: 2px solid var(--accent, currentColor);
+}
+.sim-bankroll-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sim-bankroll-custom input {
+  min-height: 44px;
+  width: 9em;
+  font: inherit;
+  padding: 0 8px;
+}
+.sim-bankroll-bad {
+  color: var(--bad, #b00020);
+>>>>>>> origin/main
 }

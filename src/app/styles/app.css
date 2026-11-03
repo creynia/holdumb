@@ -1101,7 +1101,7 @@ textarea {
     order: 0;
     margin-bottom: 0.5rem;
   }
-  .drill-result > [role='status'] {
+  .drill-result > [data-testid='drill-headline'] {
     order: -1;
     margin: 0 0 0.4rem;
     font-size: 0.85rem;
