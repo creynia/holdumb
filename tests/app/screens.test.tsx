@@ -10,8 +10,12 @@ import { formatMoney } from '../../src/sim';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
 import { AppProviders } from '../../src/app/context';
-import { gradeSpot as realGradeSpot } from '../../src/sim';
-import { Drill, type DrillDeps } from '../../src/app/screens/Drill';
+import {
+  DRILL_CATEGORY_IDS,
+  gradeSpot as realGradeSpot,
+  nextSpot as realNextSpot,
+} from '../../src/sim';
+import { Drill, rngFromSeed, type DrillDeps } from '../../src/app/screens/Drill';
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
@@ -551,6 +555,79 @@ describe('Drill', () => {
       a.flush();
       expect(new Store(mem).drill.lens).toBe('practical');
     });
+  });
+  it("?category= restricts the filter and lists only that street's categories", async () => {
+    const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('flop', 'f:1'), r]);
+    const { store, d } = setup(0, { nextSpot });
+    const el = await mountDrill(store, d, 'category=flop-flush-draw');
+    expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'flop', category: 'flop-flush-draw' });
+    const sel = el.querySelector<HTMLSelectElement>('[data-testid="drill-categories"]')!;
+    const opts = [...sel.options];
+    expect(opts.map((o) => o.textContent)).toEqual([
+      'All',
+      'Flop hidden pairs',
+      'Flop two pair or better',
+      'Flop board pairs',
+      'Flop flush draws',
+      'Flop straight draws',
+      'Flop nothing',
+      'Flop pocket deuces',
+    ]);
+    expect(sel.value).toBe('flop-flush-draw');
+  });
+  it('a category from another street than ?street= is ignored; unknown ids too', async () => {
+    const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('river', 'r:1'), r]);
+    const { store, d } = setup(0, { nextSpot });
+    await mountDrill(store, d, 'street=river&category=flop-flush-draw');
+    await mountDrill(store, d, 'street=river&category=nope');
+    expect(nextSpot.mock.calls.map((c) => c[1])).toEqual([
+      { street: 'river' },
+      { street: 'river' },
+    ]);
+  });
+  it('seeded: the same seed through deps deals the same category-only spots', async () => {
+    const seen: string[][] = [];
+    for (let run = 0; run < 2; run++) {
+      const codes: string[] = [];
+      const { store, d } = setup(0, {
+        seed: 42,
+        nextSpot: (r, f) => {
+          const out = realNextSpot(r, f);
+          codes.push(out[0].code);
+          expect(out[0].category).toBe('flop-flush-draw');
+          return out;
+        },
+      });
+      const el = await mountDrill(store, d, 'category=flop-flush-draw');
+      for (let i = 0; i < 3; i++) {
+        await act(() => btn(el, 'Check').click());
+        await tick();
+        await act(() => btn(el, 'Next hand').click());
+      }
+      seen.push(codes);
+    }
+    expect(seen[0]!.length).toBe(4);
+    expect(seen[1]).toEqual(seen[0]);
+  });
+  it('20 seeded draws from every category all carry that category', () => {
+    for (const category of DRILL_CATEGORY_IDS) {
+      let r = rngFromSeed(2024);
+      for (let i = 0; i < 20; i++) {
+        const [sp, next] = realNextSpot(r, { street: 'mixed', category });
+        r = next;
+        expect(sp.category).toBe(category);
+      }
+    }
+  });
+  it('shows the weakest category once it has 5 answers', async () => {
+    const { store, d } = setup(0);
+    const el = await mountDrill(store, d);
+    expect(el.querySelector('[data-testid="drill-weakest"]')).toBeNull();
+    for (let i = 0; i < 4; i++) store.recordDrill('flop', i < 2, undefined, 'flop-flush-draw');
+    await act(() => store.recordDrill('flop', false, undefined, 'flop-flush-draw'));
+    expect(el.querySelector('[data-testid="drill-weakest"]')!.textContent).toBe(
+      'Your weakest: Flop flush draws 40% (5)',
+    );
   });
   it('a failed preview offers a retry without recording an answer', async () => {
     const { store, d } = setup(0, { preview: () => Promise.reject(new Error('x')) });

@@ -82,6 +82,44 @@ describe('storage', () => {
     expect(old.drill.byStreet.river).toEqual({ answered: 2, correct: 1 });
     expect(old.drill.practical.river).toEqual({ answered: 0, correct: 0 });
   });
+
+  it('migrates a pre-category drill record keeping streaks and byStreet', () => {
+    const old = {
+      version: 1,
+      lessons: {},
+      settings: {},
+      drill: {
+        bestStreak: 7,
+        byStreet: { preflop: { answered: 4, correct: 3 }, river: { answered: 1, correct: 0 } },
+        recentMisses: ['f:x'],
+      },
+    };
+    const p = migrate(old)!;
+    expect(p.drill.bestStreak).toBe(7);
+    expect(p.drill.byStreet.preflop).toEqual({ answered: 4, correct: 3 });
+    expect(p.drill.byStreet.river).toEqual({ answered: 1, correct: 0 });
+    expect(p.drill.recentMisses).toEqual(['f:x']);
+    expect(p.drill.byCategory).toEqual({});
+  });
+  it('sanitizes byCategory: unknown ids dropped, correct clamped, round-trips', () => {
+    const p = sanitize({
+      version: 1,
+      drill: {
+        byCategory: {
+          'flop-flush-draw': { answered: 10, correct: 4 },
+          'river-outs-low': { answered: 2, correct: 9 },
+          'made-up': { answered: 3, correct: 1 },
+          __proto__: { answered: 1, correct: 1 },
+        },
+      },
+    })!;
+    expect(p.drill.byCategory).toEqual({
+      'flop-flush-draw': { answered: 10, correct: 4 },
+      'river-outs-low': { answered: 2, correct: 2 },
+    });
+    expect(decodeImport(encodeExport(p))).toEqual(p);
+    expect(sanitize(JSON.parse(JSON.stringify(p)))).toEqual(p);
+  });
   it('export codes round-trip and reject other prefixes', () => {
     const d = defaultPersisted();
     expect(decodeImport(encodeExport(d))).toEqual(d);

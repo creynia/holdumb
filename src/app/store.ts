@@ -15,6 +15,7 @@ import {
   type Settings,
   type StorageLike,
 } from './storage';
+import type { DrillCategoryId } from '../sim/strategy';
 import type { ContentBundle } from '../content/types';
 
 export type LessonStatus = 'new' | 'progress' | 'done';
@@ -172,7 +173,12 @@ export class Store {
   }
 
   /** Drill: record one graded answer (correct = tier best or close, D33). */
-  recordDrill(street: DrillStreet, correct: boolean, spotCode?: string) {
+  recordDrill(
+    street: DrillStreet,
+    correct: boolean,
+    spotCode?: string,
+    category?: DrillCategoryId,
+  ) {
     this.streak = correct ? this.streak + 1 : 0;
     const d = this.data.drill;
     const key = d.lens === 'practical' ? 'practical' : 'byStreet';
@@ -191,6 +197,15 @@ export class Store {
           ...d[key],
           [street]: { answered: cur.answered + 1, correct: cur.correct + (correct ? 1 : 0) },
         },
+        byCategory: category
+          ? {
+              ...d.byCategory,
+              [category]: {
+                answered: (d.byCategory[category]?.answered ?? 0) + 1,
+                correct: (d.byCategory[category]?.correct ?? 0) + (correct ? 1 : 0),
+              },
+            }
+          : d.byCategory,
         recentMisses: misses,
       },
     });

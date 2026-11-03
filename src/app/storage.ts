@@ -1,5 +1,7 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
 import { PAYTABLE_PRESET_IDS } from '../sim/engine';
+import { DRILL_CATEGORY_IDS } from '../sim/strategy';
+import type { DrillCategoryId } from '../sim/strategy';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
 
@@ -73,6 +75,8 @@ export interface DrillStats {
   byStreet: StreetCounts;
   /** accuracy under the basic-card lens */
   practical: StreetCounts;
+  /** per spot category (I016); absent key = never answered. Records written before I016 lack it. */
+  byCategory: Partial<Record<DrillCategoryId, { answered: number; correct: number }>>;
   /** spot codes (strategy/drill.ts), newest first */
   recentMisses: string[];
 }
@@ -98,6 +102,7 @@ export function emptyDrill(): DrillStats {
     lens: 'perfect',
     byStreet: emptyStreets(),
     practical: emptyStreets(),
+    byCategory: {},
     recentMisses: [],
   };
 }
@@ -187,6 +192,17 @@ function sanitizeDrill(raw: unknown): DrillStats {
   d.lens = raw.lens === 'practical' ? 'practical' : 'perfect';
   d.byStreet = sanitizeStreets(raw.byStreet);
   d.practical = sanitizeStreets(raw.practical);
+  if (isObj(raw.byCategory))
+    for (const id of DRILL_CATEGORY_IDS) {
+      const v = raw.byCategory[id];
+      if (!isObj(v)) continue;
+      const answered = clampInt(v.answered, 0, 10_000_000, 0);
+      if (answered === 0) continue;
+      d.byCategory[id] = {
+        answered,
+        correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered),
+      };
+    }
   if (Array.isArray(raw.recentMisses))
     d.recentMisses = raw.recentMisses
       .filter((x): x is string => typeof x === 'string' && x.length <= 64)
