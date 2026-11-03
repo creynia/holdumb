@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EvSheet, cardCode, costCents, fmtCostC, fmtFixed, nextSpot, optionKeyOf } from '../../sim';
+import {
+  EvSheet,
+  OPTION_LABELS,
+  actionOfKey,
+  cardCode,
+  costCents,
+  fmtCostC,
+  fmtFixed,
+  nextSpot,
+  optionKeyOf,
+  optionsFor,
+} from '../../sim';
 import type {
   DecisionAction,
   DecisionPreview,
@@ -40,20 +51,13 @@ interface Choice {
   label: string; // D31: never "Raise"
   action: DecisionAction;
 }
+/** The table's slot order (I012): the passive action first, then the bets by size. */
+const choicesFor = (street: DecisionStreet): Choice[] =>
+  optionsFor(street).map((k) => ({ label: OPTION_LABELS[k], action: actionOfKey(k) }));
 export const CHOICES: Record<DecisionStreet, Choice[]> = {
-  preflop: [
-    { label: 'Bet 4x', action: { type: 'play', multiple: 4 } },
-    { label: 'Bet 3x', action: { type: 'play', multiple: 3 } },
-    { label: 'Check', action: { type: 'check' } },
-  ],
-  flop: [
-    { label: 'Bet 2x', action: { type: 'play', multiple: 2 } },
-    { label: 'Check', action: { type: 'check' } },
-  ],
-  river: [
-    { label: 'Bet 1x', action: { type: 'play', multiple: 1 } },
-    { label: 'Fold', action: { type: 'fold' } },
-  ],
+  preflop: choicesFor('preflop'),
+  flop: choicesFor('flop'),
+  river: choicesFor('river'),
 };
 
 const sameAction = (a: DecisionAction, b: DecisionAction) =>

@@ -7,7 +7,6 @@ import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../../m
 import type { EvSheetProps } from '../EvSheet';
 import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
-import { needsConfirm } from '../settings';
 import { actionOfKey, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
@@ -119,7 +118,7 @@ export function useEvSheet(
               0,
             );
           },
-          confirmBlunder: needsConfirm(settings.confirmOn, 'blunder'),
+          confirmOn: settings.confirmOn,
           hideEv: practice,
           alternative,
           chosen: reveal?.chosen ?? null,

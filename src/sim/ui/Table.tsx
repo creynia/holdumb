@@ -33,7 +33,7 @@ export interface TableProps {
   felt: ComponentChildren;
   actions: ComponentChildren;
   chips?: ComponentChildren;
-  /** Landscape rail extras (compact EV list, step panel, EV sheet panel). */
+  /** Landscape rail extras (compact EV list, step panel). */
   rail?: ComponentChildren;
   /** The EV sheet: a modal in portrait, a rail panel in landscape (give it the matching `variant`). */
   sheet?: ComponentChildren;
@@ -41,8 +41,10 @@ export interface TableProps {
 }
 
 /**
- * Layout shell. Portrait: status, felt, action bar, chip rack. Landscape (844x390): the felt on the
- * left and a 284 px rail on the right whose action buttons are always visible.
+ * Layout shell. Portrait: status, felt, action bar, toasts, chip rack. Landscape (844x390): the felt
+ * on the left and a 284 px rail on the right: the fixed action rows, the status bar under them, then
+ * a scrolling body with the chip rack, toasts, step panel and EV sheet. Everything that comes and
+ * goes (toasts, the fold reveal, the rack) sits below the actions, so no button moves (I012).
  */
 export function Table({
   orientation,
@@ -59,24 +61,24 @@ export function Table({
       <section class="sim-table sim-table-landscape" aria-label="Table">
         <div class="sim-table-felt">{felt}</div>
         <aside class="sim-rail" aria-label="Controls">
-          {toasts}
           <div class="sim-rail-actions">{actions}</div>
-          {chips}
+          {status}
           <div class="sim-rail-body">
+            {chips}
+            {toasts}
             {rail}
             {sheet}
           </div>
-          {status}
         </aside>
       </section>
     );
   }
   return (
     <section class="sim-table sim-table-portrait" aria-label="Table">
-      {toasts}
       {status}
       <div class="sim-table-felt">{felt}</div>
       <div class="sim-table-actions">{actions}</div>
+      {toasts}
       {chips}
       {sheet}
     </section>

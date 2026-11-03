@@ -25,6 +25,8 @@ import { Table } from './Table';
 import { TierBadge } from './TierBadge';
 import { Toasts } from './Toasts';
 import { buildTimeline } from './animation';
+import { needsConfirm } from './settings';
+import { OPTION_SLOT, optionKeyOf } from './text';
 import { landscapeLayout, portraitLayout } from './layouts';
 
 afterEach(cleanup);
@@ -101,10 +103,42 @@ describe('EvSheet', () => {
     rerender(<EvSheet {...props} selected="play-3" />);
     expect(screen.getByTestId('confirm').textContent).toBe('Confirm Bet 3x');
   });
-  it('confirms in one tap when confirmBlunder is off', () => {
-    const props = sheet({ selected: 'check', confirmBlunder: false });
+  it('confirms in one tap when confirmOn is never', () => {
+    const props = sheet({ selected: 'check', confirmOn: 'never' });
     fireEvent.click(screen.getByTestId('confirm'));
     expect(props.onConfirm).toHaveBeenCalledWith('check');
+  });
+  it('confirmOn x tier: a second tap exactly when needsConfirm says so (D24, D39)', () => {
+    const tiers = ['best', 'close', 'small', 'costly', 'blunder'] as const;
+    for (const confirmOn of ['all', 'costly', 'blunder', 'never'] as const) {
+      for (const tier of tiers) {
+        const base = PREFLOP_AA.preview;
+        const preview: DecisionPreview = {
+          ...base,
+          options: base.options.map((o) =>
+            optionKeyOf(o.action) === 'check' ? { ...o, tier } : o,
+          ),
+        };
+        const props = sheet({ preview, selected: 'check', confirmOn });
+        const btn = screen.getByTestId('confirm');
+        fireEvent.click(btn);
+        const where = `${confirmOn} / ${tier}`;
+        if (needsConfirm(confirmOn, tier)) {
+          expect(props.onConfirm, where).not.toHaveBeenCalled();
+          const warn = tier === 'costly' || tier === 'blunder';
+          expect(btn.textContent, where).toBe(warn ? 'Do it anyway' : 'Yes, Check');
+          expect(
+            screen.getByTestId(
+              tier === 'blunder' ? 'blunder-warning' : warn ? 'mistake-warning' : 'confirm-again',
+            ),
+            where,
+          ).toBeTruthy();
+          fireEvent.click(btn);
+        }
+        expect(props.onConfirm, where).toHaveBeenCalledWith('check');
+        cleanup();
+      }
+    }
   });
   it('a non-blunder mistake confirms in one tap', () => {
     const props = sheet({
@@ -202,22 +236,62 @@ describe('ActionBar', () => {
     expect(onDeal).toHaveBeenCalled();
     expect(screen.getByText('Clear')).toBeTruthy();
   });
-  it('shows the right options per street in the D31 order', () => {
-    expect(optionsFor('preflop')).toEqual(['play-4', 'play-3', 'check']);
+  it('puts the passive action first and the bets by size on every street (I012)', () => {
+    expect(optionsFor('preflop')).toEqual(['check', 'play-3', 'play-4']);
     expect(optionsFor('flop')).toEqual(['check', 'play-2']);
-    expect(optionsFor('river')).toEqual(['play-1', 'fold']);
+    expect(optionsFor('river')).toEqual(['fold', 'play-1']);
     expect(optionsFor('river', ['fold'])).toEqual(['fold']);
+    for (const street of ['preflop', 'flop', 'river'] as const) {
+      const keys = optionsFor(street);
+      expect(OPTION_SLOT[keys[0]!]).toBe('a');
+      const bets = keys.slice(1).map((k) => Number(k.slice(5)));
+      expect(bets).toEqual([...bets].sort((x, y) => x - y));
+      expect(bets.length).toBeGreaterThan(0);
+    }
   });
-  it('labels buttons with Bet/Check/Fold and fires onOption', () => {
+  it('gives each option a fixed slot whatever the street', () => {
+    expect(OPTION_SLOT).toEqual({
+      check: 'a',
+      fold: 'a',
+      'play-3': 'b',
+      'play-4': 'c',
+      'play-2': 'bc',
+      'play-1': 'bc',
+    });
+  });
+  it('labels buttons with Bet/Check/Fold in slot order and fires onOption', () => {
     const onOption = vi.fn();
     render(<ActionBar street="preflop" onOption={onOption} />);
-    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'Bet 4x',
-      'Bet 3x',
-      'Check',
-    ]);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.map((b) => b.textContent)).toEqual(['Check', 'Bet 3x', 'Bet 4x']);
+    expect(buttons.map((b) => b.dataset.slot)).toEqual(['a', 'b', 'c']);
     fireEvent.click(screen.getByText('Bet 3x'));
     expect(onOption).toHaveBeenCalledWith('play-3' satisfies OptionKey);
+  });
+  it('the rail lists the largest bet first and the passive action last (DOM = visual order)', () => {
+    render(<ActionBar street="preflop" layout="rail" />);
+    expect(screen.getAllByRole('button').map((b) => b.dataset.slot)).toEqual(['c', 'b', 'a']);
+    cleanup();
+    render(<ActionBar street="settled" layout="rail" />);
+    expect(screen.getAllByRole('button').map((b) => b.dataset.action)).toEqual([
+      'rebet',
+      'change-bets',
+    ]);
+  });
+  it('Clear and Change bets take slot a; Deal and Rebet span b + c', () => {
+    render(<ActionBar street="betting" />);
+    expect(screen.getAllByRole('button').map((b) => [b.dataset.action, b.dataset.slot])).toEqual([
+      ['clear', 'a'],
+      ['deal', 'bc'],
+    ]);
+  });
+  it('reserves the EV line while EV is idle or hidden', () => {
+    render(<ActionBar street="flop" hideEv />);
+    for (const b of screen.getAllByRole('button')) {
+      const sub = b.querySelector('.sim-act-sub');
+      expect(sub).not.toBeNull();
+      expect(sub!.getAttribute('aria-hidden')).toBe('true');
+    }
   });
   it('carries EV and a tier word when EV is on, and a spoken name', () => {
     render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} />);
@@ -454,6 +528,28 @@ describe('small pieces', () => {
         <Table orientation={o} felt={<i />} actions={<button>Deal</button>} />,
       );
       expect(screen.getByText('Deal')).toBeTruthy();
+      unmount();
+    }
+  });
+  it('Table puts toasts after the actions, so a result never pushes a button (I012)', () => {
+    for (const o of ['portrait', 'landscape'] as const) {
+      const { unmount } = render(
+        <Table
+          orientation={o}
+          felt={<i />}
+          status={<p>status</p>}
+          actions={<button>Deal</button>}
+          toasts={<p>result</p>}
+        />,
+      );
+      const deal = screen.getByText('Deal');
+      const toast = screen.getByText('result');
+      expect(deal.compareDocumentPosition(toast) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      if (o === 'portrait')
+        expect(
+          screen.getByText('status').compareDocumentPosition(deal) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
       unmount();
     }
   });

@@ -94,3 +94,7 @@
   min-height: 0;
   overflow-y: auto;
 }
+/* The actions and the status bar keep their place; only the body under them scrolls (I012). */
+.sim-rail > .sim-rail-body {
+  flex: 1 1 auto;
+}

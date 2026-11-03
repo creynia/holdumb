@@ -29,12 +29,12 @@ const CONFIRM_OPTIONS: readonly Choice<SettingsData['confirmOn']>[] = [
   {
     value: 'all',
     label: 'All bets',
-    hint: 'Asks before Big mistakes for now (more options arrive with the new action bar).',
+    hint: 'Every move waits for a second tap.',
   },
   {
     value: 'costly',
     label: 'Medium and bad bets',
-    hint: 'Mistake or Big mistake: it costs more than 0.10 Ante. For now it asks before Big mistakes.',
+    hint: 'Mistake or Big mistake: it costs more than 0.10 Ante.',
   },
   { value: 'blunder', label: 'Only bad bets', hint: 'Big mistake: it costs more than 0.50 Ante.' },
   { value: 'never', label: 'Never', hint: 'No extra warning before a Big mistake.' },
