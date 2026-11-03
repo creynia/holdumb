@@ -61,6 +61,11 @@ test.describe('sandbox', () => {
     const reveal = page.getByTestId('fold-reveal');
     await expect(reveal).toBeVisible();
     await expect(reveal).toContainText(/would have (won|lost)|pushed/);
+    // The fold toast is money only and hidden from the live region, so the reveal is announced once.
+    const toast = page.locator('.sim-toast').filter({ hasText: 'Folded.' });
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toHaveAttribute('aria-hidden', 'true');
+    await expect(toast).not.toContainText('would have');
   });
 
   test('practice mode hides the EV until you confirm', async ({ page }) => {

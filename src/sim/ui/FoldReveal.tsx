@@ -4,7 +4,7 @@ import { foldRevealText } from './text';
 
 /**
  * D7: after a fold the dealer's cards are revealed (the Felt shows them) and this panel says what
- * the hand would have done: "You would have won $25".
+ * the hand would have done: "You would have won $25 (folding cost $45)".
  */
 export function FoldReveal({ result }: { result: HandResult }) {
   const o = result.ifPlayed?.outcome;

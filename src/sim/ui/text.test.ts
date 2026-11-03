@@ -78,14 +78,31 @@ describe('prose', () => {
       "Your pair of kings beats the dealer's pair of nines. Ante +$10, Blind push (needs a straight), Play +$40. Net +$50.",
     );
   });
-  it('says what a fold would have done (D7)', () => {
+  it('makes a fold toast carry only the money (the reveal has the rest)', () => {
+    expect(describeResult(FOLDED_RESULT)).toBe('Folded. Ante -$10, Blind -$10. Net -$20.');
+  });
+  it('says what a fold would have done (D7) with the net difference', () => {
+    // FOLDED_RESULT: folded -$20; playing would have lost $30, so folding saved $10.
     expect(foldRevealText(FOLDED_RESULT)).toBe(
-      'The dealer had a pair of tens (qualifies). You would have lost $30.',
+      'The dealer had a pair of tens (qualifies). You would have lost $30 (folding saved $10).',
     );
-    const won = { ...FOLDED_RESULT, ifPlayed: { outcome: 'win' as const, net: 2500 } };
-    expect(foldRevealText(won)).toContain('You would have won $25.');
+    // Playing would have won $40: folding cost $60 (40 - -20).
+    const won = { ...FOLDED_RESULT, ifPlayed: { outcome: 'win' as const, net: 4000 } };
+    expect(foldRevealText(won)).toContain('You would have won $40 (folding cost $60).');
+    // Playing would have pushed: folding cost the $20 it lost.
     const tie = { ...FOLDED_RESULT, ifPlayed: { outcome: 'tie' as const, net: 0 } };
-    expect(foldRevealText(tie)).toContain('You would have pushed.');
+    expect(foldRevealText(tie)).toContain('You would have pushed (folding cost $20).');
+    // Same money either way: no difference clause.
+    const same = { ...FOLDED_RESULT, ifPlayed: { outcome: 'lose' as const, net: -2000 } };
+    expect(foldRevealText(same)).toContain('You would have lost $20.');
+  });
+  it('does the saved/cost arithmetic in integer cents', () => {
+    const odd = {
+      ...FOLDED_RESULT,
+      net: -1050,
+      ifPlayed: { outcome: 'lose' as const, net: -2001 },
+    };
+    expect(foldRevealText(odd)).toContain('You would have lost $20.01 (folding saved $9.51).');
   });
   it('uses the right article and verb for every kind of hand name', () => {
     expect(withArticle('pair of kings')).toBe('a pair of kings');

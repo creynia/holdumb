@@ -423,7 +423,28 @@ describe('small pieces', () => {
   });
   it('FoldReveal says what you would have done', () => {
     render(<FoldReveal result={FOLDED_RESULT} />);
-    expect(screen.getByTestId('fold-reveal').textContent).toContain('You would have lost $30.');
+    expect(screen.getByTestId('fold-reveal').textContent).toContain(
+      'You would have lost $30 (folding saved $10).',
+    );
+  });
+  it('a silent toast stays visible but is hidden from the live region', () => {
+    render(
+      <Toasts
+        toasts={[
+          { id: 1, text: 'Folded. Ante -$10, Blind -$10. Net -$20.' },
+          { id: 2, text: 'Folded. Net -$20.', silent: true },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByText('Folded. Net -$20.').closest('.sim-toast')?.getAttribute('aria-hidden'),
+    ).toBe('true');
+    expect(
+      screen
+        .getByText('Folded. Ante -$10, Blind -$10. Net -$20.')
+        .closest('.sim-toast')
+        ?.getAttribute('aria-hidden'),
+    ).toBeNull();
   });
   it('Table lays out portrait and landscape with the actions present in both', () => {
     for (const o of ['portrait', 'landscape'] as const) {

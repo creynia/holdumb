@@ -235,24 +235,34 @@ export function describeResult(r: HandResult): string {
   else if (r.outcome === 'lose')
     lead = `The dealer's ${d} ${plural(d) ? 'beat' : 'beats'} your ${p}.`;
   else if (r.outcome === 'tie') lead = `Tie: you and the dealer both have ${withArticle(p)}.`;
-  else lead = `You folded. The dealer had ${withArticle(d)}.`;
+  else lead = 'Folded.';
   const parts = r.wagers.map(describeSettlement).join(', ');
   return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
 }
 
-/** D7: what the fold would have been. */
+/**
+ * D7: what the fold would have been. The money difference is ifPlayed.net - r.net: positive means
+ * folding cost that much, negative means folding saved it.
+ */
 export function foldRevealText(r: HandResult): string {
   const d = handName(r.dealer);
   const q = r.dealerQualifies ? 'qualifies' : "doesn't qualify";
   const had = `The dealer had ${withArticle(d)} (${q}).`;
   if (!r.ifPlayed) return had;
   const { outcome, net } = r.ifPlayed;
+  const diff = net - r.net;
+  const effect =
+    diff < 0
+      ? ` (folding saved ${formatMoney(-diff)})`
+      : diff > 0
+        ? ` (folding cost ${formatMoney(diff)})`
+        : '';
   const would =
     outcome === 'win'
-      ? `You would have won ${formatMoney(Math.abs(net))}.`
+      ? `You would have won ${formatMoney(Math.abs(net))}${effect}.`
       : outcome === 'lose'
-        ? `You would have lost ${formatMoney(Math.abs(net))}.`
-        : 'You would have pushed.';
+        ? `You would have lost ${formatMoney(Math.abs(net))}${effect}.`
+        : `You would have pushed${effect}.`;
   return `${had} ${would}`;
 }
 

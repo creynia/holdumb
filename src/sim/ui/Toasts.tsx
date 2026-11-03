@@ -4,6 +4,8 @@ export interface Toast {
   id: number;
   text: string;
   tone?: 'info' | 'good' | 'bad';
+  /** Shown but not announced: another live region already says this (the fold reveal). */
+  silent?: boolean;
 }
 
 /** Results announced politely; the app decides when to drop them. */
@@ -17,7 +19,11 @@ export function Toasts({
   return (
     <div class="sim-toasts" aria-live="polite" role="log">
       {toasts.map((t) => (
-        <div key={t.id} class={`sim-toast sim-toast-${t.tone ?? 'info'}`}>
+        <div
+          key={t.id}
+          class={`sim-toast sim-toast-${t.tone ?? 'info'}`}
+          aria-hidden={t.silent ? 'true' : undefined}
+        >
           <span>{t.text}</span>
           {onDismiss ? (
             <button
