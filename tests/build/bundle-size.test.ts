@@ -14,9 +14,11 @@ import { describe, expect, it } from 'vitest';
  * reload; lazy-loading their views saves under 1 kB because the shared engine/math modules are
  * re-chunked into an extra preload. The structural fix is keeping the Play code out of the Home
  * route's preloads (follow-up item).
+ * 2026-11-03: raw raised to 220 kB (gzip stays 85 kB). I078 Watch +6.4 kB (2026-11-03); I095 tracks
+ * the structural fix (keep src/sim out of Home's preloads).
  */
 const BUDGET = {
-  entryRaw: 215_000,
+  entryRaw: 220_000,
   entryGzip: 85_000,
   cssRaw: 40_000,
   workerRaw: 60_000,
