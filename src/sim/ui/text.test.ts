@@ -221,7 +221,9 @@ describe('prose', () => {
     expect(describeResult(withWager('trips', 'trips', 'win', 3000))).toContain(
       'Trips +$30 (three of a kind pays 3 to 1 on Trips 8/6/5)',
     );
-    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).toContain('Trips -$5');
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).toContain(
+      'Trips \u2212\u2060$5',
+    );
     expect(describeResult(withWager('trips', 'trips', 'lose', -500))).not.toContain('pays');
   });
   it('reads the odds from the active Trips preset, not a fixed string (I011)', () => {
@@ -296,8 +298,26 @@ describe('prose', () => {
       'full house pays 9 to 1 on Trips 9/7/4',
     );
   });
+  it('shows negative money with U+2212 and no line break inside the amount (I008)', () => {
+    const loss: HandResult = {
+      ...WON_RESULT,
+      wagers: [
+        { wager: 'ante', amount: 1000, result: 'lose', profit: -1000, reason: 'dealer-wins' },
+        { wager: 'play', amount: 4000, result: 'lose', profit: -4000, reason: 'dealer-wins' },
+      ],
+      net: -5000,
+    };
+    const text = describeResult(loss);
+    expect(text).not.toMatch(/-\$/);
+    expect(text).toContain('Ante \u2212\u2060$10');
+    expect(text).toMatch(/Net \u2212\u2060\$50\.$/);
+    const fold: HandResult = { ...WON_RESULT, outcome: 'fold', net: -2000 };
+    expect(describeResult(fold)).not.toMatch(/-\$/);
+  });
   it('makes a fold toast carry only the money (the reveal has the rest)', () => {
-    expect(describeResult(FOLDED_RESULT)).toBe('Folded. Ante -$10, Blind -$10. Net -$20.');
+    expect(describeResult(FOLDED_RESULT)).toBe(
+      'Folded. Ante \u2212\u2060$10, Blind \u2212\u2060$10. Net \u2212\u2060$20.',
+    );
   });
   it('says what a fold would have done (D7) with the net difference', () => {
     // FOLDED_RESULT: folded -$20; playing would have lost $30, so folding saved $10.
@@ -316,7 +336,7 @@ describe('prose', () => {
   });
   it('announces the real net once, with the dealer and the would-have line', () => {
     expect(foldAnnouncement(FOLDED_RESULT)).toBe(
-      'You folded. Net -$20. The dealer had a pair of tens (qualifies). You would have lost $30 (folding saved $10).',
+      'You folded. Net \u2212\u2060$20. The dealer had a pair of tens (qualifies). You would have lost $30 (folding saved $10).',
     );
   });
   it('compares only the ante and blind when a Trips bet is up (trips settles either way)', () => {

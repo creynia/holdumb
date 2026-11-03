@@ -976,7 +976,9 @@ describe('HandHistory (simulator.md 3.7)', () => {
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     const row = screen.getByTestId('hand-history-row');
     // The settlement sentence is re-derived from the deal (describeResult, I010's fold wording).
-    expect(row.textContent).toContain('Folded. Ante -$10, Blind -$10. Net -$20.');
+    expect(row.textContent).toContain(
+      'Folded. Ante \u2212\u2060$10, Blind \u2212\u2060$10. Net \u2212\u2060$20.',
+    );
     const link = screen.getByTestId<HTMLAnchorElement>('replay-spot');
     expect(link.getAttribute('href')).toBe(
       '#/play?hole=Qc7d&board=KdJh9s5c2d&dealer=TdTs&street=river',

@@ -303,6 +303,13 @@ export const tablesFor = (tripsId: TripsPaytableId): SettlementTables => ({
 });
 const DEFAULT_TABLES = tablesFor(DEFAULT_PAYTABLE_PRESET);
 
+/** A signed money amount for prose: U+2212 for minus, and a word joiner after the sign so no line
+ * can break between the sign and the dollar sign (I008). */
+export const signedMoney = (cents: number): string => {
+  const m = formatMoney(cents, { sign: true });
+  return m.startsWith('-') ? `\u2212\u2060${m.slice(1)}` : m;
+};
+
 function describeSettlement(s: WagerSettlement, hand: EvaluatedHand, t: SettlementTables): string {
   const name = WAGER_NAME[s.wager];
   if (s.result === 'push') {
@@ -314,7 +321,7 @@ function describeSettlement(s: WagerSettlement, hand: EvaluatedHand, t: Settleme
           : '';
     return `${name} push${why}`;
   }
-  const money = formatMoney(s.profit, { sign: true });
+  const money = signedMoney(s.profit);
   if (s.result !== 'win') return `${name} ${money}`;
   const hn = CATEGORY_NAME[hand.category];
   if (s.wager === 'blind') {
@@ -470,7 +477,7 @@ export function describeResult(
   } else if (r.outcome === 'tie') lead = tieLead(r.player, r.dealer);
   else lead = 'Folded.';
   const parts = r.wagers.map((w) => describeSettlement(w, r.player, t)).join(', ');
-  return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
+  return `${lead} ${parts}. Net ${signedMoney(r.net)}.`;
 }
 
 /** The settled toast, with the Trips preset the hand actually settled at (the event's own rules). */
@@ -480,7 +487,7 @@ export function settledToastText(e: { result: HandResult; state: GameState }): s
 
 /** The one spoken fold announcement: the real net, then the reveal's dealer and would-have lines. */
 export function foldAnnouncement(r: HandResult): string {
-  return `You folded. Net ${formatMoney(r.net, { sign: true })}. ${foldRevealText(r)}`;
+  return `You folded. Net ${signedMoney(r.net)}. ${foldRevealText(r)}`;
 }
 
 /**
