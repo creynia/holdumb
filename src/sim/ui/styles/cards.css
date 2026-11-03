@@ -1,0 +1,62 @@
+/* ---------- cards ---------- */
+.sim-card-body {
+  fill: var(--card);
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 1;
+}
+.sim-card.is-dim {
+  opacity: 0.45;
+}
+.sim-card.is-hl .sim-card-body {
+  stroke: var(--sim-hl);
+  stroke-width: 3;
+}
+.sim-card-back-body {
+  fill: #12385c;
+  stroke: #f8f5ec;
+  stroke-width: 1.5;
+}
+.sim-card-back-inner {
+  fill: none;
+  stroke: #7fb7e6;
+  stroke-width: 1.5;
+}
+.sim-card-back-lines {
+  fill: none;
+  stroke: #7fb7e6;
+  stroke-width: 1;
+  opacity: 0.5;
+}
+.sim-slot {
+  fill: none;
+  stroke: rgba(248, 245, 236, 0.3);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.sim-rank {
+  font-weight: 800;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+.sim-suit-s {
+  fill: var(--suit-s);
+}
+.sim-suit-h {
+  fill: var(--suit-h);
+}
+.sim-suit-d {
+  fill: var(--suit-d);
+}
+.sim-suit-c {
+  fill: var(--suit-c);
+}
+.sim-suit-d.is-four {
+  fill: var(--suit4-d);
+}
+.sim-suit-c.is-four {
+  fill: var(--suit4-c);
+}

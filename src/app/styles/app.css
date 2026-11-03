@@ -926,3 +926,8 @@ textarea {
   align-items: center;
   min-height: 44px;
 }
+
+/* Strategy sections reached from Drill ("See the chart") land below the top edge, with a gap. */
+[data-view] {
+  scroll-margin-top: 16px;
+}

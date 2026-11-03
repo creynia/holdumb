@@ -14,6 +14,10 @@ const smoke = () =>
   (window as unknown as { __holdumb?: { smoke(): Promise<Smoke> } }).__holdumb?.smoke();
 
 test('single-file build opens from file:// with no failed requests or errors', async ({ page }) => {
+  // Locally a missing build skips with a hint; in CI it must fail, never pass silently.
+  if (process.env.CI && !existsSync(file)) {
+    throw new Error(`${file} is missing: CI must build it (npm run build:single) before e2e`);
+  }
   test.skip(!existsSync(file), 'run npm run build:single first');
   const failed: string[] = [];
   page.on('requestfailed', (r) => failed.push(r.url()));

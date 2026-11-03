@@ -1,0 +1,93 @@
+/* ---------- chips ---------- */
+.sim-chip-body {
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1.2;
+}
+.sim-chip-edge {
+  fill: none;
+  stroke: #ffffff;
+}
+.sim-chip-face {
+  fill: rgba(255, 255, 255, 0.92);
+}
+.sim-chip-text {
+  fill: #1b2430;
+  font-weight: 800;
+}
+.sim-chip-100 .sim-chip-body {
+  fill: var(--chip-100);
+}
+.sim-chip-500 .sim-chip-body {
+  fill: var(--chip-500);
+}
+.sim-chip-2500 .sim-chip-body {
+  fill: var(--chip-2500);
+}
+.sim-chip-10000 .sim-chip-body {
+  fill: var(--chip-10000);
+}
+.sim-chip-100 .sim-chip-edge {
+  stroke: #5b6675;
+}
+.sim-pill {
+  fill: rgba(8, 18, 28, 0.92);
+  stroke: #f8f5ec;
+  stroke-width: 1.5;
+}
+.sim-pill-text {
+  fill: #ffffff;
+  font-weight: 800;
+}
+.sim-stack {
+  pointer-events: none;
+}
+
+/* ---------- chip rack ---------- */
+.sim-rack {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.sim-rack-chip {
+  box-sizing: border-box;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px dashed #ffffff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.sim-rack-chip.sim-chip-100 {
+  background: var(--chip-100);
+  border-color: #5b6675;
+}
+.sim-rack-chip.sim-chip-500 {
+  background: var(--chip-500);
+}
+.sim-rack-chip.sim-chip-2500 {
+  background: var(--chip-2500);
+}
+.sim-rack-chip.sim-chip-10000 {
+  background: var(--chip-10000);
+}
+.sim-rack-face {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1b2430;
+  font-weight: 800;
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+}
+.sim-rack-chip.is-selected {
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 4px 8px rgba(0, 0, 0, 0.35);
+}
