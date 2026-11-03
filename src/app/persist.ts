@@ -23,3 +23,21 @@ export async function requestPersistOnce(
 export function resetPersistAskForTests(): void {
   asked = false;
 }
+
+export type StorageState = 'persistent' | 'best-effort' | null;
+
+/** Whether the browser keeps this site's storage. null when the API is missing (line hidden). */
+export async function storageState(
+  nav: { storage?: { persisted?: () => Promise<boolean> } } | undefined = typeof navigator !==
+  'undefined'
+    ? navigator
+    : undefined,
+): Promise<StorageState> {
+  try {
+    const p = nav?.storage?.persisted;
+    if (!p) return null;
+    return (await p.call(nav?.storage)) ? 'persistent' : 'best-effort';
+  } catch {
+    return null;
+  }
+}
