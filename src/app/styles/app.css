@@ -760,6 +760,18 @@ textarea {
 .drill-picker {
   margin-top: 0.6rem;
 }
+.drill-picker .check {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  min-height: 44px;
+  margin: 0.6rem 0;
+}
+.drill-picker .check input {
+  width: 22px;
+  height: 22px;
+  margin-top: 0.1rem;
+}
 .drill-category {
   display: flex;
   align-items: center;

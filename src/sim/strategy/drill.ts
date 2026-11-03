@@ -139,6 +139,21 @@ function isClose(s: DrillSpot): boolean {
   return secondBestRegret(p) < CLOSE_THRESHOLD;
 }
 
+/**
+ * Mixed street weights with "Close calls" on (curriculum.md section 9): how often each street's
+ * decision comes up per hand of real play, as integers over 6,497,400 (= 663 x 9,800).
+ * - preflop: 1 (every hand).
+ * - flop: 413/663 = 4,047,400 (the chart checks 826 of 1,326 combos; decisions.md P(4x) = 250/663).
+ * - river: P(check, then check) = 413/663 - P(2x on the flop) 1,382,947/6,497,400 = 2,664,453
+ *   (about 41.01%; matches P(1x) 21.82% + P(fold) 19.19% in decisions.md section 4).
+ */
+export const MIXED_STREET_WEIGHTS: Readonly<Record<DecisionStreet, number>> = {
+  preflop: 6_497_400,
+  flop: 4_047_400,
+  river: 2_664_453,
+};
+const STREETS_IN_ORDER: readonly DecisionStreet[] = ['preflop', 'flop', 'river'];
+
 // ---------- public API ----------
 function randomClassSpot(rng: RngState, cls: string): [DrillSpot, RngState] {
   const { hi, lo, suited, pair } = parseClass(cls);
@@ -169,9 +184,17 @@ export function nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngSta
   let street: DecisionStreet;
   if (filter.category) street = DRILL_STREET_OF[filter.category];
   else if (filter.street === 'mixed') {
-    let k: number;
-    [k, r] = randBelow(r, 3);
-    street = (['preflop', 'flop', 'river'] as const)[k]!;
+    if (filter.interesting) {
+      // Real-play mix; without it the three streets are equally likely (the pre-I068 behaviour).
+      const total = STREETS_IN_ORDER.reduce((n, st) => n + MIXED_STREET_WEIGHTS[st], 0);
+      let u: number;
+      [u, r] = randBelow(r, total);
+      street = STREETS_IN_ORDER.find((st) => (u -= MIXED_STREET_WEIGHTS[st]) < 0)!;
+    } else {
+      let k: number;
+      [k, r] = randBelow(r, 3);
+      street = STREETS_IN_ORDER[k]!;
+    }
   } else street = filter.street;
 
   const cat = filter.category;

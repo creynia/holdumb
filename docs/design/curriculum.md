@@ -3295,6 +3295,18 @@ that check preflop under the chart, and river spots only hands that check the fl
 you'd really face. `?street=mixed` draws categories in proportion to how often they come up in real play;
 `?focus=` draws only from missed cells or categories.
 
+**Close calls (default on, a persisted toggle).** The generator is called with `interesting: true`: about 60% of
+spots have a second-best regret under 0.25 antes (preflop and river by exact EV; on the flop the categories
+flush draw, straight draw and pocket deuces stand in for "close"). With it on, Mixed picks the street with the
+real-play weights below; with it off the three streets are equally likely and spots are uniform. Weights per
+hand, as integers over 6,497,400 (= 663 x 9,800):
+
+| Street | Weight | Why |
+|---|---|---|
+| preflop | 6,497,400 | every hand |
+| flop | 4,047,400 | the chart checks 826 of 1,326 combos: 413/663 (P(4x) = 250/663) |
+| river | 2,664,453 | 413/663 - P(2x on the flop) 1,382,947/6,497,400, about 41.01% (= P(1x) 21.82% + P(fold) 19.19%) |
+
 ### 9.1 Categories
 
 | id | Street | Filter | Pinned example (perfect answer) |

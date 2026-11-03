@@ -680,7 +680,11 @@ describe('Drill', () => {
     const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('river', 'r:1'), r]);
     const { store, d } = setup(0, { nextSpot });
     await mountDrill(store, d, 'street=river&focus=a,b');
-    expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'river', focus: ['a', 'b'] });
+    expect(nextSpot.mock.calls[0]![1]).toEqual({
+      street: 'river',
+      focus: ['a', 'b'],
+      interesting: true,
+    });
   });
   describe('grading lens', () => {
     // Bet 2x is perfect-best by 0.300 antes over Check, which is what the basic card plays here.
@@ -782,7 +786,11 @@ describe('Drill', () => {
     const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('flop', 'f:1'), r]);
     const { store, d } = setup(0, { nextSpot });
     const el = await mountDrill(store, d, 'category=flop-flush-draw');
-    expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'flop', category: 'flop-flush-draw' });
+    expect(nextSpot.mock.calls[0]![1]).toEqual({
+      street: 'flop',
+      category: 'flop-flush-draw',
+      interesting: true,
+    });
     const sel = el.querySelector<HTMLSelectElement>('[data-testid="drill-categories"]')!;
     const opts = [...sel.options];
     expect(opts.map((o) => o.textContent)).toEqual([
@@ -803,8 +811,8 @@ describe('Drill', () => {
     await mountDrill(store, d, 'street=river&category=flop-flush-draw');
     await mountDrill(store, d, 'street=river&category=nope');
     expect(nextSpot.mock.calls.map((c) => c[1])).toEqual([
-      { street: 'river' },
-      { street: 'river' },
+      { street: 'river', interesting: true },
+      { street: 'river', interesting: true },
     ]);
   });
   it('seeded: the same seed through deps deals the same category-only spots', async () => {
@@ -850,6 +858,22 @@ describe('Drill', () => {
     expect(el.querySelector('[data-testid="drill-weakest"]')!.textContent).toBe(
       'Your weakest: Flop flush draws 40% (5)',
     );
+  });
+  it('Close calls: on by default (filter.interesting), off restores the plain filter, and persists', async () => {
+    const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('flop', 'f:1'), r]);
+    const mem = new MemoryStorage();
+    const store = new Store(mem);
+    const d: DrillDeps = { ...setup(0).d, nextSpot };
+    const el = await mountDrill(store, d, 'street=flop');
+    expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'flop', interesting: true });
+    const box = el.querySelector<HTMLInputElement>('[data-testid="drill-close-calls"] input')!;
+    expect(box.checked).toBe(true);
+    await act(() => box.click());
+    expect(store.drill.closeCalls).toBe(false);
+    expect(nextSpot.mock.calls.at(-1)![1]).toEqual({ street: 'flop' });
+    store.flush();
+    expect(new Store(mem).drill.closeCalls).toBe(false);
+    expect(el.textContent).toContain('close-call categories');
   });
   it('a failed preview offers a retry without recording an answer', async () => {
     const { store, d } = setup(0, { preview: () => Promise.reject(new Error('x')) });

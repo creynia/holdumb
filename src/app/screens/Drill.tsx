@@ -171,6 +171,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         street,
         ...(category ? { category } : {}),
         ...(focus.length ? { focus } : {}),
+        ...(store.drill.closeCalls ? { interesting: true } : {}),
       };
       const [s, r] = deps.nextSpot(rng.current, filter);
       rng.current = r;
@@ -181,7 +182,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       setUnavailable(true);
     }
   };
-  useEffect(deal, [street, category, focusKey]);
+  useEffect(deal, [street, category, focusKey, store.drill.closeCalls]);
 
   const choose = (i: number) => {
     if (!spot || busy || answer) return;
@@ -391,6 +392,22 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       )}
 
       <div class="drill-picker">
+        <label class="check" data-testid="drill-close-calls">
+          <input
+            type="checkbox"
+            checked={store.drill.closeCalls}
+            onChange={(e) => store.setDrillCloseCalls(e.currentTarget.checked)}
+          />
+          <span>
+            Close calls
+            <span class="muted">
+              {' '}
+              about 6 in 10 spots are close calls (flop: the close-call categories, flush draws,
+              straight draws and pocket deuces), and Mixed follows how often each street comes up in
+              real play. Off: spots are uniform.
+            </span>
+          </span>
+        </label>
         <div class="segmented" role="group" aria-label="Grade by" data-testid="drill-lens">
           <span class="seg-label">Grade by</span>
           {(['perfect', 'practical'] as const).map((l) => (
