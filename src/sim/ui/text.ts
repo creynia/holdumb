@@ -138,6 +138,30 @@ export function headline(preview: DecisionPreview, index: number): string {
   return `${o.label}: ${fmtCentsFraction(o.evCents)} · ${DECISION_TIER_LABEL[o.tier]}`;
 }
 
+const TIER_PHRASE: Record<DecisionTier, string> = {
+  best: 'best play',
+  close: 'a close call',
+  small: 'a small mistake',
+  costly: 'a mistake',
+  blunder: 'a big mistake',
+};
+
+/**
+ * The sentence shown after a decision (I080). It leads with the tier and the cost against the best
+ * option (the figure the EV sheet's "vs best" row shows) and labels the whole-hand EV, which is
+ * negative even for the best play. Example: "Bet 4x: a mistake, costs $0.45 against Check. Whole-hand
+ * expected result from here: -$5.62."
+ */
+export function narrationText(preview: DecisionPreview, index: number): string {
+  const o = preview.options[index]!;
+  const best = bestOf(preview);
+  const lead =
+    o.tier === 'best'
+      ? `${o.label}: ${TIER_PHRASE.best}.`
+      : `${o.label}: ${TIER_PHRASE[o.tier]}, costs ${fmtCostC(costCents(best, o))} against ${best.label}.`;
+  return `${lead} Whole-hand expected result from here: ${fmtCentsFraction(o.evCents)}.`;
+}
+
 /** Spoken name of an action button: "Bet 4x, EV plus $5.21, best play". */
 export function ariaForOption(o: DecisionOption): string {
   const money = fmtCentsFraction(o.evCents).replace('+', 'plus ').replace('-', 'minus ');

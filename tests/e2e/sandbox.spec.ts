@@ -51,6 +51,35 @@ test.describe('sandbox', () => {
     await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
   });
 
+  test('after Check the toast names the tier and the same cost as the EV sheet (I080)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    await ready(page);
+    await opt(page, 'check').click();
+    const sheetCost = (await page.getByTestId('cost-vs-best').textContent())!.match(
+      /Costs (\S+) against/,
+    )![1]!;
+    expect(sheetCost).toMatch(/^\$/);
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+    const toast = page.locator('.sim-toast');
+    await expect(toast).toContainText('Check: a big mistake');
+    await expect(toast).toContainText(`costs ${sheetCost} against Bet 4x`);
+    await expect(toast).toContainText('Whole-hand expected result from here');
+  });
+
+  test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {
+    await page.goto('/#/settings');
+    await page.getByRole('radio', { name: 'Never' }).first().check();
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    await page.waitForSelector('[data-testid="simulator"]');
+    await opt(page, 'check').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+    await expect(page.locator('.sim-toast')).toHaveCount(0);
+  });
+
   test('a blunder needs a second tap with "Only bad bets"', async ({ page }) => {
     await page.goto('/#/settings');
     await page.getByRole('radio', { name: /Only bad bets/ }).check();

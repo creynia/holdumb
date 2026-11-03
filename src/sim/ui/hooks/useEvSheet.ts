@@ -8,7 +8,7 @@ import type { EvSheetProps } from '../EvSheet';
 import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
 import { needsConfirm } from '../settings';
-import { actionOfKey, optionKeyOf } from '../text';
+import { actionOfKey, narrationText, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
 /** The preview request for the decision on the table now, or null between decisions. */
@@ -74,6 +74,12 @@ export function useEvSheet(
     if (practice && before) setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
+    // I080: say what the choice was worth. The practice reveal card already does, a settled hand
+    // has its own result toast, and guided steps have the step panel.
+    else if (r.ok && before && !practice && !d.view.step && d.view.state.street !== 'settled') {
+      const i = before.options.findIndex((o) => optionKeyOf(o.action) === k);
+      if (i >= 0) pushToast(narrationText(before, i));
+    }
   };
   const onOption = (k: OptionKey) => {
     if (!evShown) {
