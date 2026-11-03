@@ -59,18 +59,25 @@ function preview(
   } as unknown as DecisionPreview;
 }
 
-async function answer(s: DrillSpot, p: DecisionPreview, pick: string) {
+async function answer(
+  s: DrillSpot,
+  p: DecisionPreview,
+  pick: string,
+  lens: 'perfect' | 'practical' = 'perfect',
+) {
   const deps: DrillDeps = {
     nextSpot: (rng) => [s, rng],
     gradeSpot,
     preview: () => Promise.resolve(p),
     seed: 1,
   };
+  const store = new Store(new MemoryStorage());
+  store.setDrillLens(lens);
   const el = document.createElement('div');
   document.body.appendChild(el);
   await act(() => {
     render(
-      <AppProviders content={content} store={new Store(new MemoryStorage())}>
+      <AppProviders content={content} store={store}>
         <Drill query={new URLSearchParams()} deps={deps} />
       </AppProviders>,
       el,
@@ -169,5 +176,36 @@ describe('Drill grading copy (curriculum 9.2)', () => {
     expect(text).toBe(
       "Mistake. Check earns 0.150 antes ($8) more on average. Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board).",
     );
+  });
+  describe('practical lens (the basic card is the reference) keeps the category reminder', () => {
+    const REMINDER = 'A pair on the board belongs to the dealer too: check.';
+    const spotP = () => spot('flop', 'flop-board-pair', PAIR);
+    it('best: the card play, with the reminder appended', async () => {
+      const { text } = await answer(
+        spotP(),
+        preview('flop', 'costly', 400, 2000),
+        'Check',
+        'practical',
+      );
+      expect(text).toBe(`Correct! Check is the card's play. ${REMINDER}`);
+    });
+    it('close: regret is measured against the card (0.015 antes), no reminder', async () => {
+      const { text } = await answer(
+        spotP(),
+        preview('flop', 'close', 15, 75),
+        'Bet 2x',
+        'practical',
+      );
+      expect(text).toBe('Close call. Check is better by just 0.015 antes ($0.75). Either is fine.');
+    });
+    it('costly: "earns ... more" from the card regret, then the reminder', async () => {
+      const { text } = await answer(
+        spotP(),
+        preview('flop', 'costly', 400, 2000),
+        'Bet 2x',
+        'practical',
+      );
+      expect(text).toBe(`Mistake. Check earns 0.400 antes ($20) more on average. ${REMINDER}`);
+    });
   });
 });
