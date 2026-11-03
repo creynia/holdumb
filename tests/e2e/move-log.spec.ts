@@ -5,13 +5,11 @@ const sim = (page: Page) => page.getByTestId('simulator');
 const ready = (page: Page) =>
   page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 20_000 });
 
-/** Tap an option and confirm it (a second tap when the sheet asks "Do it anyway"). */
+/** One tap acts with the default confirm policy (D40): no sheet. */
 async function act(page: Page, option: string) {
   await ready(page);
   await page.locator(`button[data-option="${option}"]`).click();
-  const confirm = page.getByTestId('confirm');
-  await confirm.click();
-  if (await page.getByTestId('blunder-warning').isVisible()) await confirm.click();
+  await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
 }
 const equity = async (page: Page) => Number(await sim(page).getAttribute('data-equity'));
 
