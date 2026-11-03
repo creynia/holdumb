@@ -53,7 +53,7 @@ A folded hand counts as 2 antes wagered.
 
 ```quiz
 - q: Which number is the expected cost per hand as a share of your Ante, under perfect play?
-  options: ["0.53%", "1.09%", "2.19%", "4.15%"]
+  options: ["0.53%", "1.09%", "2.18%", "4.15%"]
   answer: 2
   explain: "2.185% of the Ante. 0.53% is per dollar in action, and 4.15 is the average antes in action per hand."
 - q: $10 Ante, 30 hands an hour, perfect play. Expected cost per hour?
