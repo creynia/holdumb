@@ -59,7 +59,10 @@ export default defineConfig({
   },
   projects,
   webServer: {
-    command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
+    // PREBUILT=1 (CI's visual job): serve the check job's `build` artifact without rebuilding (I043).
+    command: process.env.PREBUILT
+      ? `npx vite preview --port ${PORT} --strictPort`
+      : `npm run build && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
