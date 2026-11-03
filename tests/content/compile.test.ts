@@ -11,6 +11,33 @@ const head = '---\nid: t\ntitle: T\nsummary: S\nminutes: 2\n---\n';
 const scene = '```scene\nid: s1\nversion: 1\ntitle: x\n```\n';
 const quiz = (body: string) => '```quiz\n' + body + '\n```\n';
 
+describe('progressive block (I063)', () => {
+  const block = (yaml: string) => '```progressive\n' + yaml + '\n```\n';
+  it('compiles a valid block, defaulting the meter to $50,000', () => {
+    expect(compileLesson(head + block('meter: 120000'), 't.md').blocks).toEqual([
+      { kind: 'progressive', progressive: { meter: 120_000 } },
+    ]);
+    expect(compileLesson(head + block(''), 't.md').blocks).toEqual([
+      { kind: 'progressive', progressive: { meter: 50_000 } },
+    ]);
+  });
+  it.each([
+    ['below the range', 'meter: 9000'],
+    ['above the range', 'meter: 301000'],
+    ['not an integer', 'meter: 50000.5'],
+    ['not a multiple of 1,000', 'meter: 50500'],
+    ['a string', 'meter: "50000"'],
+  ])('rejects a meter %s', (_why, yaml) => {
+    expect(() => compileLesson(head + block(yaml), 't.md')).toThrow(/progressive: meter/);
+  });
+  it('rejects unknown keys and non-mappings', () => {
+    expect(() => compileLesson(head + block('meter: 50000\nmax: 90000'), 't.md')).toThrow(
+      /progressive: unknown key\(s\) max/,
+    );
+    expect(() => compileLesson(head + block('- 1'), 't.md')).toThrow(/progressive block must be/);
+  });
+});
+
 describe('compileLesson blocks', () => {
   it('splits prose, math, tip, chart, scene and quiz blocks in order', () => {
     const l = compileLesson(

@@ -7,7 +7,7 @@ import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../../m
 import type { EvSheetProps } from '../EvSheet';
 import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
-import { needsConfirm, resolveConfirm } from '../settings';
+import { resolveConfirm } from '../settings';
 import { actionOfKey, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
@@ -120,10 +120,7 @@ export function useEvSheet(
             );
           },
           // A lesson's own confirm policy, the user's in the sandbox (D39).
-          confirmBlunder: needsConfirm(
-            resolveConfirm(settings, scene, d.view.step, d.mode),
-            'blunder',
-          ),
+          confirmOn: resolveConfirm(settings, scene, d.view.step, d.mode),
           hideEv: practice,
           alternative,
           request: sheetReq,
