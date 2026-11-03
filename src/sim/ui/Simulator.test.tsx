@@ -179,9 +179,7 @@ describe('Simulator container', () => {
     await waitFor(() =>
       expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
     );
-    fireEvent.click(document.querySelector('[data-option="fold"]')!);
-    await flush();
-    fireEvent.click(screen.getByTestId('confirm'));
+    fireEvent.click(document.querySelector('[data-option="fold"]')!); // one tap acts (D40)
     await waitFor(() =>
       expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
     );
