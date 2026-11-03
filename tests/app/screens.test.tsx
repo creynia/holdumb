@@ -568,17 +568,17 @@ describe('Drill', () => {
   }
   const tick = () => act(() => new Promise((r) => setTimeout(r, 0)));
 
-  it('deals a spot with the D31 labels for its street', async () => {
+  it('deals a spot with the D31 labels in the table slot order (I012)', async () => {
     const { store, d } = setup(0);
     const el = await mountDrill(store, d);
     const labels = [...el.querySelectorAll('.choice-row button')].map((b) => b.textContent);
-    expect(labels).toEqual(['Bet 2x', 'Check']);
+    expect(labels).toEqual(['Check', 'Bet 2x']);
     expect(el.querySelectorAll('[data-testid="drill-spot"] .cards').length).toBe(2);
   });
   it('river and preflop use their own choices; never "Raise"', async () => {
     for (const [street, want] of [
-      ['river', ['Bet 1x', 'Fold']],
-      ['preflop', ['Bet 4x', 'Bet 3x', 'Check']],
+      ['river', ['Fold', 'Bet 1x']],
+      ['preflop', ['Check', 'Bet 3x', 'Bet 4x']],
     ] as const) {
       document.body.innerHTML = '';
       const { store, d } = setup(0, { nextSpot: (r) => [spot(street, 'x'), r] });
