@@ -146,7 +146,7 @@ export function Simulator(props: SimulatorProps) {
   // Sandbox persistence (PersistedV1.sandbox, owned by the app store).
   const persistable = sandbox && !baseScene.startAt && !!props.onSnapshot;
   useEffect(() => {
-    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d));
+    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode));
   }, [view.eventSeq, persistable, d]);
 
   // Settings are the source of truth for practice mode: the table follows them live.

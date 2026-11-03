@@ -268,6 +268,9 @@ describe('Settings', () => {
       expect.stringContaining('Never'),
     ]);
     expect(labelOf(radios('confirm-on')[1]!)).toContain('more than 0.10 Ante');
+    expect(el.querySelector('#confirm-on-note')!.textContent).toBe(
+      'Confirm options apply when EV is shown before the move.',
+    );
     // Defaults: EV before, no confirm step.
     expect(radios('ev-mode').find((r) => r.checked)!.value).toBe('before');
     expect(radios('confirm-on').find((r) => r.checked)!.value).toBe('never');

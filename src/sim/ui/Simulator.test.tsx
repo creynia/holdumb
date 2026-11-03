@@ -137,6 +137,17 @@ describe('Simulator container', () => {
     expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river');
     evClient.dispose();
   });
+  it('stores the table evMode in the sandbox snapshot', async () => {
+    const snaps: unknown[] = [];
+    const { evClient } = mount(
+      { id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 },
+      { settings: { ...settings, evMode: 'after' }, onSnapshot: (x) => snaps.push(x) },
+    );
+    fireEvent.click(screen.getByText('Deal'));
+    await waitFor(() => expect(snaps.length).toBeGreaterThan(0));
+    expect((snaps.at(-1) as { evMode: string }).evMode).toBe('after');
+    evClient.dispose();
+  });
   it('evMode never: no EV on the table and one tap acts', async () => {
     const { evClient } = mount(
       {
