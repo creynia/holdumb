@@ -164,13 +164,8 @@ test.describe('sandbox', () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
-  test('tap targets are at least 44 px and the action buttons are on screen', async ({
-    page,
-  }, testInfo) => {
-    test.fixme(
-      testInfo.project.name === 'landscape-small',
-      'I032: bet-circle hit targets are 39px at 667x375 until the layout item lands',
-    );
+  test('tap targets are at least 44 px and the action buttons are on screen', async ({ page }) => {
+    // The bet circles are 39px at 667x375 (I032, layout): this test fails there until it lands.
     await page.goto('/#/play?seed=7&speed=instant');
     await page.locator('button[data-action="deal"]').click();
     await ready(page);
