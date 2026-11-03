@@ -10,8 +10,7 @@ import { EvOptionList } from './EvOptionList';
 import type { BetterAlternative } from '../math';
 import { TierBadge } from './TierBadge';
 import { WhyTable } from './WhyTable';
-import { needsConfirm } from './settings';
-import type { ConfirmOn } from './types';
+import type { EvMode } from './types';
 import {
   OPTION_LABELS,
   isUsablePreview,
@@ -42,13 +41,18 @@ export interface EvSheetProps {
   /** `sheet`: modal dialog (portrait); `rail`: panel in the landscape rail; `inline`: plain panel. */
   variant?: 'sheet' | 'rail' | 'inline';
   /**
-   * Which tiers need a second tap before acting (D24, D39 `confirmOn`): `all` every move, `costly`
-   * Mistakes and Big mistakes, `blunder` Big mistakes only (the default), `never` none.
+   * EV visibility (D11, D40): `before` the full sheet; `after` EV hidden until the move is made;
+   * `never` no option rows and no numbers at all (the sheet is then only the confirm step).
    */
-  confirmOn?: ConfirmOn;
-  /** EV after the move (D11): hide EVs until the move is confirmed. */
-  hideEv?: boolean;
-  /** Set once confirmed in practice mode: shows the result card and the full sheet. */
+  evMode?: EvMode;
+  /**
+   * Opened as the confirm step (D40): a Mistake or Big mistake shows its warning at once and the
+   * primary reads "Do it anyway". Otherwise the primary reads "Confirm <label>".
+   */
+  confirming?: boolean;
+  /** A tiered confirm waiting for the preview: "Checking your move…" and Cancel only. */
+  checking?: boolean;
+  /** Set once the move is made in evMode 'after': shows the result card and the full sheet. */
   chosen?: OptionKey | null;
   onContinue?: () => void;
   /** `basic` = EV + badge; `full` = + alternative + Why? */
@@ -70,7 +74,7 @@ export interface EvSheetProps {
 const FOCUSABLE =
   'button:not([disabled]),[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
 
-/** Result of a practice-mode move, e.g. "Best play" or "Mistake: Bet 2x was worth $0.48 more". */
+/** The revealed result of a move ('after'), e.g. "Bet 2x was worth $0.48 more than Check". */
 function ResultCard({
   preview,
   chosen,
@@ -86,7 +90,7 @@ function ResultCard({
   const cost = costCents(best, o);
   const isBest = optionKeyOf(best.action) === chosen || o.tier === 'best';
   return (
-    <div class="sim-result" data-testid="practice-result">
+    <div class="sim-result" data-testid="reveal-result">
       <Say
         text={
           isBest
@@ -116,8 +120,9 @@ export function EvSheet({
   onCancel,
   progress,
   variant = 'sheet',
-  confirmOn = 'blunder',
-  hideEv,
+  evMode = 'before',
+  confirming = false,
+  checking = false,
   chosen,
   onContinue,
   detail = 'full',
@@ -145,7 +150,6 @@ export function EvSheet({
   );
   const titleId = useId();
   const whyId = useId();
-  const [armed, setArmed] = useState(false);
   // The skeleton only appears after 150 ms, so fast previews never flash it.
   const [skel, setSkel] = useState(false);
   useEffect(() => {
@@ -154,7 +158,6 @@ export function EvSheet({
     return () => clearTimeout(h);
   }, [rawPreview]);
   const [why, setWhy] = useState(!!whyOpen);
-  useEffect(() => setArmed(false), [selected]);
   useEffect(() => setWhy(!!whyOpen), [whyOpen]);
   const readOnly = !onConfirm && !onCancel;
   const modal = variant === 'sheet';
@@ -162,25 +165,32 @@ export function EvSheet({
     if (modal || focusOnOpen)
       rootRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
   }, [modal, focusOnOpen]);
+  // The confirm sheet turns into the reveal in place ('after'): focus moves to Continue, so it
+  // never falls back to the page body when the Confirm button goes away.
+  const revealed = chosen != null;
+  useEffect(() => {
+    if (revealed) rootRef.current?.querySelector<HTMLElement>('[data-continue]')?.focus();
+  }, [revealed]);
 
   const confirmed = chosen != null;
-  const hidden = !!hideEv && !confirmed;
+  // 'never' shows no EV at all; 'after' hides it until the move is made (then the reveal shows it).
+  const noEv = evMode === 'never' && !confirmed;
+  const hidden = evMode !== 'before' && !confirmed;
   const opt = preview?.options.find((o) => optionKeyOf(o.action) === selected) ?? null;
   const best = preview ? bestOf(preview) : null;
   const isBest = !!opt && !!best && opt.tier === 'best';
   const cost = opt && best ? costCents(best, opt) : null;
-  const needsSecondTap = !!opt && needsConfirm(confirmOn, opt.tier) && !hidden && !confirmed;
-  // Mistakes and Big mistakes get a warning and "Do it anyway"; other tiers a plain second tap.
-  const warn = !!opt && (opt.tier === 'blunder' || opt.tier === 'costly');
+  // Mistakes and Big mistakes get a warning naming the better play; as the confirm step the
+  // primary then reads "Do it anyway". A sheet's Confirm always acts (no "tap again", D40).
+  const warn =
+    !confirmed &&
+    !readOnly &&
+    (confirming || !hidden) &&
+    !!opt &&
+    (opt.tier === 'blunder' || opt.tier === 'costly');
+  const danger = warn && confirming;
   const label = OPTION_LABELS[selected];
-
-  const confirm = () => {
-    if (needsSecondTap && !armed) {
-      setArmed(true);
-      return;
-    }
-    onConfirm?.(selected);
-  };
+  const confirm = () => onConfirm?.(selected);
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.stopPropagation();
@@ -215,7 +225,7 @@ export function EvSheet({
     preview && opt && handsPerHour && !isBest
       ? wrongEveryTimePerHour(preview, opt, handsPerHour)
       : null;
-  // River facts (lesson 12): on every river preview, hidden only while practice mode hides the EV.
+  // River facts (lesson 12): on every river preview, hidden only while EV after the move hides it.
   // 47 hand evaluations, so cheap enough to recompute on each render.
   const river =
     preview?.street === 'river' &&
@@ -225,7 +235,7 @@ export function EvSheet({
       ? riverFacts(request.hole, request.board)
       : null;
   // Flop (I058): which basic-card rule fires. Same visibility as the river facts: hidden while
-  // practice mode hides the EV, shown after the move, and never in a read-only sheet's absence.
+  // EV after the move hides it, shown after the move, and never in a read-only sheet's absence.
   const flopRule =
     detail === 'full' &&
     preview?.street === 'flop' &&
@@ -263,11 +273,23 @@ export function EvSheet({
         )}
       </h2>
 
-      {preview ? (
+      {checking ? (
+        <p class="sim-muted sim-calc" data-testid="ev-checking">
+          <Say text="Checking your move." dedupeKey="ev-state" />
+          <span class="sim-spinner" aria-hidden="true" />
+          Checking your move…
+        </p>
+      ) : noEv ? (
+        warn ? null : (
+          <p class="sim-muted" data-testid="confirm-move">
+            Confirm this move.
+          </p>
+        )
+      ) : preview ? (
         <>
           {hidden ? (
-            <p class="sim-muted" data-testid="practice-hidden">
-              The EV is hidden until you confirm.
+            <p class="sim-muted" data-testid="ev-hidden">
+              EV is hidden until you act.
             </p>
           ) : (
             <p class="sim-evsheet-sub">
@@ -380,27 +402,26 @@ export function EvSheet({
         </div>
       )}
 
-      {needsSecondTap && armed ? (
-        warn ? (
-          <p
-            class="sim-warn"
-            role="alert"
-            data-testid={opt.tier === 'blunder' ? 'blunder-warning' : 'mistake-warning'}
-          >
-            This is a {opt.tier === 'blunder' ? 'big mistake' : 'mistake'}
-            {best ? `: ${best.label} is the better play` : ''}. Tap again to do it anyway.
-          </p>
-        ) : (
-          <p class="sim-confirm-again" role="alert" data-testid="confirm-again">
-            Tap again to {label}.
-          </p>
-        )
+      {warn && !checking ? (
+        <p
+          class="sim-warn"
+          role="alert"
+          data-testid={opt.tier === 'blunder' ? 'blunder-warning' : 'mistake-warning'}
+        >
+          This is a {opt.tier === 'blunder' ? 'big mistake' : 'mistake'}
+          {best ? `: ${best.label} is the better play` : ''}.
+        </p>
       ) : null}
 
       {readOnly ? null : (
         <div class="sim-evsheet-actions">
           {confirmed ? (
-            <button type="button" class="sim-btn sim-btn-primary" onClick={onContinue ?? onCancel}>
+            <button
+              type="button"
+              class="sim-btn sim-btn-primary"
+              onClick={onContinue ?? onCancel}
+              data-continue
+            >
               Continue
             </button>
           ) : (
@@ -408,18 +429,16 @@ export function EvSheet({
               <button type="button" class="sim-btn sim-btn-secondary" onClick={onCancel}>
                 Cancel
               </button>
-              <button
-                type="button"
-                class={`sim-btn ${needsSecondTap && armed && warn ? 'sim-btn-danger' : 'sim-btn-primary'}`}
-                onClick={confirm}
-                data-testid="confirm"
-              >
-                {needsSecondTap && armed
-                  ? warn
-                    ? 'Do it anyway'
-                    : `Yes, ${label}`
-                  : `Confirm ${label}`}
-              </button>
+              {checking ? null : (
+                <button
+                  type="button"
+                  class={`sim-btn ${danger ? 'sim-btn-danger' : 'sim-btn-primary'}`}
+                  onClick={confirm}
+                  data-testid="confirm"
+                >
+                  {danger ? 'Do it anyway' : `Confirm ${label}`}
+                </button>
+              )}
             </>
           )}
         </div>

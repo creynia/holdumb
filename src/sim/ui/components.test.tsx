@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame, equity, parseCards } from '../engine';
 import type { Card as PlayingCard, HandRecord } from '../engine';
+import { classEv, preflopPreview } from '../math';
 import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey, SessionView } from '../scene';
 import { ActionBar, optionsFor, slotOf } from './ActionBar';
@@ -25,13 +26,18 @@ import {
 } from './fixtures';
 import { StatusBar } from './StatusBar';
 import { statusMoney } from './status';
-import { StrategyChart, chartClasses, preflop4xSet } from './StrategyChart';
+import {
+  StrategyChart,
+  cellEv,
+  chartClasses,
+  closeCallClasses,
+  preflop4xSet,
+} from './StrategyChart';
 import { Table } from './Table';
 import { TierBadge } from './TierBadge';
 import { Toasts } from './Toasts';
 import { flushAnnouncements, resetAnnouncer, subscribeAnnouncements } from './announcer';
 import { buildTimeline } from './animation';
-import { needsConfirm } from './settings';
 import { OPTION_SLOT, optionKeyOf } from './text';
 import { landscapeLayout, portraitLayout } from './layouts';
 
@@ -101,61 +107,77 @@ describe('EvSheet', () => {
     sheet({ selected: 'play-4' });
     expect(screen.queryByTestId('alternative')).toBeNull();
   });
-  it('a blunder needs a second tap ("Do it anyway")', () => {
-    const props = sheet({ selected: 'check' });
+  it('as the confirm step a blunder shows its warning and "Do it anyway" at once; one tap acts (D40)', () => {
+    const props = sheet({ selected: 'check', confirming: true });
+    expect(screen.getByTestId('blunder-warning').textContent).toBe(
+      'This is a big mistake: Bet 4x is the better play.',
+    );
     const btn = screen.getByTestId('confirm');
-    expect(btn.textContent).toBe('Confirm Check');
-    fireEvent.click(btn);
-    expect(props.onConfirm).not.toHaveBeenCalled();
-    expect(screen.getByTestId('blunder-warning')).toBeTruthy();
     expect(btn.textContent).toBe('Do it anyway');
+    expect(btn.className).toContain('sim-btn-danger');
     fireEvent.click(btn);
+    expect(props.onConfirm).toHaveBeenCalledTimes(1);
     expect(props.onConfirm).toHaveBeenCalledWith('check');
   });
-  it('re-arms when the selection changes', () => {
-    const props = baseProps({ selected: 'check' });
+  it('the warning follows the selection', () => {
+    const props = baseProps({ selected: 'check', confirming: true });
     const { rerender } = render(<EvSheet {...props} />);
-    fireEvent.click(screen.getByTestId('confirm'));
     expect(screen.getByTestId('confirm').textContent).toBe('Do it anyway');
-    rerender(<EvSheet {...props} selected="play-3" />);
-    expect(screen.getByTestId('confirm').textContent).toBe('Confirm Bet 3x');
+    rerender(<EvSheet {...props} selected="play-4" />);
+    expect(screen.getByTestId('confirm').textContent).toBe('Confirm Bet 4x');
+    expect(screen.queryByTestId('blunder-warning')).toBeNull();
   });
-  it('confirms in one tap when confirmOn is never', () => {
-    const props = sheet({ selected: 'check', confirmOn: 'never' });
+  it('outside a confirm step Confirm still acts in one tap, with the warning inline', () => {
+    const props = sheet({ selected: 'check' });
+    expect(screen.getByTestId('blunder-warning')).toBeTruthy();
+    expect(screen.getByTestId('confirm').textContent).toBe('Confirm Check');
     fireEvent.click(screen.getByTestId('confirm'));
     expect(props.onConfirm).toHaveBeenCalledWith('check');
   });
-  it('confirmOn x tier: a second tap exactly when needsConfirm says so (D24, D39)', () => {
+  it('confirm step x tier: Mistakes read "Do it anyway", other tiers "Confirm Check"; one click acts', () => {
     const tiers = ['best', 'close', 'small', 'costly', 'blunder'] as const;
-    for (const confirmOn of ['all', 'costly', 'blunder', 'never'] as const) {
-      for (const tier of tiers) {
-        const base = PREFLOP_AA.preview;
-        const preview: DecisionPreview = {
-          ...base,
-          options: base.options.map((o) =>
-            optionKeyOf(o.action) === 'check' ? { ...o, tier } : o,
-          ),
-        };
-        const props = sheet({ preview, selected: 'check', confirmOn });
-        const btn = screen.getByTestId('confirm');
-        fireEvent.click(btn);
-        const where = `${confirmOn} / ${tier}`;
-        if (needsConfirm(confirmOn, tier)) {
-          expect(props.onConfirm, where).not.toHaveBeenCalled();
-          const warn = tier === 'costly' || tier === 'blunder';
-          expect(btn.textContent, where).toBe(warn ? 'Do it anyway' : 'Yes, Check');
-          expect(
-            screen.getByTestId(
-              tier === 'blunder' ? 'blunder-warning' : warn ? 'mistake-warning' : 'confirm-again',
-            ),
-            where,
-          ).toBeTruthy();
-          fireEvent.click(btn);
-        }
-        expect(props.onConfirm, where).toHaveBeenCalledWith('check');
-        cleanup();
-      }
+    for (const tier of tiers) {
+      const base = PREFLOP_AA.preview;
+      const preview: DecisionPreview = {
+        ...base,
+        options: base.options.map((o) => (optionKeyOf(o.action) === 'check' ? { ...o, tier } : o)),
+      };
+      const props = sheet({ preview, selected: 'check', confirming: true });
+      const warn = tier === 'costly' || tier === 'blunder';
+      const btn = screen.getByTestId('confirm');
+      expect(btn.textContent, tier).toBe(warn ? 'Do it anyway' : 'Confirm Check');
+      expect(screen.queryByTestId('blunder-warning') !== null, tier).toBe(tier === 'blunder');
+      expect(screen.queryByTestId('mistake-warning') !== null, tier).toBe(tier === 'costly');
+      expect(screen.queryByText(/Tap again|Yes, Check/)).toBeNull();
+      fireEvent.click(btn);
+      expect(props.onConfirm, tier).toHaveBeenCalledTimes(1);
+      cleanup();
     }
+  });
+  it("evMode 'never': no option rows and no numbers; Confirm works with EV off (D40)", () => {
+    const props = sheet({ selected: 'play-4', evMode: 'never', confirming: true });
+    const el = screen.getByTestId('ev-sheet');
+    expect(within(el).queryByRole('radiogroup')).toBeNull();
+    expect(screen.queryByTestId('cost-vs-best')).toBeNull();
+    expect(el.textContent).not.toMatch(/\$|ante/i);
+    expect(screen.getByTestId('confirm-move').textContent).toBe('Confirm this move.');
+    expect(screen.getByRole('heading').textContent).toBe('Bet 4x');
+    fireEvent.click(screen.getByTestId('confirm'));
+    expect(props.onConfirm).toHaveBeenCalledWith('play-4');
+    cleanup();
+    sheet({ selected: 'check', evMode: 'never', confirming: true });
+    const w = screen.getByTestId('blunder-warning').textContent;
+    expect(w).toContain('big mistake');
+    expect(w).toContain('Bet 4x');
+    expect(screen.getByTestId('ev-sheet').textContent).not.toMatch(/\$|ante/i);
+    expect(screen.queryByTestId('confirm-move')).toBeNull();
+    expect(screen.getByTestId('confirm').textContent).toBe('Do it anyway');
+  });
+  it('a tiered confirm waiting for the preview shows "Checking your move…" and Cancel only', () => {
+    sheet({ preview: null, selected: 'check', confirming: true, checking: true });
+    expect(screen.getByTestId('ev-checking').textContent).toContain('Checking your move…');
+    expect(screen.queryByTestId('confirm')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
   });
   it('a non-blunder mistake confirms in one tap', () => {
     const props = sheet({
@@ -187,18 +209,25 @@ describe('EvSheet', () => {
     expect(screen.queryByText('Why?')).toBeNull();
     expect(screen.queryByTestId('alternative')).toBeNull();
   });
-  it('practice mode hides every EV until confirm, then shows the result', () => {
-    const props = baseProps({ hideEv: true, selected: 'check' });
+  it('when the confirm sheet turns into the reveal, focus moves to Continue', () => {
+    const props = baseProps({ evMode: 'after', selected: 'check', confirming: true });
+    const { rerender } = render(<EvSheet {...props} variant="rail" focusOnOpen />);
+    expect(document.activeElement?.getAttribute('data-autofocus')).not.toBeNull();
+    rerender(<EvSheet {...props} variant="rail" focusOnOpen chosen="check" />);
+    expect(document.activeElement?.textContent).toBe('Continue');
+  });
+  it("evMode 'after' hides every EV until the move, then shows the result", () => {
+    const props = baseProps({ evMode: 'after', selected: 'check' });
     const { container, rerender } = render(<EvSheet {...props} />);
     expect(container.textContent).not.toContain('$36.01');
     expect(container.textContent).not.toContain('Big mistake');
-    expect(screen.getByTestId('practice-hidden')).toBeTruthy();
+    expect(screen.getByTestId('ev-hidden').textContent).toBe('EV is hidden until you act.');
     expect(screen.getByTestId('confirm').textContent).toBe('Confirm Check');
     fireEvent.click(screen.getByTestId('confirm'));
-    expect(props.onConfirm).toHaveBeenCalledWith('check'); // no second tap while hidden
+    expect(props.onConfirm).toHaveBeenCalledWith('check');
     rerender(<EvSheet {...props} chosen="check" />);
     expect(container.textContent).toContain('$36.01');
-    expect(screen.getByTestId('practice-result').textContent).toContain(
+    expect(screen.getByTestId('reveal-result').textContent).toContain(
       'Bet 4x was worth $14.08 more than Check',
     );
   });
@@ -276,12 +305,12 @@ describe('EvSheet flop basic-card rule line (I058)', () => {
       /^Basic card: rule \(b\), a hidden pair of sevens: Bet 2x\. Perfect play prefers Check\. \(This is a rare exception, worth \$[\d,.]+\.\)$/,
     );
   });
-  it('is hidden while practice mode hides the EV, and shown after the move', () => {
+  it("is hidden while evMode 'after' hides the EV, and shown after the move", () => {
     const props = {
       preview: FLOP_HIDDEN_PAIR.preview,
       selected: 'play-2' as OptionKey,
       request: request(FLOP_HIDDEN_PAIR),
-      hideEv: true,
+      evMode: 'after' as const,
     };
     sheet(props);
     expect(screen.queryByTestId('flop-rule')).toBeNull();
@@ -332,25 +361,25 @@ describe('EvSheet river dealer outs (lesson 12)', () => {
       'Basic card: fold (21+ outs, no hidden pair)',
     );
   });
-  it('after the move (practice result) the facts, basic card included, sit in the result', () => {
+  it('after the move (revealed result) the facts, basic card included, sit in the result', () => {
     sheet({
       preview: RIVER_ACE_HIGH.preview,
       selected: 'fold',
-      hideEv: true,
+      evMode: 'after',
       request: request(RIVER_ACE_HIGH),
     });
-    expect(screen.queryByTestId('dealer-outs')).toBeNull(); // practice mode: nothing until confirmed
+    expect(screen.queryByTestId('dealer-outs')).toBeNull(); // 'after': nothing until the move
     cleanup();
     sheet({
       preview: RIVER_ACE_HIGH.preview,
       selected: 'fold',
-      hideEv: true,
+      evMode: 'after',
       chosen: 'fold',
       request: request(RIVER_ACE_HIGH),
     });
     const outs = screen.getByTestId('dealer-outs');
     expect(outs.getAttribute('data-mode')).toBe('after');
-    expect(screen.getByTestId('practice-result').contains(outs)).toBe(true);
+    expect(screen.getByTestId('reveal-result').contains(outs)).toBe(true);
     expect(outs.textContent).toContain('Dealer outs: 15 of 45');
     expect(outs.textContent).toContain('Hidden pair or better: no');
     expect(screen.getByTestId('basic-river').textContent).toBe('Basic card: bet 1x (outs < 21)');
@@ -485,7 +514,7 @@ describe('ActionBar', () => {
     expect(b.textContent).toContain('+3.601 · Best');
     expect(screen.getByText('Check').closest('button')!.textContent).toContain('Big mistake');
   });
-  it('shows no EV when practice mode leaves the preview off', () => {
+  it('shows no EV when EV after the move leaves the preview off', () => {
     render(<ActionBar street="flop" />);
     expect(screen.getByText('Bet 2x').closest('button')!.textContent).toBe('Bet 2x');
   });
@@ -670,6 +699,23 @@ describe('small pieces', () => {
     fireEvent.click(screen.getByRole('radio', { name: '$25' }));
     expect(onSelect).toHaveBeenCalledWith(2500);
   });
+  it('StatusBar keeps a signed result for win, lose, push and fold (I051)', () => {
+    const cases = [
+      { hand: { outcome: 'win' as const, net: 2000 }, want: 'Won' },
+      { hand: { outcome: 'lose' as const, net: -3500 }, want: 'Lost' },
+      { hand: { outcome: 'tie' as const, net: 0 }, want: 'Push' },
+      { hand: { outcome: 'fold' as const, net: -2000 }, want: 'Folded' },
+    ];
+    for (const { hand, want } of cases) {
+      const { unmount } = render(<StatusBar bankroll={49_000} onFelt={0} hand={hand} />);
+      const col = screen.getByTestId('hand-result');
+      expect(col.textContent).toContain(want);
+      expect(col.textContent).not.toContain('-');
+      unmount();
+    }
+    render(<StatusBar bankroll={49_000} onFelt={0} hand={{ outcome: 'lose', net: -3500 }} />);
+    expect(screen.getByTestId('hand-result').textContent).toContain('\u2212$35');
+  });
   it('StatusBar shows EV / Details in the third column until a result is showing (I092)', () => {
     const onDetails = vi.fn();
     const { rerender } = render(
@@ -810,9 +856,61 @@ describe('StrategyChart', () => {
   it('names each cell and shows the answer on tap, text not colour', () => {
     const onSelect = vi.fn();
     render(<StrategyChart strategy="basic" view="preflop" onSelect={onSelect} />);
-    fireEvent.click(screen.getByRole('gridcell', { name: 'K4o: Check' }));
+    fireEvent.click(screen.getByRole('gridcell', { name: 'K4o: Check, close call' }));
     expect(onSelect).toHaveBeenCalledWith('K4o');
-    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe('K4o: Check.');
+    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe(
+      'K4o: Check. Bet 4x \u22120.229 \u00b7 Check \u22120.206 \u00b7 margin 0.023 \u00b7 close call',
+    );
+  });
+  it('the close-call dots are exactly the seven classes of curriculum 7.3, computed from the table', () => {
+    expect([...closeCallClasses()].sort()).toEqual(
+      ['J8s', 'K2s', 'K4o', 'Q5s', 'Q6s', 'Q8o', 'T9s'].sort(),
+    );
+    // Independently from the exact table: |EV(4x) - EV(check)| < 0.03 antes, no rounding.
+    const set = chartClasses().filter((c) => {
+      const e = classEv('blind-standard', c);
+      const d = e.bet4.num * e.check.den - e.check.num * e.bet4.den;
+      const den = e.bet4.den * e.check.den;
+      return (d < 0n ? -d : d) * 100n < 3n * den;
+    });
+    expect(set.sort()).toEqual([...closeCallClasses()].sort());
+    const { container } = render(<StrategyChart strategy="perfect" view="preflop" />);
+    const dots = [...container.querySelectorAll('.sim-chart-cell.is-close')];
+    expect(dots.map((d) => d.getAttribute('data-class')).sort()).toEqual([...set].sort());
+    for (const d of dots) expect(d.getAttribute('aria-label')).toMatch(/, close call$/);
+    expect(container.querySelectorAll('[aria-label$="close call"]')).toHaveLength(7);
+  });
+  it('classEv equals the preflop EV sheet options exactly for all 169 classes', () => {
+    for (const cls of chartClasses()) {
+      const [a, b] = [cls[0]!, cls[1]!];
+      const text =
+        cls.length === 2 ? `${a}s${b}h` : cls.endsWith('s') ? `${a}s${b}s` : `${a}s${b}h`;
+      const cards = parseCards(text);
+      const hole: [number, number] = [cards[0]!, cards[1]!];
+      const p = preflopPreview({
+        street: 'preflop',
+        hole,
+        board: [],
+        blindPaytable: 'blind-standard',
+        ante: 100,
+      });
+      const bet = p.options.find((o) => o.action.type === 'play' && o.action.multiple === 4)!;
+      const chk = p.options.find((o) => o.action.type === 'check')!;
+      const e = classEv('blind-standard', cls);
+      // cross-multiplied: identical fractions, not just close ones
+      expect(e.bet4.num * bet.ev.den, cls).toBe(bet.ev.num * e.bet4.den);
+      expect(e.check.num * chk.ev.den, cls).toBe(chk.ev.num * e.check.den);
+    }
+  });
+  it('shows exact signed EVs for a bet cell, never hard-coded', () => {
+    render(<StrategyChart strategy="perfect" view="preflop" />);
+    fireEvent.click(screen.getByRole('gridcell', { name: 'AKs: Bet 4x' }));
+    const e = cellEv('AKs');
+    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe(
+      `AKs: Bet 4x. Bet 4x ${e.bet4} \u00b7 Check ${e.check} \u00b7 margin ${e.margin}`,
+    );
+    expect(e.bet4.startsWith('+')).toBe(true);
+    expect(e.close).toBe(false);
   });
   it('accepts the strategy module data', () => {
     const { container } = render(
@@ -1182,7 +1280,9 @@ describe('StrategyChart keyboard', () => {
     fireEvent.keyDown(aa, { key: 'ArrowRight' });
     expect(document.activeElement?.getAttribute('data-class')).toBe('AKs');
     fireEvent.keyDown(document.activeElement!, { key: 'Enter' });
-    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe('AKs: Bet 4x.');
+    expect(document.querySelector('.sim-chart-legend')!.textContent).toMatch(
+      /^AKs: Bet 4x\. Bet 4x \+1\.658 /,
+    );
   });
 });
 
@@ -1220,7 +1320,7 @@ describe('review fixes', () => {
       'Bet 4x instead: AA is a 4x hand. +$36.01 vs +$21.93.',
     );
   });
-  it('ActionBar practice mode shows no EV', () => {
+  it('ActionBar with EV after the move shows no EV', () => {
     render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} hideEv />);
     expect(document.body.textContent).not.toMatch(/Best|3\.601|Calculating|not available/);
   });
