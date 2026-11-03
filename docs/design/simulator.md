@@ -43,7 +43,7 @@ and/or exact rationals in Python. The scratch code is in
 | Transport | All EV goes through architecture.md's `EvClient` (`preview`, `simulate` jobs, generator-based, cancellable, worker with in-thread fallback). |
 | Rendering | SVG felt, data-driven layouts for portrait (390×844) and landscape (844×390), HTML action bar and EV sheet. Every target is at least 44 px. |
 | Fold reveal | When you fold, the dealer's cards are revealed with "You would have won $X / lost $Y" (D7). |
-| Practice mode | A sandbox toggle, off by default, that hides EV until you confirm and then grades the move (D11). |
+| EV visibility (was Practice mode) | Setting `evMode`: EV `before` I choose (default) / `after` I choose (the move is graded once you act) / `never`. `confirmOn` (default `never`: one tap acts) adds a confirm step for all bets, Mistake + Big mistake, or Big mistake only (D11, D24, D39). |
 | Strategies | Ladder `perfect` → `basic` → `simple` (D16), plus `expert` (fast perfect for sims), `check-to-river`, `never-fold`, `always-max`, and lesson-only `riverLeak`, each with an **exact** EV per hand and a Trips amount. Multi-session sims with charts. |
 
 ---
@@ -853,14 +853,15 @@ the top of the rail.
    - a headline: "Raise 4x: +$5.21 · Best play";
    - the alternative card (non-best) with "Use this";
    - a "Why?" expander (rows from §2.5; scenes can open it);
-   - **Confirm** / **Cancel**. `blunder` needs a second tap ("Do it anyway").
+   - **Confirm** / **Cancel**. `blunder` needs a second tap ("Do it anyway") when
+     `confirmOn` covers it (D39).
    - While a flop preview is computing: a skeleton after 150 ms and a progress
      bar. Confirm stays enabled (EV is advisory, architecture §4.2).
-   - **Practice mode** (D11): the sheet hides EVs; after Confirm, a result card
+   - **EV after** (`evMode: 'after'`, D11/D39; was Practice mode): the sheet hides EVs; after Confirm, a result card
      shows "Best play ✓" or "Mistake: Raise 2x was worth $0.48 more" with the
      full sheet below.
-   - **Skip preview** (expert setting): a tap confirms immediately, and the EV
-     still appears in the toast.
+   - **One tap acts** (`confirmOn: 'never'`, the default, D39) replaces the old
+     Skip preview setting; `confirmOn` picks which tiers get a confirm step.
 3. **Resolution**: cards flip in order (turn and river, then the dealer's
    cards), the hand labels appear ("Dealer: pair of 9s, qualifies"), chips move
    per wager (wins slide from the dealer, losses slide away, pushes pulse). A

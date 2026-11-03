@@ -1,0 +1,120 @@
+/* ---------- badges, EV list ---------- */
+.sim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--text);
+}
+.sim-tier-icon {
+  flex: none;
+}
+.sim-badge-tier-best {
+  --c: var(--tier-best);
+}
+.sim-badge-tier-close {
+  --c: var(--tier-close);
+}
+.sim-badge-tier-small {
+  --c: var(--tier-small);
+}
+.sim-badge-tier-costly {
+  --c: var(--tier-costly);
+}
+.sim-badge-tier-blunder {
+  --c: var(--tier-blunder);
+}
+.sim-badge-wager-free {
+  --c: var(--wager-free);
+}
+.sim-badge-wager-good {
+  --c: var(--wager-good);
+}
+.sim-badge-wager-fair {
+  --c: var(--wager-fair);
+}
+.sim-badge-wager-poor {
+  --c: var(--wager-poor);
+}
+.sim-badge-wager-avoid {
+  --c: var(--wager-avoid);
+}
+.sim-badge {
+  border-color: var(--c, currentColor);
+}
+.sim-badge .sim-tier-icon {
+  color: var(--c, currentColor);
+}
+.sim-evlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sim-evrow-btn {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'label ev'
+    'cost badge';
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 2px;
+  padding: 8px 12px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--sim-surface-2);
+  border: 2px solid transparent;
+  border-radius: 12px;
+}
+button.sim-evrow-btn {
+  cursor: pointer;
+}
+.sim-evrow.is-selected .sim-evrow-btn {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.sim-evrow-label {
+  grid-area: label;
+  font-weight: 700;
+}
+.sim-evrow-ev {
+  grid-area: ev;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sim-evrow-cost {
+  grid-area: cost;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.sim-evrow-btn .sim-badge {
+  grid-area: badge;
+  justify-self: end;
+}
+.sim-evlist.is-compact .sim-evrow-btn {
+  min-height: 0;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.sim-evrow-label,
+.sim-evrow-cost {
+  white-space: nowrap;
+}
+.sim-evrow-ev .sim-muted {
+  display: block;
+  font-size: 0.8rem;
+}

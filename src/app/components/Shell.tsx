@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { UpdateToast } from '../../pwa/UpdateToast';
 import { Link } from './Link';
 
 /** D4: Learn · Play · Drill · More. Strategy charts are not a tab. */
@@ -32,6 +33,7 @@ export function Shell(props: {
             </Link>
           ))}
         </nav>
+        <UpdateToast />
       </header>
       {props.banner}
       <main id="main" tabIndex={-1}>
