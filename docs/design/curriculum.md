@@ -215,7 +215,7 @@ and `simple`, with their exact costs), and fun per dollar.
 |---|---|---|
 | `foundations` | Foundations | The table, the hands, a full deal and how every bet is settled. |
 | `ev-basics` | EV basics | What a decision is worth, and how the EV sheet shows it. |
-| `perfect-lowest-edge` | Perfect strategy I: lowest edge | Every decision, played to the exact optimum: 2.19% of the Ante. |
+| `perfect-lowest-edge` | Perfect strategy I: lowest edge | Every decision, played to the exact optimum: 2.18% of the Ante. |
 | `perfect-practical` | Perfect strategy II: practical | A strategy you can remember, what it costs, and how to plan a session. |
 | `perfect-fun` | Perfect strategy III: fun per dollar | Side bets and table choices, priced per hour. |
 | `real-casino` | The real casino | Etiquette, signals and the final exam. |
@@ -839,7 +839,7 @@ steps:
 
 * Explain expected value (EV) as "the average result if you faced this spot millions of times".
 * Measure EV in **Ante units**, and convert to dollars.
-* Know the price of the whole game under perfect play: **2.19% of the Ante per hand**.
+* Know the price of the whole game under perfect play: **2.18% of the Ante per hand**.
 
 **Lesson**
 
@@ -865,7 +865,7 @@ with bad hands and winning **as much as possible** with good ones.
 **The house edge.** Average the EV of perfect play over every possible hand and you get the price of the
 game: **−0.02185 antes per hand**, a house edge of **2.185% of the Ante**. At a $10 Ante that's an expected
 cost of about **22¢ a hand**. No strategy does better. Every decision this course teaches is part of
-reaching that 2.19%.
+reaching that 2.18%.
 
 Here's what decisions are worth. If you never raised early and always bet 1x at the river, never folding,
 you'd lose **40.7% of your Ante per hand**. That's almost twenty times more. The Ante and the Blind are
@@ -955,7 +955,7 @@ steps:
   answer: 2
   explain: "0.50 × $20 = $10. Ante units scale with your bet."
 - q: What is the house edge of UTH under perfect play?
-  options: ["About 0.5% of the Ante", "About 2.19% of the Ante", "About 5% of the Ante", "Zero with perfect play"]
+  options: ["About 0.5% of the Ante", "About 2.18% of the Ante", "About 5% of the Ante", "Zero with perfect play"]
   answer: 1
   explain: "2.185% of the Ante per hand. Nothing beats it, and Trips is extra."
 - q: You played a hand perfectly and lost $60. Was it a bad decision?
@@ -1014,7 +1014,7 @@ Write the preflop EV of betting P as EV(P) = a + P·b, where b = P(win) − P(lo
 * If b < 0: EV(3) = a + 3b < a + b = EV(check, then always bet 1x) ≤ EV(check, then play the river perfectly).
 
 For aces: EV(4x) = 472094411/131098275 ≈ 3.6011, EV(3x) ≈ 2.8970, EV(check) = 38331809/17479770 ≈ 2.1929.
-Playing perfect strategy except always betting 3x instead of 4x raises the house edge from 2.19% to **9.86%**.
+Playing perfect strategy except always betting 3x instead of 4x raises the house edge from 2.18% to **9.86%**.
 :::
 
 **Simulator scenes**
@@ -1958,7 +1958,7 @@ On average you'll have **4.15 antes** in action per hand, and lose **2.185% of o
 Ante and 30 hands an hour, that's an expected cost of **$6.55 an hour**.
 
 **What perfect means, and what it doesn't.** No decision you make can give you an edge over the house.
-"Perfect" means you lose the least possible: 2.19% of the Ante. It doesn't mean you'll win tonight, and it
+"Perfect" means you lose the least possible: 2.18% of the Ante. It doesn't mean you'll win tonight, and it
 doesn't make Trips or any other side bet cheaper.
 
 ```chart
@@ -1997,7 +1997,7 @@ steps:
 
 ```quiz
 - q: What's the house edge of UTH with perfect strategy (standard Blind)?
-  options: ["0.53% of the Ante", "1.09% of the Ante", "2.19% of the Ante", "3.5% of the Ante"]
+  options: ["0.53% of the Ante", "1.09% of the Ante", "2.18% of the Ante", "3.5% of the Ante"]
   answer: 2
   explain: "2.185% of the Ante. 0.53% is the element of risk (lesson 15)."
 - q: What share of hands are 4x bets under perfect play?
@@ -2126,7 +2126,7 @@ steps:
 
 * Tell apart house edge per Ante, edge per initial wager, and element of risk.
 * Convert any edge into expected dollars per hour.
-* Know why "UTH has a 0.53% edge" and "UTH has a 2.19% edge" are both true.
+* Know why "UTH has a 0.53% edge" and "UTH has a 2.18% edge" are both true.
 
 **Lesson**
 
@@ -2172,7 +2172,7 @@ A folded hand counts as 2 antes wagered.
 
 ```quiz
 - q: Which number is the expected cost per hand as a share of your Ante, under perfect play?
-  options: ["0.53%", "1.09%", "2.19%", "4.15%"]
+  options: ["0.53%", "1.09%", "2.18%", "4.15%"]
   answer: 2
   explain: "2.185% of the Ante. 0.53% is per dollar in action, and 4.15 is the average antes in action per hand."
 - q: $10 Ante, 30 hands an hour, perfect play. Expected cost per hour?
@@ -2227,7 +2227,7 @@ You know this already. It's what Perfect strategy I taught, minus the EV sheet's
 **Why the river matters most.** Every shortcut that drops the outs count costs about **5% of the Ante**,
 far more than all the other simplifications put together. "Bet 1x only with a pair" sounds safe, but it
 folds hands that win often enough. Even with the chart's preflop and the basic flop rule, a river rule of
-"bet 1x only with a hidden pair or better" raises the edge from 2.19% to **7.13%**. Simplifying preflop to
+"bet 1x only with a hidden pair or better" raises the edge from 2.18% to **7.13%**. Simplifying preflop to
 "any pair or ace" costs 3.5% on its own. Keep the chart's preflop rules and the outs count, and you're within
 pennies of perfect.
 
@@ -2280,7 +2280,7 @@ Basic card EV = −54758439/2299422125 antes per hand. Simple card EV = −47068
 
 **Lesson**
 
-A 2.19% edge is tiny next to the swings. In one hand you can win 6 antes or lose 6, and rarely win
+A 2.18% edge is tiny next to the swings. In one hand you can win 6 antes or lose 6, and rarely win
 hundreds (a royal flush pays 500 to 1 on the Blind). The **standard deviation** of one hand is about
 **4.94 antes**. Over an hour of 30 hands it's about **27 antes**, while the expected loss is only 0.66
 antes. In the short run, **luck is about 40 times bigger than the edge**.
@@ -2407,7 +2407,7 @@ figures are exact, at a $10 Ante and 30 hands an hour.
 
 | Habit | House edge per Ante | Cost per hour | Extra vs perfect |
 |---|---|---|---|
-| Perfect play | 2.19% | $6.55 | — |
+| Perfect play | 2.18% | $6.55 | — |
 | Basic card | 2.38% | $7.14 | $0.59 |
 | Simple card | 2.71% | $8.12 | $1.57 |
 | 4x only with pairs and aces | 5.65% | $16.94 | $10.39 |
@@ -2863,13 +2863,13 @@ steps:
   answer: 0
   explain: "19 dealer outs: bet 1x."
 - q: What's the element of risk of UTH under perfect play?
-  options: ["0.53%", "1.09%", "2.19%", "4.15%"]
+  options: ["0.53%", "1.09%", "2.18%", "4.15%"]
   answer: 0
   explain: "Expected loss divided by the average money in action (4.15 antes)."
 - q: What's the biggest leak?
   options: ["Using the basic card", "Checking every hand to the river", "Skipping Trips", "Betting 4x with K5o"]
   answer: 1
-  explain: "It raises the edge from 2.19% to 32%."
+  explain: "It raises the edge from 2.18% to 32%."
 - q: Trips at an 8-6-5 table has a house edge of about…
   options: ["0.9%", "1.9%", "3.5%", "6.5%"]
   answer: 1
@@ -3226,7 +3226,7 @@ For each option, show:
 4. **How often this spot costs you** (preflop only, optional line): "Getting this wrong every time costs
    about **$1.91 an hour**" = 30 × P(hand class) × regret × Ante.
 
-The game-level number shown in the sheet header and on `#/bets`: "**House edge 2.19%** of the Ante with
+The game-level number shown in the sheet header and on `#/bets`: "**House edge 2.18%** of the Ante with
 perfect play (element of risk 0.53%)". When Trips is on: "**Trips**: house edge 1.90% of the Trips bet, any
 decision." The Trips line never changes between options.
 
@@ -3271,7 +3271,7 @@ The alternative card is always the best option. The copy is templated by situati
 
 * "**Hands** 42 · **Total wagered** $1,780 · **Expected** −$9.18 · **Actual** −$35.00 · **Luck** −$25.82"
 * "**Decisions vs perfect**: −$1.20 (3 mistakes)". This is the sum of regrets over the session, with a link to the misses.
-* "**Your edge per Ante**: 2.4%", with "(perfect play: 2.19%)".
+* "**Your edge per Ante**: 2.4%", with "(perfect play: 2.18%)".
 * Trips line, if any: "Trips: wagered $210 · expected −$4.00 · actual +$25".
 * In auto-play: the running result with the expected line dashed.
 
@@ -3308,12 +3308,12 @@ you'd really face. `?street=mixed` draws categories in proportion to how often t
 | `pre-small-pair` | preflop | 22–66 | {{2c 2d}}: check (−0.179 vs −0.288) |
 | `pre-low` | preflop | top card T or lower, not a pair | {{Ts 9s}}: check (+0.205 vs +0.185) |
 | `flop-hidden-pair` | flop | a hole card pairs the flop, or a pocket pair 33+ | {{9s 7d}} on {{9h Kc 2s}}: 2x (+0.865 vs +0.429) |
-| `flop-two-pair-plus` | flop | two pair or better using a hole card | {{Qc 5d}} on {{Qs 5h 9d}}: 2x (+2.517 vs +1.726) |
+| `flop-two-pair-plus` | flop | two pair or better using a hole card, including a set of deuces | {{Qc 5d}} on {{Qs 5h 9d}}: 2x (+2.517 vs +1.726) |
 | `flop-board-pair` | flop | paired flop, no hole-card help | {{9c 8d}} on {{Ks Kd 4c}}: check (−1.144 vs −1.548) |
 | `flop-flush-draw` | flop | four to a flush | {{Th 4h}} on {{Jh 8h 2c}}: 2x; {{9h 4h}}: check |
 | `flop-straight-draw` | flop | open-ended or gutshot, no pair, no 4-flush | {{9c 8d}} on {{Ts 7h 2c}}: check (−0.140 vs −0.235) |
 | `flop-nothing` | flop | none of the above | {{Kc 3d}} on {{8s 5h 2c}}: check (−1.108 vs −1.373) |
-| `flop-deuces` | flop | pocket 22 | {{2c 2d}} on {{9s 9h 5c}}: check (−0.131 vs −0.284) |
+| `flop-deuces` | flop | pocket 22 and no deuce on the flop | {{2c 2d}} on {{9s 9h 5c}}: check (−0.131 vs −0.284) |
 | `river-hidden-pair` | river | hidden pair or better | {{Td 4c}} on {{Ts Kh 7d 3s 2c}}: 1x (+0.261) |
 | `river-outs-low` | river | no hidden pair, ≤ 18 outs | (generated) |
 | `river-outs-edge` | river | no hidden pair, 19–23 outs | {{Qc 7d}} on {{Kd Jh 9s 5c 2d}}: 1x (19 outs); {{Jc 9d}} on {{8s 8h 5c 3d 2s}}: fold (23) |
@@ -3350,7 +3350,7 @@ exact EV still shown). The tier comes from §8.2.
 | `flop-flush-draw` | "Four to a flush: 2x only with a ten or better of that suit in your hand." |
 | `flop-straight-draw` | "Straight draws: check, and bet 1x on the river if it comes." |
 | `flop-nothing` | "No pair, no draw: check." |
-| `flop-deuces` | "Pocket deuces stay a check on the flop." |
+| `flop-deuces` | "Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board). Hit a set and rule (a) says 2x." |
 | `river-hidden-pair` | "Hidden pair or better: always bet 1x." |
 | `river-outs-low` / `-edge` / `-high` | "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}." |
 | `river-board-plays` | "When the board plays, bet 1x: it's usually a tie." |
@@ -3502,7 +3502,7 @@ perfect $10: 6.555 ; basic $10: 7.144 ; simple $10: 8.123 ; Trips $5 8-6-5: 2.85
   Treasury Brisbane, Club Hotel Loutraki) and pokerlistings.com. Every source uses Blind 500/50/10/3/3:2/1.
 * Trips tables seen in the wild: 8-7-4 (Tulalip, Crown Sydney), 7-6-5 (Sun International); 8-6-5 is the
   usual Shuffle Master table (D6a).
-* Published game edge "≈ 2.19% of the Ante" (Crown Sydney, Treasury Brisbane ≈ 2.18%) and "≈ 0.53% of
+* Published game edge "≈ 2.19% of the Ante" (published figure; exact 2.18%; Crown Sydney, Treasury Brisbane ≈ 2.18%) and "≈ 0.53% of
   total wagered": they agree with our exact 2.185% / 0.526%.
 * The basic strategy is the classic published simple strategy (Wizard of Odds' UTH page). That page wasn't
   reachable from this container, so the rules are the well-known version, and their formalisation and every

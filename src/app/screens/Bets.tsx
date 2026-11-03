@@ -14,7 +14,7 @@ import { useContent, useStore } from '../context';
 import { NotFound } from './NotFound';
 import { HAND_LABEL } from './handLabels';
 
-const NAME: Record<WagerId, string> = {
+export const NAME: Record<WagerId, string> = {
   ante: 'Ante',
   blind: 'Blind',
   play: 'Play',
@@ -90,6 +90,16 @@ export function BetsList() {
       </section>
     </div>
   );
+}
+
+/** The wager's page name (its h1), or undefined for an unknown wager id. */
+export function wagerName(
+  id: string,
+  bets: Partial<Record<WagerId, { name?: string }>>,
+): string | undefined {
+  if (!(WAGER_IDS as readonly string[]).includes(id)) return undefined;
+  const w = id as WagerId;
+  return bets[w]?.name ?? NAME[w];
 }
 
 export function BetDetail({ id }: { id: string }) {

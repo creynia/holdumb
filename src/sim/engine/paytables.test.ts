@@ -78,6 +78,12 @@ describe('money', () => {
     expect(formatMoney(3900, { sign: true })).toBe('+$39');
     expect(formatMoney(125000)).toBe('$1,250');
     expect(formatMoney(750)).toBe('$7.50');
+    expect(formatMoney(0)).toBe('$0');
+    expect(formatMoney(0, { sign: true })).toBe('$0');
+    expect(formatMoney(50)).toBe('$0.50');
+    expect(formatMoney(100)).toBe('$1');
+    expect(formatMoney(-100, { sign: true })).toBe('-$1');
+    expect(formatMoney(48_000)).toBe('$480');
     expect(formatPct({ num: 48987n, den: 2572780n }, 3)).toBe('1.904%');
     expect(formatPct({ num: -50643648973n, den: 2317817502000n })).toBe('-2.18%');
   });

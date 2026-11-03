@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seedRng } from '../engine/rng';
-import type { RngState } from '../engine/types';
+import type { Card, RngState } from '../engine/types';
 import { categorize } from './categories';
 import { preflopRow } from '../math/preflop';
 import { previewJob } from '../math/preview';
@@ -77,11 +77,40 @@ describe('drill', () => {
     expect(c('9c 8d', 'Ts 7h 2c')).toBe('flop-straight-draw');
     expect(c('Kc 3d', '8s 5h 2c')).toBe('flop-nothing');
     expect(c('2c 2d', '9s 9h 5c')).toBe('flop-deuces');
+    expect(c('2c 2d', '9s 7h 5c')).toBe('flop-deuces');
+    expect(c('2c 2d', '2s 9h 5c')).toBe('flop-two-pair-plus');
     expect(c('Td 4c', 'Ts Kh 7d 3s 2c')).toBe('river-hidden-pair');
     expect(c('Qc 7d', 'Kd Jh 9s 5c 2d')).toBe('river-outs-edge');
     expect(c('Jc 9d', '8s 8h 5c 3d 2s')).toBe('river-outs-edge');
     expect(c('8c 6d', 'Kh Qs 4d 3c 2h')).toBe('river-outs-high');
     expect(c('4c 3d', 'As Ks Qs Jd Th')).toBe('river-board-plays');
+  });
+  it('flop deuces: exact previews pin the reminder (check, check, 2x on a set)', () => {
+    const ev = (hole: string, flop: string, multiple: number) => {
+      const g = previewJob({
+        street: 'flop',
+        hole: parseCards(hole) as [Card, Card],
+        board: parseCards(flop),
+        blindPaytable: 'blind-standard',
+        ante: 1000,
+      });
+      let s = g.next();
+      while (!s.done) s = g.next();
+      const o = s.value.options.find(
+        (x) =>
+          x.action.type === (multiple ? 'play' : 'check') &&
+          (!multiple || (x.action as { multiple?: number }).multiple === multiple),
+      )!;
+      return o.ev;
+    };
+    const eq = (a: { num: bigint; den: bigint }, n: bigint, d: bigint) =>
+      expect(a.num * d).toBe(n * a.den);
+    eq(ev('2c 2d', '9s 9h 5c', 0), -23377n, 178365n);
+    eq(ev('2c 2d', '9s 9h 5c', 2), -6749n, 23782n);
+    eq(ev('2c 2d', '9s 7h 5c', 0), -216725n, 214038n);
+    eq(ev('2c 2d', '9s 7h 5c', 2), -651571n, 535095n);
+    eq(ev('2c 2d', '2s 9h 5c', 2), 84915n, 23782n);
+    eq(ev('2c 2d', '2s 9h 5c', 0), 320527n, 118910n);
   });
   it('interesting spots: about 60% close', () => {
     let tableReady = true;
