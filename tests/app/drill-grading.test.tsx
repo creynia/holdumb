@@ -91,7 +91,7 @@ async function answer(
   await act(() => new Promise((r) => setTimeout(r, 0)));
   const res = el.querySelector('[data-testid="drill-result"]');
   expect(res, 'result shown').toBeTruthy();
-  return { el, text: res!.querySelector('p[role="status"]')!.textContent };
+  return { el, text: res!.querySelector('[data-testid="drill-headline"]')!.textContent };
 }
 
 const FLOP = 'Kc 3d 8s 5h 2c';
