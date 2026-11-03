@@ -51,7 +51,9 @@ function straightDraw(ranks: readonly number[]): boolean {
 }
 
 export function flopCategory(hole: readonly Card[], flop: readonly Card[]): DrillCategoryId {
-  if (hole[0]! >> 2 === 0 && hole[1]! >> 2 === 0) return 'flop-deuces';
+  // Pocket deuces with no third deuce on the flop; a set of deuces is a made hand (rule a).
+  if (hole[0]! >> 2 === 0 && hole[1]! >> 2 === 0 && !flop.some((c) => c >> 2 === 0))
+    return 'flop-deuces';
   if (flopMade(hole, flop)) return 'flop-two-pair-plus';
   if (hiddenPairFlop(hole, flop, [0])) return 'flop-hidden-pair';
   const suits = [0, 0, 0, 0];
