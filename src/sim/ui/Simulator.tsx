@@ -15,7 +15,7 @@ import { MoveLog } from './MoveLog';
 import { SessionPanel } from './SessionPanel';
 import { SimAutoPlay } from './SimAutoPlay';
 import { SimTools } from './SimTools';
-import { SixCardPanel } from './SixCardPanel';
+import { SixCardPanelLazy } from './SixCardPanelLazy';
 import { StatusBar } from './StatusBar';
 import { StepPanel } from './StepPanel';
 import { Table, useOrientation } from './Table';
@@ -199,7 +199,7 @@ export function Simulator(props: SimulatorViewProps) {
           }
         />
       ) : null}
-      {sandbox && scene.ui?.showSettings ? <SixCardPanel d={d} /> : null}
+      {sandbox && scene.ui?.showSettings ? <SixCardPanelLazy d={d} /> : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
       {sandbox ? <MoveLog hands={moveLog} evMode={settings.evMode} /> : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />

@@ -29,8 +29,7 @@ import {
 } from './runner';
 import type { SceneContext } from './runner';
 import { sceneEvMode, stepConfirmOn, stepEvMode } from './modes';
-import { addSixCard, applySixCard, validSixCardBet } from './sixcard';
-import type { SixCardOutcome, SixCardSetting } from './sixcard';
+import type { SixCardOutcome, SixCardSetting } from '../engine/sixcard';
 import type {
   CircleId,
   ConfirmOn,
@@ -223,6 +222,30 @@ function rebuild(
     forcedDeals: [...prev.forcedDeals],
   });
   return { ...g, rng: prev.rng, handCount: prev.handCount, stats: prev.stats };
+}
+
+/**
+ * I062: the Six Card Bonus rules, registered by `./sixcard` when it loads (the lazy Six Card panel,
+ * tests). Kept out of this module so the side bet's tables and evaluator stay out of the
+ * first-paint bundle. Until they are registered the table simply has no Six Card bet.
+ */
+export interface SixCardRules {
+  valid(bet: Cents): boolean;
+  apply(
+    state: GameState,
+    setting: SixCardSetting | null,
+  ): { state: GameState; outcome: SixCardOutcome | null };
+  add(t: SessionTotals, o: SixCardOutcome | null): SessionTotals;
+  /** The exact edge (−EV per unit wagered) of a Six Card paytable. */
+  edge(paytable: SixCardSetting['paytable']): Fraction;
+}
+let sixCardRules: SixCardRules | null = null;
+export function registerSixCardRules(r: SixCardRules): void {
+  sixCardRules = r;
+}
+/** The registered Six Card edge, or null before the Six Card UI has loaded. */
+export function sixCardEdgeOf(paytable: SixCardSetting['paytable']): Fraction | null {
+  return sixCardRules ? sixCardRules.edge(paytable) : null;
 }
 
 export class SimDriver {
@@ -664,13 +687,13 @@ export class SimDriver {
       if (action.type === 'deal') this.beginHandTrack();
       if (decision) this.trackDecision(pv, action);
       this.game = r.state;
-      if (action.type === 'deal') {
+      if (action.type === 'deal' && sixCardRules && this.sixCard) {
         // I062: the Six Card Bonus settles with the deal (it does not depend on play).
-        const six = applySixCard(this.game, this.sixCard);
+        const six = sixCardRules.apply(this.game, this.sixCard);
         this.game = six.state;
         this.sixCardLast = six.outcome;
-        this.totals = addSixCard(this.totals, six.outcome);
-      }
+        this.totals = sixCardRules.add(this.totals, six.outcome);
+      } else if (action.type === 'deal') this.sixCardLast = null;
       this.lastEvents = r.events;
       this.eventSeq++;
       this.emit({
@@ -727,7 +750,7 @@ export class SimDriver {
    * Returns false (and changes nothing) for an amount outside whole dollars $1–$25.
    */
   setSixCard(setting: SixCardSetting | null): boolean {
-    if (setting && !validSixCardBet(setting.bet)) return false;
+    if (setting && (!sixCardRules || !sixCardRules.valid(setting.bet))) return false;
     this.sixCard = setting ? { ...setting } : null;
     this.notify();
     return true;

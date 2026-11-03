@@ -13,8 +13,9 @@ import { formatPct } from '../engine/money';
 import type { TableRules } from '../engine/types';
 import type { SimulateResult, StrategyId, StrategySpec } from '../strategy/types';
 import type { SixCardSetting } from '../engine/sixcard';
-import { sixCardEdge } from '../math/edges';
 import { neg, scale } from '../math/fraction';
+import type { Fraction } from '../math/types';
+import { sixCardEdgeOf } from '../scene/driver';
 import { BankrollChart } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
 import { Say, announce, muteAnnouncements } from './announcer';
@@ -100,6 +101,8 @@ export function AutoPlayPanel({
   const [cmp, setCmp] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [result, setResult] = useState<SimulateResult | null>(null);
+  /** I062: the Six Card edge of the last run, loaded on demand (it is not in the first paint). */
+  const [sixEdge, setSixEdge] = useState<Fraction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const ctl = useRef<AbortController | null>(null);
   useEffect(() => () => ctl.current?.abort(), []);
@@ -161,6 +164,8 @@ export function AutoPlayPanel({
         },
         { key: 'auto-play', signal: ac.signal, onProgress: setProgress },
       );
+      // The Six Card rules are registered whenever a bet is set (they load with the Six Card UI).
+      setSixEdge(sixCard ? sixCardEdgeOf(sixCard.paytable) : null);
       setResult(res);
       setProgress(null);
       unmute();
@@ -179,9 +184,7 @@ export function AutoPlayPanel({
   // I062: the Six Card bets actually taken expect −edge × wagered (exact), per session.
   const six = main?.sixCard;
   const sixExpected =
-    six && sixCard
-      ? fracToNumber(scale(neg(sixCardEdge(sixCard.paytable).edge), six.wageredCents)) / sessions
-      : 0;
+    six && sixEdge ? fracToNumber(scale(neg(sixEdge), six.wageredCents)) / sessions : 0;
   const exactNet = main ? perHand * (main.handsPlayed / sessions) + sixExpected : 0;
   const simNet = main ? main.meanFinal - bankroll : 0;
   const shown = shownNet(exactNet, simNet);

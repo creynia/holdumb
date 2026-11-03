@@ -4,8 +4,11 @@
 // goes straight into the bankroll and the session ledger gets the wager, the result and the exact
 // expectation (−edge × wager), so "Perfect play expects" and luck stay exact.
 import type { SixCardOutcome } from '../engine/sixcard';
-import { sixCardEdge } from '../math/edges';
+import { applySixCard, validSixCardBet } from '../engine/sixcard';
+import { sixCardEdge } from '../math/sixcardEdge';
 import { add, neg, scale } from '../math/fraction';
+import { provideSixCardRule } from '../strategy/simulate';
+import { registerSixCardRules } from './driver';
 import type { SessionTotals } from './driver';
 
 // The skip-and-settle step lives in the engine, so auto-play shares it (one rule, one stream).
@@ -26,3 +29,13 @@ export function addSixCard(t: SessionTotals, o: SixCardOutcome | null): SessionT
     ),
   };
 }
+
+// Loading this module turns the Six Card Bonus on for every table (see SixCardRules in driver.ts).
+registerSixCardRules({
+  valid: validSixCardBet,
+  apply: applySixCard,
+  add: addSixCard,
+  edge: (id) => sixCardEdge(id).edge,
+});
+// ...and for auto-play in the in-thread fallback (the worker provides it in its own bundle).
+provideSixCardRule(applySixCard);

@@ -27,7 +27,6 @@ export {
   HANDS_PER_HOUR,
   DEALER_QUALIFY_PROBABILITY,
   perHour,
-  sixCardEdge,
   tripsEdge,
   tripsPerHour,
 } from './edges';

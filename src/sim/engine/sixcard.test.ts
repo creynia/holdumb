@@ -2,7 +2,7 @@
 // over all C(52,6), not the app's evaluator), the evaluator checked against that classifier, and
 // the bonus-card draw and settlement.
 import { describe, expect, it } from 'vitest';
-import { SIX_CARD_COUNTS, SIX_CARD_TOTAL, sixCardEdge } from '../math/edges';
+import { SIX_CARD_COUNTS, SIX_CARD_TOTAL, sixCardEdge } from '../math/sixcardEdge';
 import { frac } from '../math/fraction';
 import { parseCard } from './cards';
 import { evaluateN } from './evaluator';

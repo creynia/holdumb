@@ -2,8 +2,7 @@
 // Pure; a generator, so the runner can slice it and cancel it by abandoning it (gen.return()).
 import type { Progress } from '../engine/job';
 import { applyAction, createGame, equity, visibleView } from '../engine/game';
-import { applySixCard } from '../engine/sixcard';
-import type { SixCardSetting } from '../engine/sixcard';
+import type { SixCardSetting, applySixCard } from '../engine/sixcard';
 import { validateAction } from '../engine/validate';
 import { HAND_CATEGORIES } from '../engine/types';
 import type { DecisionAction, GameState, PlayMultiple } from '../engine/types';
@@ -27,6 +26,17 @@ function affordable(state: GameState, want: DecisionAction): DecisionAction {
     return { type: 'fold' };
   }
   return want;
+}
+
+/**
+ * I062: the table's Six Card rule (engine/sixcard.ts `applySixCard`), supplied by the worker entry
+ * and, for the in-thread fallback, by the Six Card UI when it loads. Not imported here, because
+ * this module is part of the first-paint bundle (the in-thread transport) and the side bet must
+ * not be. A run that asks for Six Card without the rule fails loudly instead of ignoring it.
+ */
+let sixCardRule: typeof applySixCard | null = null;
+export function provideSixCardRule(rule: typeof applySixCard): void {
+  sixCardRule = rule;
 }
 
 type SixTotals = NonNullable<SessionSeries['sixCard']>;
@@ -125,7 +135,8 @@ function dealAndPlay(
   let s = dealt.state;
   if (sixCard) {
     // I062: the side bet settles with the deal, exactly as the table does (engine/sixcard.ts).
-    const r = applySixCard(s, sixCard);
+    if (!sixCardRule) throw new Error('simulate: the Six Card rules are not loaded');
+    const r = sixCardRule(s, sixCard);
     s = r.state;
     if (r.outcome?.kind === 'settled') {
       six.taken++;

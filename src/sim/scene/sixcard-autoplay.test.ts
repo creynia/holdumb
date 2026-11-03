@@ -11,6 +11,8 @@ import type { PreviewFn } from './driver';
 import { STRATEGIES } from '../strategy/presets';
 import { simulateJob } from '../strategy/simulate';
 import type { SimulateRequest } from '../strategy/types';
+// Registers the Six Card rules with the driver and the in-thread simulate job, as the UI does.
+import './sixcard';
 
 const run = (req: SimulateRequest) => {
   const g = simulateJob(req);

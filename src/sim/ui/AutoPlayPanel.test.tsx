@@ -5,6 +5,8 @@ import { AutoPlayPanel, alwaysMaxNote, shownNet } from './AutoPlayPanel';
 import { strategyMetrics } from '../strategy/metrics';
 import { fracToNumber } from '../strategy/fraction';
 import { DEFAULT_SIM_SETTINGS } from './types';
+// The Six Card rules load with the (lazy) Six Card UI; the in-thread client needs them registered.
+import '../scene/sixcard';
 
 afterEach(cleanup);
 describe('AutoPlayPanel', () => {

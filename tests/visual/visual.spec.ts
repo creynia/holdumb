@@ -29,6 +29,7 @@ async function settle(page: Page) {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await expect(page.locator('[data-ev="pending"]')).toHaveCount(0);
   await expect(page.getByLabel('Simulation progress')).toHaveCount(0); // no auto-play run in flight
+  await expect(page.locator('[data-lazy-pending]')).toHaveCount(0); // lazy panels have loaded
   // A click can scroll the page; the viewport snapshot is always of the first view.
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.evaluate(

@@ -1,7 +1,5 @@
 // Exact constants that do not depend on a decision (simulator.md §2.3, decisions.md §4).
 import { TRIPS_PAYTABLES } from '../engine/paytables';
-import { SIX_CARD_PAYTABLES } from '../engine/sixcard';
-import type { SixCardPaytableId } from '../engine/sixcard';
 import type { HandCategory, TripsPaytableId } from '../engine/types';
 import { frac, neg, scale } from './fraction';
 import { wagerTier } from './tiers';
@@ -41,37 +39,8 @@ export function tripsEdge(id: TripsPaytableId): WagerEdge {
   return { edge, tier: wagerTier(edge), pWin: frac(won, SEVEN_CARD_TOTAL) };
 }
 
-/**
- * Best-5-of-6 category counts over C(52,6) = 20,358,520 (curriculum.md §7; re-derived by an
- * independent exhaustive count in sixcard.test.ts). Only the paying categories are needed.
- */
-export const SIX_CARD_TOTAL = 20_358_520n;
-export const SIX_CARD_COUNTS: Readonly<Partial<Record<HandCategory, bigint>>> = {
-  'royal-flush': 188n,
-  'straight-flush': 1_656n,
-  quads: 14_664n,
-  'full-house': 165_984n,
-  flush: 205_792n,
-  straight: 361_620n,
-  trips: 732_160n,
-};
-
-/** Six Card Bonus edge (I062, D5a): −EV per unit wagered and P(win), exact. */
-export function sixCardEdge(id: SixCardPaytableId): WagerEdge {
-  let won = 0n;
-  let paid = 0n;
-  for (const [cat, to1] of Object.entries(SIX_CARD_PAYTABLES[id].pays) as [
-    HandCategory,
-    number,
-  ][]) {
-    const n = SIX_CARD_COUNTS[cat];
-    if (n === undefined) throw new Error(`no 6-card count for ${cat}`);
-    won += n;
-    paid += n * BigInt(to1);
-  }
-  const edge = neg(frac(paid - (SIX_CARD_TOTAL - won), SIX_CARD_TOTAL));
-  return { edge, tier: wagerTier(edge), pWin: frac(won, SIX_CARD_TOTAL) };
-}
+// I062: the Six Card Bonus edge lives in ./sixcardEdge.ts, imported directly (never re-exported)
+// so it loads with the Six Card UI only, not in the first-paint bundle.
 
 /** EV per hand (antes) under perfect play, Trips excluded (decisions.md §4). */
 export const GAME_EV: Fraction = frac(-50643648973n, 2317817502000n);

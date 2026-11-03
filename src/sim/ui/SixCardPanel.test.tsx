@@ -42,7 +42,8 @@ describe('Six Card Bonus panel (I062)', () => {
         }}
       />,
     );
-    const toggle = screen.getByTestId<HTMLInputElement>('six-card-toggle');
+    // The panel is a lazy chunk (I062 bundle budget): wait for it.
+    const toggle = await screen.findByTestId<HTMLInputElement>('six-card-toggle');
     expect(toggle.checked).toBe(false);
     expect(screen.queryByTestId('six-card-edge')).toBeNull();
     fireEvent.click(toggle);

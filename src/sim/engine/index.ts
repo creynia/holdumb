@@ -18,16 +18,8 @@ export {
   blindPay,
   tripsPay,
 } from './paytables';
-export {
-  SIX_CARD_PAYTABLES,
-  SIX_CARD_PAYTABLE_IDS,
-  DEFAULT_SIX_CARD_PAYTABLE,
-  SIX_CARD_MIN,
-  SIX_CARD_MAX,
-  bonusCards,
-  settleSixCard,
-  sixCardPay,
-} from './sixcard';
+// I062: Six Card values are imported from './sixcard' directly (not re-exported here), so the
+// side bet stays out of the first-paint bundle; only its types are re-exported.
 export type { SixCardPaytable, SixCardPaytableId, SixCardResult } from './sixcard';
 export { DEFAULT_RULES, resolveRules } from './rules';
 export { WAGER_IDS, WAGERS, settleHand } from './wagers';
