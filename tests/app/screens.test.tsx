@@ -1070,6 +1070,18 @@ describe('Settings: Show EV and Confirm bets (D40, I091)', () => {
     expect(box(el).checked).toBe(true);
     expect(fieldsetOf(el, 'Which bets').disabled).toBe(false);
   });
+  it('re-ticking restores the stored scope, not All bets', async () => {
+    const { el, store } = await mount('#/settings');
+    await act(() => box(el).click());
+    await act(() => [...tierRadios(el)].find((r) => r.value === 'blunder')!.click());
+    await act(() => box(el).click());
+    expect(store.settings.confirmOn).toBe('never');
+    await act(() => box(el).click());
+    expect(store.settings.confirmOn).toBe('blunder');
+    expect(box(el).checked).toBe(true);
+    expect(fieldsetOf(el, 'Which bets').disabled).toBe(false);
+    expect([...tierRadios(el)].find((r) => r.checked)?.value).toBe('blunder');
+  });
   it('picking a scope stores it; unticking keeps it and greys Which bets with it still shown', async () => {
     const { el, store } = await mount('#/settings');
     await act(() => box(el).click());

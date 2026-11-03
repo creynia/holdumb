@@ -30,7 +30,7 @@ const EV_MODE_OPTIONS: readonly Choice<SettingsData['evMode']>[] = [
 
 /** Which bets the Confirm box asks about (D40); the box itself is on or off. */
 const CONFIRM_TIER_OPTIONS: readonly Choice<ConfirmTiers>[] = [
-  { value: 'all', label: 'All bets', hint: 'Every move waits for a second tap.' },
+  { value: 'all', label: 'All bets', hint: 'Every move asks first.' },
   {
     value: 'costly',
     label: 'Medium and bad bets',
