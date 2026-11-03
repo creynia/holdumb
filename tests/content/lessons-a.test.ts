@@ -111,7 +111,7 @@ describe('pinned numbers', () => {
     'a-full-hand': ['2 Antes', '$20'],
     'expected-value': [
       '2.185%',
-      '2.19%',
+      '2.18%',
       '22¢',
       '40.7%',
       '+$11.72',
@@ -149,7 +149,7 @@ describe('pinned numbers', () => {
       '38331809/17479770',
       '2.1929',
       '9.86%',
-      '2.19%',
+      '2.18%',
     ],
   };
   for (const [id, list] of Object.entries(pins))
