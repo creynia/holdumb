@@ -58,3 +58,51 @@ test.describe('axe: every lesson', () => {
     });
   }
 });
+
+// I033: every visible control is at least 44x44 CSS px (chart cells 24).
+const TARGET_SIZES = [
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+];
+for (const size of TARGET_SIZES) {
+  test.describe(`tap targets ${size.width}x${size.height}`, () => {
+    test.use({ viewport: size });
+    for (const path of ['/play', '/settings', `/learn/${lessonIds[0]}`]) {
+      test(`${path} controls are at least 44px`, async ({ page }) => {
+        test.skip(test.info().project.name !== 'mobile', 'viewport is set by this spec');
+        await page.goto(`/#${path}`);
+        await expect(page.locator('main#main')).toBeVisible();
+        if (path === '/play') await page.locator('details.sim-autoplay').waitFor();
+        const small = await page.evaluate(() =>
+          [
+            ...document.querySelectorAll<HTMLElement>(
+              'button, a, summary, input[type=checkbox], input[type=radio], select',
+            ),
+          ]
+            .filter(
+              (e) =>
+                e.getClientRects().length > 0 &&
+                e.getBoundingClientRect().width > 0 &&
+                !e.closest('.sr, [hidden]') &&
+                !(e.matches('a:not(.btn)') && e.closest('p, li, .prose')),
+            )
+            .map((e) => {
+              const t = e.matches('[type=checkbox], [type=radio]') ? (e.closest('label') ?? e) : e;
+              const r = t.getBoundingClientRect();
+              const min = e.closest('.sim-chart-grid') ? 24 : 44;
+              return {
+                t: (e.textContent || e.tagName).trim().slice(0, 30),
+                w: r.width,
+                h: r.height,
+                min,
+              };
+            })
+            .filter((r) => r.w < r.min - 0.5 || r.h < r.min - 0.5),
+        );
+        expect(small, `${path} small targets`).toEqual([]);
+      });
+    }
+  });
+}
