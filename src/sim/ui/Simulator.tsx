@@ -30,7 +30,7 @@ import { useMoveLog } from './hooks/useMoveLog';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
 import { useWatch } from './hooks/useWatch';
-import { decodeMoveLog } from './moveLog';
+import { decodeMoveLog } from './moveLogData';
 import { decodeSnapshot } from './persist';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
