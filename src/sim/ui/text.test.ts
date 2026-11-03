@@ -30,8 +30,10 @@ import {
   fmtVsBest,
   foldAnnouncement,
   foldRevealText,
+  handLabel,
   handName,
   headline,
+  playerNearMiss,
   optionKeyOf,
 } from './text';
 
@@ -56,6 +58,53 @@ describe('exact fraction formatting', () => {
     expect(fmtVsBest(frac(1, 10))).toBe('less than 1¢');
     expect(fmtVsBest(frac(1408))).toBe('−$14.08');
     expect(fmtCost(frac(0))).toBe('$0');
+  });
+});
+
+describe('near-miss notes in the hand result (I005)', () => {
+  const settle = (player: string, dealer: string, board: string, folded = false) => {
+    const p = parseCards(player);
+    const d = parseCards(dealer);
+    const b = parseCards(board);
+    const deal = {
+      player: [p[0]!, p[1]!] as const,
+      dealer: [d[0]!, d[1]!] as const,
+      board: [b[0]!, b[1]!, b[2]!, b[3]!, b[4]!] as const,
+      forced: true,
+    };
+    return {
+      deal,
+      result: settleHand(
+        deal,
+        { ante: 1000, blind: 1000, trips: 0 },
+        { multiple: 1 },
+        folded,
+        resolveRules(),
+      ),
+    };
+  };
+  it('a losing pair of threes with four clubs says why it is not a flush', () => {
+    const { deal, result } = settle('Ac 3d', 'Td Ts', 'Kc 8c 2c 3h 7d');
+    const text = describeResult(result, deal);
+    expect(text).toContain(
+      "The dealer's pair of tens beats your pair of threes (four clubs, one short of a flush).",
+    );
+    expect(handLabel(result.player, playerNearMiss(result, deal))).toBe(
+      'pair of threes (four clubs, one short of a flush)',
+    );
+    expect(handLabel(result.dealer)).toBe('pair of tens');
+  });
+  it('a winning hand carries the note too, and four to a straight reads the same either way', () => {
+    const { deal, result } = settle('9h 3d', '5c 3s', '8c 7s 6d 2h Kh');
+    expect(describeResult(result, deal)).toContain('(four to a straight, one short) beats');
+  });
+  it('shows no note without the deal, on a fold, or when nothing is one short', () => {
+    const lost = settle('Ac 3d', 'Td Ts', 'Kc 8c 2c 3h 7d');
+    expect(describeResult(lost.result)).not.toContain('one short');
+    const folded = settle('Ac 3d', 'Td Ts', 'Kc 8c 2c 3h 7d', true);
+    expect(describeResult(folded.result, folded.deal)).not.toContain('one short');
+    const plain = settle('Ah Kd', '7c 2s', 'Qs 9d 4c 6h 2d');
+    expect(describeResult(plain.result, plain.deal)).not.toContain('one short');
   });
 });
 

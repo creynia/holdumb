@@ -1,7 +1,8 @@
 // Presentational text helpers: money/EV formatting, button labels, hand and settlement prose.
-import { formatMoney, formatPct } from '../engine';
+import { formatMoney, formatPct, nearMisses } from '../engine';
 import { RIVER_UNSEEN, classWeight, groupOuts } from '../math';
 import type {
+  Deal,
   Action,
   Card,
   Cents,
@@ -366,15 +367,33 @@ function tieLead(p: EvaluatedHand, d: EvaluatedHand): string {
   return 'Tie: same five-card hand.';
 }
 
+/** The player's near-miss suffix, "(four clubs, one short of a flush)", or '' (settled hands only). */
+function nearSuffix(r: HandResult, deal?: Deal): string {
+  const note = playerNearMiss(r, deal);
+  return note ? ` (${note})` : '';
+}
+
+/** The one near-miss note for the player's seven cards, or null. Never for folds or the dealer. */
+export function playerNearMiss(r: HandResult, deal?: Deal): string | null {
+  if (!deal || r.outcome === 'fold') return null;
+  return nearMisses([...deal.player, ...deal.board], r.player.category)[0] ?? null;
+}
+
+/** A hand's felt label: its name, plus the player's near-miss note when there is one. */
+export function handLabel(h: EvaluatedHand, note?: string | null): string {
+  return `${handName(h)}${note ? ` (${note})` : ''}`;
+}
+
 /** The result toast: "Your pair of kings beats the dealer's pair of nines. Ante +$10, ... Net +$50." */
-export function describeResult(r: HandResult): string {
+export function describeResult(r: HandResult, deal?: Deal): string {
+  const near = nearSuffix(r, deal);
   let lead: string;
   if (r.outcome === 'win') {
-    const p = handNameVs(r.player, r.dealer);
+    const p = `${handNameVs(r.player, r.dealer)}${near}`;
     lead = `Your ${p} ${plural(r.player) ? 'beat' : 'beats'} the dealer's ${handNameVs(r.dealer, r.player)}.`;
   } else if (r.outcome === 'lose') {
     const d = handNameVs(r.dealer, r.player);
-    lead = `The dealer's ${d} ${plural(r.dealer) ? 'beat' : 'beats'} your ${handNameVs(r.player, r.dealer)}.`;
+    lead = `The dealer's ${d} ${plural(r.dealer) ? 'beat' : 'beats'} your ${handNameVs(r.player, r.dealer)}${near}.`;
   } else if (r.outcome === 'tie') lead = tieLead(r.player, r.dealer);
   else lead = 'Folded.';
   const parts = r.wagers.map(describeSettlement).join(', ');
