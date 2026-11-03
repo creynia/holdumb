@@ -1,0 +1,74 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "npx vite preview --port 4173 --strictPort",
+      "startServerReadyPattern": "Local",
+      "url": [
+        "http://localhost:4173/#/",
+        "http://localhost:4173/#/play",
+        "http://localhost:4173/#/learn/a-full-hand"
+      ],
+      "numberOfRuns": 1,
+      "settings": {
+        "chromeFlags": "--no-sandbox --headless=new",
+        "onlyCategories": ["performance", "accessibility", "best-practices", "pwa"]
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": [
+          "error",
+          {
+            "minScore": 0.85,
+            "aggregationMethod": "pessimistic"
+          }
+        ],
+        "categories:accessibility": [
+          "error",
+          {
+            "minScore": 0.95,
+            "aggregationMethod": "pessimistic"
+          }
+        ],
+        "categories:best-practices": [
+          "error",
+          {
+            "minScore": 0.9,
+            "aggregationMethod": "pessimistic"
+          }
+        ],
+        "largest-contentful-paint": [
+          "error",
+          {
+            "maxNumericValue": 2500,
+            "aggregationMethod": "pessimistic"
+          }
+        ],
+        "total-blocking-time": [
+          "error",
+          {
+            "maxNumericValue": 300,
+            "aggregationMethod": "pessimistic"
+          }
+        ],
+        "cumulative-layout-shift": [
+          "warn",
+          {
+            "maxNumericValue": 0.05,
+            "aggregationMethod": "pessimistic"
+          }
+        ],
+        "installable-manifest": [
+          "error",
+          {
+            "aggregationMethod": "pessimistic"
+          }
+        ]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "lhci-report"
+    }
+  }
+}
