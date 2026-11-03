@@ -1,22 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { cardFace } from '../../content/cards';
+import { describeResult, handName, useAnnounceFrom } from '../../sim';
+import type { Card, RngState } from '../../sim';
+// Deep import on purpose: through the strategy barrel this module would sit in the first-paint
+// chunk (Rollup groups modules by what the entry can reach), and only this screen needs it.
 import {
-  describeResult,
   gradeShowdown,
-  handName,
   nextShowdownSpot,
   showdownFromCode,
   showdownTruth,
-  useAnnounceFrom,
-} from '../../sim';
+} from '../../sim/strategy/showdown';
 import type {
-  Card,
-  RngState,
   ShowdownAnswers,
   ShowdownBlind,
   ShowdownSpot,
   ShowdownWinner,
-} from '../../sim';
+} from '../../sim/strategy/showdown';
 import { Link } from '../components/Link';
 import { useStore } from '../context';
 import { rngFromSeed } from './Drill';
