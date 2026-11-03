@@ -20,15 +20,40 @@ const entries: Entry<never>[] = [];
 let contentPromise: Promise<ContentBundle> | undefined;
 let contentDone: ContentBundle | undefined;
 
+// A failed chunk load (offline before the SW cached it, a flaky network) must not be cached:
+// the rejected promise is dropped so the next attempt (Retry, or the next visit) starts afresh.
 function loadContent(): Promise<ContentBundle> {
-  contentPromise ??= import('virtual:content').then((m) => (contentDone = m.default));
+  contentPromise ??= import('virtual:content').then(
+    (m) => (contentDone = m.default),
+    (err: unknown) => {
+      contentPromise = undefined;
+      throw err;
+    },
+  );
   return contentPromise;
 }
 
 function start<P>(e: Entry<P>): Promise<ComponentType<P>> {
-  e.pending ??= e.load().then((c) => (e.done = c));
+  e.pending ??= e.load().then(
+    (c) => (e.done = c),
+    (err: unknown) => {
+      e.pending = undefined;
+      throw err;
+    },
+  );
   return e.pending;
 }
+
+/**
+ * Browsers remember a failed dynamic import of the same URL, so a plain re-import cannot recover;
+ * a reload re-requests everything and the hash keeps the route.
+ */
+function retry(): void {
+  location.reload();
+}
+
+export const LOAD_FAILED = "Couldn't load this page.";
+export const LOAD_FAILED_HELP = 'Check your connection and try again.';
 
 /** Resolves every lazy screen and the content bundle (tests, and warming after first paint). */
 export async function preloadRoutes(withContent = true): Promise<void> {
@@ -46,20 +71,42 @@ export function lazyScreen<P extends object>(
     const provided = useProvidedContent();
     const content = provided ?? (needsContent ? contentDone : null) ?? null;
     const [, force] = useState(0);
+    const [failed, setFailed] = useState(false);
     const ready = !!entry.done && (!needsContent || !!content);
     useEffect(() => {
-      if (ready) return;
+      if (ready || failed) return;
       let live = true;
       const jobs: Promise<unknown>[] = [start(entry)];
       if (needsContent && !provided) jobs.push(loadContent());
-      void Promise.all(jobs).then(() => live && force((n) => n + 1));
+      Promise.all(jobs).then(
+        () => live && force((n) => n + 1),
+        () => live && setFailed(true),
+      );
       return () => {
         live = false;
       };
-    }, [ready]);
+    }, [ready, failed]);
+    if (failed) {
+      return (
+        <div class="page route-failed" data-testid="route-failed">
+          <h1>{LOAD_FAILED}</h1>
+          <p class="muted">{LOAD_FAILED_HELP}</p>
+          <button type="button" class="btn" onClick={retry}>
+            Retry
+          </button>
+        </div>
+      );
+    }
     if (!ready || !entry.done) {
-      // Reserves roughly a screen of height so the tab bar and scroll position do not jump.
-      return <div class="route-loading" aria-busy="true" style={{ minHeight: '70vh' }} />;
+      // A visible skeleton that reserves roughly a screen, so nothing blank flashes and the tab
+      // bar and scroll position do not jump. Not a live region: it is silent.
+      return (
+        <div class="page route-loading" aria-busy="true">
+          <p class="muted">Loading…</p>
+          <span class="skel-block" aria-hidden="true" />
+          <span class="skel-block" aria-hidden="true" />
+        </div>
+      );
     }
     const C = entry.done;
     const body = <C {...props} />;
@@ -81,7 +128,11 @@ export function useRouteContent(provided: ContentBundle | null, wanted: boolean)
   useEffect(() => {
     if (provided || !wanted || contentDone) return;
     let live = true;
-    void loadContent().then(() => live && force((n) => n + 1));
+    // A failed load leaves the placeholders; the next visit tries again (see loadContent).
+    loadContent().then(
+      () => live && force((n) => n + 1),
+      () => undefined,
+    );
     return () => {
       live = false;
     };

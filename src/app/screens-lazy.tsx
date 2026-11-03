@@ -3,7 +3,7 @@
 // vite.config.ts aliases `#screens` here; the single-file build uses ./screens-static instead.
 import { lazyScreen } from './lazy';
 
-export const Home = lazyScreen(() => import('./screens/Home').then((m) => m.Home), true);
+export { Home } from './screens/Home';
 export const Learn = lazyScreen(() => import('./screens/Learn').then((m) => m.Learn), true);
 export const LessonView = lazyScreen(
   () => import('./screens/Lesson').then((m) => m.LessonView),

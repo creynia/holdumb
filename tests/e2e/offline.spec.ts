@@ -58,7 +58,7 @@ test('every route, including the lazily loaded ones, works offline after first l
   for (const r of routes) {
     await page.evaluate((h) => (location.hash = h), `#${r}`);
     await expect(page.locator('main h1').first(), r).toBeVisible();
-    await expect(page.locator('main .route-loading')).toHaveCount(0);
+    await expect(page.locator('main .route-loading, main .route-failed')).toHaveCount(0);
   }
   await context.setOffline(false);
 });

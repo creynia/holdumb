@@ -21,7 +21,8 @@ describe.skipIf(!existsSync('dist/index.html'))('PWA code splitting', () => {
   it('keeps the compiled lesson bundle out of the entry and its preloads', () => {
     for (const f of [entry!, ...preloads]) {
       const src = readFileSync(`dist/${f}`, 'utf8');
-      expect(src).not.toContain('Ultimate Texas Hold');
+      // A scene title from lesson 1: it lives in the lesson bundle only.
+      expect(src).not.toContain('Find the circles');
       expect(size(f)).toBeLessThan(150_000);
     }
   });
