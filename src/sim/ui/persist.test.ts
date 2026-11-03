@@ -50,4 +50,23 @@ describe('sandbox snapshot', () => {
     snap.state.hand = null;
     expect(decodeSnapshot(snap, 'trips-8-6-5')).toBeNull();
   });
+  it('a legacy snapshot with a practice flag restores and maps onto evMode (D39)', () => {
+    const d = driver();
+    const snap = JSON.parse(JSON.stringify(encodeSnapshot(d))) as Record<string, unknown>;
+    expect(snap.evMode).toBe('before');
+    delete snap.evMode;
+    const on = decodeSnapshot({ ...snap, practice: true }, 'trips-8-6-5')!;
+    expect(on.evMode).toBe('after');
+    expect(on.restore.state.hand?.deal).toEqual(d.view.state.hand?.deal);
+    expect(decodeSnapshot({ ...snap, practice: false }, 'trips-8-6-5')!.evMode).toBe('before');
+    expect(decodeSnapshot(snap, 'trips-8-6-5')!.evMode).toBe('before');
+    // A valid evMode wins over the legacy key; junk falls back to the legacy mapping.
+    expect(
+      decodeSnapshot({ ...snap, practice: true, evMode: 'never' }, 'trips-8-6-5')!.evMode,
+    ).toBe('never');
+    expect(decodeSnapshot({ ...snap, practice: true, evMode: 'x' }, 'trips-8-6-5')!.evMode).toBe(
+      'after',
+    );
+    expect(encodeSnapshot(d, 'never').evMode).toBe('never');
+  });
 });
