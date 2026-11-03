@@ -1,0 +1,33 @@
+/* I063 progressive jackpot calculator (lesson 20). */
+.progressive-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.progressive-block p {
+  margin: 0;
+}
+.progressive-label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.progressive-track {
+  position: relative;
+}
+.progressive-track input[type='range'] {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+/* The break-even point marked under the track. */
+.progressive-be {
+  position: absolute;
+  bottom: 2px;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--tier-best);
+  pointer-events: none;
+}

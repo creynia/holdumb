@@ -53,3 +53,27 @@ for (const [lesson, count] of [
     }
   });
 }
+
+test('lesson 20: the progressive meter slider prices the bet and finds break-even (I063)', async ({
+  page,
+}) => {
+  await page.goto('/#/learn/other-side-bets');
+  const block = page.getByTestId('progressive');
+  await block.scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('progressive-meter')).toHaveText('$50,000');
+  await expect(page.getByTestId('progressive-edge')).toContainText('House edge 32.3%');
+  await expect(page.getByTestId('progressive-edge')).toContainText('$9.70 an hour');
+  await expect(page.getByTestId('progressive-vs')).toContainText('$160,530.53');
+  const slider = page.getByTestId('progressive-slider');
+  expect((await slider.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  // Keyboard: End jumps to the top of the range, Home to the bottom.
+  await slider.focus();
+  await page.keyboard.press('End');
+  await expect(page.getByTestId('progressive-meter')).toHaveText('$300,000');
+  await expect(page.getByTestId('progressive-edge')).toContainText('Player edge');
+  await page.keyboard.press('Home');
+  await expect(page.getByTestId('progressive-meter')).toHaveText('$10,000');
+  await expect(page.getByTestId('progressive-vs')).toContainText('below break-even');
+  const sw = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(sw).toBeLessThanOrEqual(page.viewportSize()!.width);
+});
