@@ -4,9 +4,9 @@ import type { Page } from '@playwright/test';
 const ready = (page: Page) =>
   page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 20_000 });
 const opt = (page: Page, k: string) => page.locator(`button[data-option="${k}"]`);
+/** One tap acts with the default confirm policy (D40). */
 const pick = async (page: Page, k: string) => {
   await opt(page, k).click();
-  await page.getByTestId('confirm').click();
 };
 
 test.describe('bankroll control (I083)', () => {
@@ -31,7 +31,6 @@ test.describe('bankroll control (I083)', () => {
     await pick(page, 'check');
     await ready(page);
     await page.locator('button[data-option="fold"]').click();
-    await page.getByTestId('confirm').click();
     await expect(sim).toHaveAttribute('data-street', 'settled');
     await expect(sim).toHaveAttribute('data-equity', '0');
     await expect(page.getByTestId('rack-short')).toBeVisible();
