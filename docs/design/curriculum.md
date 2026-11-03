@@ -3502,7 +3502,7 @@ perfect $10: 6.555 ; basic $10: 7.144 ; simple $10: 8.123 ; Trips $5 8-6-5: 2.85
   Treasury Brisbane, Club Hotel Loutraki) and pokerlistings.com. Every source uses Blind 500/50/10/3/3:2/1.
 * Trips tables seen in the wild: 8-7-4 (Tulalip, Crown Sydney), 7-6-5 (Sun International); 8-6-5 is the
   usual Shuffle Master table (D6a).
-* Published game edge "≈ 2.18% of the Ante" (Crown Sydney, Treasury Brisbane ≈ 2.18%) and "≈ 0.53% of
+* Published game edge "≈ 2.19% of the Ante" (published figure; exact 2.18%; Crown Sydney, Treasury Brisbane ≈ 2.18%) and "≈ 0.53% of
   total wagered": they agree with our exact 2.185% / 0.526%.
 * The basic strategy is the classic published simple strategy (Wizard of Odds' UTH page). That page wasn't
   reachable from this container, so the rules are the well-known version, and their formalisation and every
