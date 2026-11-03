@@ -15,11 +15,20 @@ import { useStore } from '../context';
 import { getEvClient } from '../evClient';
 import { navigate } from '../router';
 import { DRILL_STREETS } from '../storage';
+import {
+  DRILL_CATEGORY_LABELS,
+  categoriesOf,
+  isCategoryId,
+  weakestCategory,
+} from '../drillCategories';
+import { DRILL_STREET_OF } from '../../sim';
 
 /** What the screen needs from the strategy and math modules; tests pass fakes. */
 export interface DrillDeps {
   nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngState];
   preview(req: PreviewRequest): Promise<DecisionPreview>;
+  /** Fixed RNG seed for tests; the screen seeds from the clock when absent. */
+  seed?: number;
 }
 
 export const defaultDrillDeps: DrillDeps = {
@@ -87,11 +96,18 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const deps = props.deps ?? defaultDrillDeps;
   const store = useStore();
   const q = props.query.get('street');
-  const street: DecisionStreet | 'mixed' =
+  const qStreet: DecisionStreet | 'mixed' =
     q === 'preflop' || q === 'flop' || q === 'river' ? q : 'mixed';
+  // ?category= wins over ?street= unless they disagree (then the category is ignored).
+  const qCat = props.query.get('category');
+  const category =
+    isCategoryId(qCat) && (qStreet === 'mixed' || DRILL_STREET_OF[qCat] === qStreet)
+      ? qCat
+      : undefined;
+  const street: DecisionStreet | 'mixed' = category ? DRILL_STREET_OF[category] : qStreet;
   const focus = (props.query.get('focus') ?? '').split(',').filter(Boolean);
   const focusKey = focus.join(',');
-  const rng = useRef<RngState>(rngFromSeed(Date.now()));
+  const rng = useRef<RngState>(rngFromSeed(deps.seed ?? Date.now()));
   const [spot, setSpot] = useState<DrillSpot | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -102,7 +118,11 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
     setAnswer(null);
     setFailed(false);
     try {
-      const filter: DrillFilter = { street, ...(focus.length ? { focus } : {}) };
+      const filter: DrillFilter = {
+        street,
+        ...(category ? { category } : {}),
+        ...(focus.length ? { focus } : {}),
+      };
       const [s, r] = deps.nextSpot(rng.current, filter);
       rng.current = r;
       setSpot(s);
@@ -112,7 +132,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       setUnavailable(true);
     }
   };
-  useEffect(deal, [street, focusKey]);
+  useEffect(deal, [street, category, focusKey]);
 
   const choose = (i: number) => {
     if (!spot || busy || answer) return;
@@ -130,7 +150,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         const picked = CHOICES[spot.street][i]!;
         const opt = preview.options.find((o) => sameAction(o.action, picked.action));
         const correct = opt !== undefined && (opt.tier === 'best' || opt.tier === 'close'); // D33
-        store.recordDrill(spot.street, correct, spot.code);
+        store.recordDrill(spot.street, correct, spot.code, spot.category);
         setAnswer({ chosen: i, preview });
       })
       .catch(() => setFailed(true))
@@ -138,6 +158,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   };
 
   const d = store.drill;
+  const weakest = weakestCategory(d);
   const total = DRILL_STREETS.reduce((n, s) => n + d.byStreet[s].answered, 0);
   const chosenOpt =
     spot && answer
@@ -185,7 +206,6 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
           );
         })}
       </section>
-
       {unavailable && (
         <section class="card" data-testid="drill-unavailable" role="status">
           <h2>Spots are on their way</h2>
@@ -269,6 +289,37 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
           </Link>
         </p>
       )}
+
+      <div class="drill-picker">
+        {street !== 'mixed' && (
+          <label class="drill-category">
+            <span>Category</span>
+            <select
+              data-testid="drill-categories"
+              value={category ?? ''}
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                const qs = new URLSearchParams({ street });
+                if (v) qs.set('category', v);
+                if (focusKey) qs.set('focus', focusKey);
+                navigate(`/drill?${qs.toString().replace(/%2C/g, ',')}`);
+              }}
+            >
+              <option value="">All</option>
+              {categoriesOf(street).map((c) => (
+                <option key={c} value={c}>
+                  {DRILL_CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {weakest && (
+          <p class="muted" data-testid="drill-weakest">
+            Your weakest: {DRILL_CATEGORY_LABELS[weakest.id]} {weakest.pct}% ({weakest.answered})
+          </p>
+        )}
+      </div>
     </div>
   );
 }
