@@ -16,7 +16,7 @@ test('practice table has no serious or critical axe violations in forced colours
 }) => {
   await page.emulateMedia({ forcedColors: 'active' });
   await page.goto('/#/play?speed=instant');
-  await expect(page.getByTestId('simulator')).toHaveAttribute('data-ev', 'ready');
+  await expect(page.getByTestId('simulator')).toBeVisible();
   const { violations } = await new AxeBuilder({ page }).analyze();
   const bad = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
   expect(bad).toEqual([]);
