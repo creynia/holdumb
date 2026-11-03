@@ -42,7 +42,7 @@ export function encodeTotals(t: SessionTotals): SessionTotalsJson {
   return out as SessionTotalsJson;
 }
 
-/** `evMode` defaults to the driver's practice flag ('after' when on, else 'before'). */
+/** `evMode` defaults to the driver's table mode. */
 export function encodeSnapshot(
   d: SimDriver,
   evMode?: EvMode,
@@ -54,7 +54,7 @@ export function encodeSnapshot(
     state: s.state,
     startEquity: s.startEquity,
     totals: encodeTotals(s.totals),
-    evMode: evMode ?? evModeOfPractice(s.practice),
+    evMode: evMode ?? s.evMode,
     ...(log && log.length ? { log: log.slice() } : {}),
   };
 }

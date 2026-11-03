@@ -47,7 +47,7 @@ export function Simulator(props: SimulatorProps) {
   const street = state.street;
   const settled = street === 'settled';
   const decision = isDecisionStreet(street);
-  const evShown = resolveEvShown(settings, scene, sandbox, step?.showEV);
+  const evShown = resolveEvShown(settings, scene, sandbox, step);
   // The app's settings are the source of truth for practice mode; the table follows them at once.
   const practice =
     sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
@@ -114,7 +114,7 @@ export function Simulator(props: SimulatorProps) {
           playMultiple={hand?.play?.multiple ?? null}
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
-          labels={resultLabels(result)}
+          labels={resultLabels(result, hand?.deal)}
           quiet={result?.outcome === 'fold'}
           timeline={timeline}
           nextHand={settled}
