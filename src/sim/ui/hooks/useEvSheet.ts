@@ -70,16 +70,17 @@ export function useEvSheet(
   const confirm = async (k: OptionKey) => {
     const before = d.view.preview.value;
     const reqBefore = requestNow(d);
+    // I080: say what the choice was worth. The practice reveal card already does, and guided steps
+    // have the step panel. A hand that ends gets it at the front of the result toast.
+    const i = before ? before.options.findIndex((o) => optionKeyOf(o.action) === k) : -1;
+    const said = before && i >= 0 && !practice && !d.view.step ? narrationText(before, i) : null;
+    sim.narration.current = said;
     const r = await d.act(actionOfKey(k));
+    sim.narration.current = null;
     if (practice && before) setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
-    // I080: say what the choice was worth. The practice reveal card already does, a settled hand
-    // has its own result toast, and guided steps have the step panel.
-    else if (r.ok && before && !practice && !d.view.step && d.view.state.street !== 'settled') {
-      const i = before.options.findIndex((o) => optionKeyOf(o.action) === k);
-      if (i >= 0) pushToast(narrationText(before, i));
-    }
+    else if (r.ok && said && d.view.state.street !== 'settled') pushToast(said);
   };
   const onOption = (k: OptionKey) => {
     if (!evShown) {

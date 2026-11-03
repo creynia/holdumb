@@ -169,12 +169,6 @@ export function bestOf(preview: DecisionPreview): DecisionOption {
   return preview.options[preview.bestIndex]!;
 }
 
-/** "Bet 4x: +$36.01 · Best play" */
-export function headline(preview: DecisionPreview, index: number): string {
-  const o = preview.options[index]!;
-  return `${o.label}: ${fmtCentsFraction(o.evCents)} · ${DECISION_TIER_LABEL[o.tier]}`;
-}
-
 const TIER_PHRASE: Record<DecisionTier, string> = {
   best: 'best play',
   close: 'a close call',
@@ -196,7 +190,7 @@ export function narrationText(preview: DecisionPreview, index: number): string {
     o.tier === 'best'
       ? `${o.label}: ${TIER_PHRASE.best}.`
       : `${o.label}: ${TIER_PHRASE[o.tier]}, costs ${fmtCostC(costCents(best, o))} against ${best.label}.`;
-  return `${lead} Whole-hand expected result from here: ${fmtCentsFraction(o.evCents)}.`;
+  return `${lead} Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents))}.`;
 }
 
 /** Spoken name of an action button: "Bet 4x, EV plus $5.21, best play". */

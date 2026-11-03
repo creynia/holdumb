@@ -145,6 +145,26 @@ test.describe('sandbox', () => {
     });
   }
 
+  test('a decision that ends the hand is narrated too, leading the result toast (I080)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river&speed=instant');
+    await ready(page);
+    await opt(page, 'play-1').click();
+    const sheetCost = (await page.getByTestId('cost-vs-best').textContent())!.match(
+      /Costs (\S+) against (\w+)/,
+    )!;
+    expect(sheetCost[1]).toBe('$3.59');
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
+    const toast = page.locator('.sim-toast');
+    await expect(toast).toContainText(
+      `Bet 1x: a mistake, costs ${sheetCost[1]} against ${sheetCost[2]}.`,
+    );
+    await expect(toast).toContainText(/Whole-hand expected result from here: [+\u2212]\$/);
+    await expect(toast).toContainText('Net');
+  });
+
   test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {
     await page.goto('/#/settings');
     await page.getByRole('radio', { name: 'Never' }).first().check();

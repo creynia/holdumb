@@ -34,10 +34,10 @@ import {
   foldRevealText,
   handLabel,
   handName,
-  headline,
   narrationText,
   playerNearMiss,
   optionKeyOf,
+  typographic,
 } from './text';
 
 describe('exact fraction formatting', () => {
@@ -124,8 +124,7 @@ describe('option labels (D31)', () => {
   it('maps actions and option keys both ways', () => {
     for (const k of OPTION_ORDER) expect(optionKeyOf(actionOfKey(k))).toBe(k);
   });
-  it('builds the headline and the spoken name', () => {
-    expect(headline(PREFLOP_AA.preview, 0)).toBe('Bet 4x: +$36.01 · Best play');
+  it('builds the spoken name', () => {
     expect(ariaForOption(PREFLOP_AA.preview.options[2]!)).toBe(
       'Check, EV plus $21.93, big mistake',
     );
@@ -152,8 +151,9 @@ describe('post-action narration (I080)', () => {
         const text = narrationText(f.preview, i);
         tiers.add(o.tier);
         expect(text.startsWith(`${o.label}: `)).toBe(true);
+        expect(text).not.toMatch(/-\$/); // the typographic minus, never an ASCII hyphen
         expect(text).toContain(
-          `Whole-hand expected result from here: ${fmtCentsFraction(o.evCents)}.`,
+          `Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents))}.`,
         );
         if (o === best) expect(text).toContain('best play');
         else {
