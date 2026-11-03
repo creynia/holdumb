@@ -2,7 +2,9 @@ import './sim.css';
 import './container.css';
 import { useState } from 'preact/hooks';
 import { formatMoney } from '../engine';
+import { GAME_EDGE } from '../math';
 import type { SessionView } from '../scene';
+import { fmtPct } from './text';
 
 export interface SessionPanelProps {
   session: SessionView;
@@ -13,14 +15,18 @@ export interface SessionPanelProps {
 
 const m = (c: number, sign = false): string => formatMoney(Math.round(c), { sign });
 
-/** Luck vs mistake cost: your result, what perfect play expects, what your moves cost, the rest is luck. */
+/**
+ * Session panel (curriculum 8.5): your result, total wagered, what perfect play expects, what your
+ * decisions cost (with the mistake count), luck, your edge per Ante against perfect play, and the
+ * Trips line. Expected figures are exact and rounded once, so the rows add up to the cent.
+ */
 export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelProps) {
   const [open, setOpen] = useState(!!defaultOpen);
   const toggle = () => {
     setOpen((o) => !o);
     onTap?.();
   };
-  const perfect = s.expectedCents;
+  const unscored = s.hands - s.scored;
   return (
     <section class="sim-session" aria-label="Session" data-testid="session-panel">
       <button
@@ -43,16 +49,27 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
               {m(s.net, true)}
             </dd>
           </div>
+          {s.wageredCents > 0 ? (
+            <div>
+              <dt>Total wagered</dt>
+              <dd class="sim-money" data-testid="session-wagered">
+                {m(s.wageredCents)}
+              </dd>
+            </div>
+          ) : null}
           {s.scored > 0 ? (
             <>
               <div>
                 <dt>Perfect play expects</dt>
-                <dd class="sim-money">{m(perfect, true)}</dd>
+                <dd class="sim-money" data-testid="session-perfect">
+                  {m(s.perfectCents, true)}
+                </dd>
               </div>
               <div>
-                <dt>Your mistakes cost</dt>
+                <dt>Decisions vs perfect</dt>
                 <dd class="sim-money" data-testid="session-mistakes">
-                  {m(-s.mistakeCents, true)}
+                  {s.mistakes} {s.mistakes === 1 ? 'mistake' : 'mistakes'} ·{' '}
+                  {m(0 - s.mistakesRoundedCents, true)}
                 </dd>
               </div>
               <div>
@@ -61,24 +78,38 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
                   {m(s.luckCents, true)}
                 </dd>
               </div>
+              {s.edgePerAnte ? (
+                <div>
+                  <dt>Your edge per Ante</dt>
+                  <dd class="sim-money" data-testid="session-edge">
+                    {fmtPct(s.edgePerAnte, 2)}{' '}
+                    <span class="sim-muted">(perfect play {fmtPct(GAME_EDGE, 2)})</span>
+                  </dd>
+                </div>
+              ) : null}
             </>
           ) : (
             <p class="sim-muted">Play a hand with the EV sheet to see luck and mistakes.</p>
           )}
-          {s.tripsCents !== 0 ? (
+          {s.tripsWageredCents > 0 ? (
             <div>
               <dt>Trips</dt>
-              <dd class="sim-money">{m(s.tripsCents, true)}</dd>
+              <dd class="sim-money" data-testid="session-trips">
+                wagered {m(s.tripsWageredCents)} · expected {m(s.tripsExpectedRoundedCents, true)} ·
+                actual {m(s.tripsCents, true)}
+              </dd>
             </div>
           ) : null}
-          {s.hands > s.scored ? (
+          {unscored > 0 ? (
             <p class="sim-muted">
-              {s.hands - s.scored} hands had no EV, so they are left out of the split.
+              {unscored} {unscored === 1 ? 'hand' : 'hands'} had no EV, so{' '}
+              {unscored === 1 ? 'its' : 'their'} result counts as luck.
             </p>
           ) : null}
           <p class="sim-muted">
-            Your result = perfect play + mistakes + luck. Cards and EV amounts are exact; the split
-            is for the hands you played.
+            Your result = perfect play + mistakes + luck, to the cent. Expected amounts are exact
+            and rounded once; "expected" means on average over many sessions, not what you will win
+            or lose.
           </p>
         </dl>
       ) : null}
