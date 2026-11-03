@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCards } from '../engine/cards';
+import { riverFacts } from './alternatives';
 import { previewJob } from './preview';
 import type { Card } from '../engine/types';
 
@@ -31,5 +32,18 @@ describe('performance (D34: flop under 1.5 s at 4x CPU throttle)', () => {
     );
     expect(median * 4).toBeLessThan(1500);
     expect(river * 4).toBeLessThan(100);
+  });
+
+  it('river dealer outs: 990 evaluations (22 spots x 45 unseen cards) under 50 ms', () => {
+    const hole = parseCards('Qc 7d') as [Card, Card];
+    const board = parseCards('Kd Jh 9s 5c 2d');
+    riverFacts(hole, board); // warm
+    const t0 = performance.now();
+    let total = 0;
+    for (let i = 0; i < 22; i++) total += riverFacts(hole, board).outs;
+    const ms = performance.now() - t0;
+    console.log(`[perf] riverFacts x22 ${ms.toFixed(2)} ms`);
+    expect(total).toBe(22 * 19);
+    expect(ms).toBeLessThan(50);
   });
 });
