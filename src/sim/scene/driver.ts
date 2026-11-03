@@ -76,6 +76,8 @@ export interface SessionTotals {
   tripsCents: number;
   decisions: number;
   mistakes: number;
+  /** Money added to the rack mid-session (I083). Net = equity - (start + topUps). */
+  topUpCents: number;
 }
 export const EMPTY_TOTALS: SessionTotals = {
   hands: 0,
@@ -86,6 +88,7 @@ export const EMPTY_TOTALS: SessionTotals = {
   tripsCents: 0,
   decisions: 0,
   mistakes: 0,
+  topUpCents: 0,
 };
 
 export interface SessionView extends SessionTotals {
@@ -269,7 +272,7 @@ export class SimDriver {
     const opts = decision ? gatedOptions(gate, st) : undefined;
     const allowedOptions = decision && gate.options ? opts : undefined;
     const t = this.totals;
-    const net = equity(this.game) - this.startEq;
+    const net = equity(this.game) - this.startEq - t.topUpCents;
     this.cached = {
       version: this.version,
       state: this.game,
@@ -610,6 +613,16 @@ export class SimDriver {
     this.feed({ kind: 'auto-play-completed', hands, strategy });
     this.emit({ type: 'auto-play-completed', hands, strategy });
     this.afterChange();
+  }
+
+  /** Sandbox: add money to the rack without resetting the session; Net accounts for it (I083). */
+  topUp(amount: Cents): boolean {
+    if (this.mode !== 'sandbox' || !Number.isInteger(amount) || amount <= 0) return false;
+    this.game = { ...this.game, bankroll: this.game.bankroll + amount };
+    this.totals = { ...this.totals, topUpCents: this.totals.topUpCents + amount };
+    this.rejection = null;
+    this.afterChange();
+    return true;
   }
 
   /** Sandbox: start over with a fresh rack. */

@@ -120,7 +120,7 @@ export function useSandboxSync(
   const persistable = sandbox && !baseScene.startAt && !!latest.current.onSnapshot;
   useEffect(() => {
     if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode));
-  }, [d.view.eventSeq, persistable, d]);
+  }, [d.view.eventSeq, d.view.session.topUpCents, persistable, d]);
   useEffect(() => {
     if (sandbox) d.setPractice(resolvePractice(settings, baseScene));
   }, [settings.evMode, sandbox, d]);
