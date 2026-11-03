@@ -373,4 +373,96 @@ test.describe('sandbox', () => {
     if (vp.width > vp.height && vp.height < 520)
       expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
   });
+
+  test('Six Card Bonus: off by default, on it settles at the deal off the felt (I062)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?seed=7&speed=instant');
+    const sim = page.getByTestId('simulator');
+    const panel = page.getByTestId('six-card');
+    await expect(page.getByTestId('six-card-toggle')).not.toBeChecked();
+    await page.getByTestId('six-card-toggle').check();
+    await expect(page.getByTestId('six-card-edge')).toContainText('8.56%');
+    await expect(page.getByTestId('six-card-edge')).toContainText('$12.84 an hour');
+    const before = Number(await sim.getAttribute('data-equity'));
+    await page.locator('button[data-action="deal"]').click();
+    const last = page.getByTestId('six-card-last');
+    await expect(last).toBeVisible();
+    await expect(last.locator('.sim-inline-card')).toHaveCount(4);
+    // The bet settled with the deal: equity moved by exactly the Six Card profit ($5 bet).
+    const text = (await last.textContent()) ?? '';
+    const m = /([+−])\$([\d,.]+)\s*$/.exec(text);
+    expect(m).not.toBeNull();
+    const profit = Math.round(Number(m![2]!.replace(/,/g, '')) * 100) * (m![1] === '−' ? -1 : 1);
+    expect(profit === -500 || profit >= 3_500).toBe(true);
+    expect(Number(await sim.getAttribute('data-equity'))).toBe(before + profit);
+    // Never on the felt; its controls are full tap targets.
+    const felt = (await page.locator('svg.sim-felt').boundingBox())!;
+    const box = (await panel.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(felt.y + felt.height);
+    for (const id of ['six-card-amount', 'six-card-paytable'])
+      expect((await page.getByTestId(id).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  });
 });
+
+// I092: the status bar's Details opens the EV sheet without acting.
+for (const vp of [
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+]) {
+  test(`status-bar Details opens the sheet on the best option and changes no layout at ${vp.width}x${vp.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    await ready(page);
+    const sim = page.getByTestId('simulator');
+    const details = page.getByTestId('ev-details');
+    await expect(details).toBeVisible();
+    expect((await details.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    const bar = page.locator('.sim-status');
+    const barBefore = (await bar.boundingBox())!;
+    expect(barBefore.height).toBeLessThanOrEqual(46);
+    // four columns (Session) must not overflow: "Details" does not wrap
+    expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    const row = async () => {
+      return (await page.locator('[role="group"][aria-label="Your decision"]').boundingBox())!;
+    };
+    const rowBefore = await row();
+    await details.click();
+    const sheet = page.getByTestId('ev-sheet');
+    await expect(sheet).toBeVisible();
+    const best = await page.locator('button[data-option].is-best').getAttribute('data-option');
+    await expect(sheet.getByTestId('confirm')).toContainText(
+      best === 'check' ? 'Confirm Check' : /Confirm Bet/,
+    );
+    await expect(sim).toHaveAttribute('data-street', 'preflop'); // nothing was played
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+    await expect(details).toBeFocused();
+    const rowAfter = await row();
+    const barAfter = (await bar.boundingBox())!;
+    expect(Math.abs(rowAfter.y - rowBefore.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(barAfter.height - barBefore.height)).toBeLessThanOrEqual(1);
+    // Confirm acts
+    await details.click();
+    await page.getByTestId('confirm').click();
+    await expect(sim).not.toHaveAttribute('data-street', 'preflop');
+    // With the Session column present (four columns) Details still neither wraps nor overflows.
+    while ((await sim.getAttribute('data-street')) !== 'settled') {
+      await ready(page);
+      await opt(page, 'check').click();
+      await page.getByTestId('confirm').click();
+      if ((await sim.getAttribute('data-street')) === 'river') break;
+    }
+    await page.getByRole('button', { name: /Rebet/ }).click();
+    await ready(page);
+    await expect(page.getByTestId('session-net')).toBeVisible();
+    await expect(details).toBeVisible();
+    expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect((await details.boundingBox())!.height).toBeLessThan(60);
+    expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(46);
+  });
+}
