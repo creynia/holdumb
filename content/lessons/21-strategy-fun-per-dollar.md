@@ -13,7 +13,7 @@ I buy per dollar?** Here's what each plan costs, at 30 hands an hour (exact edge
 |---|---|---|
 | $5 Ante, basic card | $3.57 | The cheapest way to play |
 | **$5 Ante + $5 Trips** | **$6.43** | A side bet that pays about 4.6 times an hour, for less than a $10 Ante alone |
-| $10 Ante, basic card | $7.14 | Twice the stakes |
+| $10 Ante, basic card | {{num:basic-per-hour}} | Twice the stakes |
 | $10 Ante + $5 Trips | $10.00 | The "standard evening" |
 | $10 Ante + $5 Trips at an 8-7-4 table | $12.39 | Same game, worse felt |
 | $10 Ante + $1 progressive (meter $50,000) | $16.84 | A one-in-650,000 dream |
@@ -24,7 +24,7 @@ I buy per dollar?** Here's what each plan costs, at 30 hands an hour (exact edge
 
 1. **Play the main game well.** The basic card is cheap fun: every hand gives you a real decision.
 2. **If you like a side bet, make it Trips at an 8-6-5 (or 9-7-4) table**, and pay for it by
-   **lowering your Ante**. $5 Ante + $5 Trips costs less per hour than $10 Ante alone ($6.43 vs $7.14
+   **lowering your Ante**. $5 Ante + $5 Trips costs less per hour than $10 Ante alone ($6.43 vs {{num:basic-per-hour}}
    with the basic card), and you get a payout most hours.
 3. **Skip Six Card Bonus** and anything above 5%. The same $12.84 an hour buys you almost two more hours of the main game.
 4. **Treat progressives as a lottery ticket.** Only the meter tells you the price. On the example table,
@@ -73,11 +73,11 @@ steps:
 - q: Which plan costs less per hour?
   options: ["$10 Ante alone (basic card)", "$5 Ante + $5 Trips at an 8-6-5 table (basic card)"]
   answer: 1
-  explain: "$6.43 vs $7.14 an hour, at 30 hands an hour."
+  explain: "$6.43 vs {{num:basic-per-hour}} an hour, at 30 hands an hour."
 - q: You love side bets. Which is the best value?
   options: ["Six Card Bonus", "Trips at an 8-6-5 table", "Progressive with a $20,000 meter", "Trips at an 8-6-4 table"]
   answer: 1
-  explain: "1.90%, far below Six Card (8.56%+), a low-meter progressive, or an 8-6-4 Trips table (6.52%)."
+  explain: "{{num:trips-8-6-5-edge}}, far below Six Card (8.56%+), a low-meter progressive, or an 8-6-4 Trips table ({{num:trips-8-6-4-edge}})."
 - q: You want to play twice as long on the same budget. What's the most effective change?
   options: ["Halve your Ante", "Switch from the basic card to the simple card", "Add the progressive", "Bet 3x instead of 4x"]
   answer: 0

@@ -2,14 +2,17 @@ import { Marked, marked } from 'marked';
 import type { Token, Tokens, TokenizerAndRendererExtension } from 'marked';
 import { parse as parseYaml } from 'yaml';
 import { parseCards } from '../sim/engine';
-import { validateScene } from '../sim/scene';
-import { STRATEGY_IDS } from '../sim/strategy';
+import { cardCode } from '../sim/engine';
+import { parsePlayParams, validateScene } from '../sim/scene';
+import type { SceneConfig } from '../sim/scene';
+import { DRILL_CATEGORY_IDS, STRATEGY_IDS } from '../sim/strategy';
 import { cardsHtml, checkInline, isHandClass } from './cards';
+import { NUMBERS } from './numbers';
 import type {
   Block,
   ChartBlockData,
   Lesson,
-  ProgressiveBlockData, LessonSource, Quiz, QuizHand, SourceItem } from './types';
+  ProgressiveBlockData, LessonSource, PractiseLink, Quiz, QuizHand, SourceItem } from './types';
 import {
   PROGRESSIVE_METER_MAX,
   PROGRESSIVE_METER_MIN,
@@ -300,7 +303,102 @@ function checkSceneText(scene: unknown): void {
   }
 }
 
-type FenceLang = 'scene' | 'quiz' | 'chart' | 'progressive';
+/**
+ * `{{num:<id>}}` -> the computed figure from the registry (I064), before anything else is parsed, so
+ * it works in prose, tables, quizzes and scenes alike. An unknown id names the lesson line.
+ */
+export function expandNumbers(body: string, offset = 0, source = body): string {
+  return body.replace(/\{\{num:([^}]*)\}\}/g, (m, id: string, at: number) => {
+    const v = NUMBERS[id.trim()];
+    if (v === undefined) {
+      const line = source.slice(0, offset + at).split('\n').length;
+      throw new Error(`line ${line}: unknown number token "${m}"`);
+    }
+    return v;
+  });
+}
+
+/**
+ * ```practise: 1-3 links at the end of a lesson (I066). Each `to` is a Drill category
+ * (`/drill?category=<id>`) or a table preset (`/play?hole=..&board=..&dealer=..&street=..`) that must
+ * parse exactly and use one of this lesson's own scene deals (checked in checkPractiseSpots).
+ */
+export function parsePractise(text: string): PractiseLink[] {
+  const raw: unknown = parseYaml(text);
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 3)
+    throw new Error('practise block must be a YAML list of 1 to 3 { label, to } links');
+  return raw.map((item, i) => {
+    const what = `practise link ${i + 1}`;
+    if (!isObj(item)) throw new Error(`${what} must be a mapping { label, to }`);
+    const extra = Object.keys(item).filter((k) => k !== 'label' && k !== 'to');
+    if (extra.length) throw new Error(`${what}: unknown key "${extra[0]}"`);
+    const label = str(item.label, `${what} label`);
+    const to = str(item.to, `${what} to`).replace(/^#/, '');
+    const q = /^\/(play|drill)\?(.+)$/.exec(to);
+    if (!q) throw new Error(`${what}: "${to}" must start with /play? or /drill?`);
+    const query = new URLSearchParams(q[2]);
+    if (q[1] === 'drill') {
+      const keys = [...query.keys()];
+      const cat = query.get('category');
+      if (keys.length !== 1 || !cat) throw new Error(`${what}: a Drill link takes ?category= only`);
+      if (!(DRILL_CATEGORY_IDS as readonly string[]).includes(cat))
+        throw new Error(`${what}: unknown Drill category "${cat}"`);
+    } else {
+      const allowed = ['hole', 'board', 'dealer', 'street'];
+      const bad = [...query.keys()].find((k) => !allowed.includes(k));
+      if (bad) throw new Error(`${what}: unknown table preset key "${bad}"`);
+      const keys = [...query.keys()];
+      const dup = keys.find((k, i) => keys.indexOf(k) !== i);
+      if (dup) throw new Error(`${what}: repeated table preset key "${dup}"`);
+      // parsePlayParams ignores anything malformed; here that is an error (bad or repeated cards).
+      const startAt = parsePlayParams(query).startAt;
+      if (!startAt) throw new Error(`${what}: invalid table preset "${to}"`);
+      const street = query.get('street');
+      if (street !== null) {
+        if (!['preflop', 'flop', 'river'].includes(street))
+          throw new Error(`${what}: street must be preflop, flop or river, not "${street}"`);
+        // The street must match the board, except a full deal (5 board cards) started preflop,
+        // which replays a forced hand from the first decision (lesson 19).
+        const n = (query.get('board') ?? '').length / 2;
+        const natural = n === 0 ? 'preflop' : n === 3 ? 'flop' : 'river';
+        if (street !== natural && !(street === 'preflop' && n === 5))
+          throw new Error(`${what}: street "${street}" does not match a ${n}-card board`);
+      }
+    }
+    return { label, to };
+  });
+}
+
+/** Every table preset must replay one of the lesson's own scene deals (pinned spots, I066). */
+function checkPractiseSpots(blocks: Block[]): void {
+  const codes = (cs: readonly string[] | undefined) => (cs ?? []).map((c) => cardCode(parseCards(c)[0]!));
+  const deals = blocks.flatMap((b) => {
+    if (b.kind !== 'scene') return [];
+    const sc: SceneConfig = b.scene;
+    const all = [sc.startAt?.deal, ...(sc.deals ?? [])];
+    for (const st of sc.steps ?? []) all.push(st.startAt?.deal, ...(st.deals ?? []));
+    return all.flatMap((d) => (d ? [d] : []));
+  });
+  for (const b of blocks) {
+    if (b.kind !== 'practise') continue;
+    for (const l of b.links) {
+      if (!l.to.startsWith('/play?')) continue;
+      const deal = parsePlayParams(new URLSearchParams(l.to.slice('/play?'.length))).startAt!.deal;
+      const board = [...(deal.flop ?? []), ...(deal.turn ? [deal.turn] : []), ...(deal.river ? [deal.river] : [])];
+      const hit = deals.some((d) => {
+        const dBoard = [...(d.flop ?? []), ...(d.turn ? [d.turn] : []), ...(d.river ? [d.river] : [])];
+        return (
+          codes(d.player).join() === codes(deal.player).join() &&
+          codes(dBoard.slice(0, board.length)).join() === codes(board).join() &&
+          (!deal.dealer || codes(d.dealer).join() === codes(deal.dealer).join())
+        );
+      });
+      if (!hit) throw new Error(`practise link "${l.label}": ${l.to} is not one of this lesson's scene deals`);
+    }
+  }
+}
+
+type FenceLang = 'scene' | 'quiz' | 'chart' | 'progressive' | 'practise';
 export type Seg =
   | { t: 'md'; text: string }
   | { t: 'fence'; lang: FenceLang; text: string }
@@ -322,7 +420,13 @@ export function segment(body: string): Seg[] {
     if (fence) {
       const [, ticks = '```', lang = ''] = fence;
       const end = findFenceEnd(lines, i + 1, ticks);
-      if (lang === 'scene' || lang === 'quiz' || lang === 'chart' || lang === 'progressive') {
+      if (
+        lang === 'scene' ||
+        lang === 'quiz' ||
+        lang === 'chart' ||
+        lang === 'progressive' ||
+        lang === 'practise'
+      ) {
         flush();
         segs.push({ t: 'fence', lang, text: lines.slice(i + 1, end).join('\n') });
       } else if (lang === 'math' || lang === 'callout' || lang === 'tip') {
@@ -383,7 +487,8 @@ export function compileLesson(
   opts: CompileOptions = {},
 ): CompiledLesson {
   try {
-    const { data, body } = splitFrontMatter(source);
+    const { data, body: raw } = splitFrontMatter(source);
+    const body = expandNumbers(raw, source.length - raw.length, source);
     const id = str(data.id, 'front matter id');
     const min = minHeadingDepth(body);
     const sources = parseLessonSources(data.sources, opts.sources);
@@ -414,6 +519,8 @@ export function compileLesson(
         blocks.push({ kind: 'scene', scene: res.scene });
       } else if (seg.lang === 'chart') {
         blocks.push({ kind: 'chart', chart: parseChart(seg.text) });
+      } else if (seg.lang === 'practise') {
+        blocks.push({ kind: 'practise', links: parsePractise(seg.text) });
       } else if (seg.lang === 'progressive') {
         blocks.push({ kind: 'progressive', progressive: parseProgressive(seg.text) });
       } else {
@@ -426,6 +533,7 @@ export function compileLesson(
         }
       }
     }
+    checkPractiseSpots(blocks);
     const sceneIds = blocks.flatMap((b) => (b.kind === 'scene' ? [b.scene.id] : []));
     const dupScene = sceneIds.find((s, k) => sceneIds.indexOf(s) !== k);
     if (dupScene) throw new Error(`duplicate scene id "${dupScene}"`);

@@ -181,6 +181,13 @@ describe('storage', () => {
     expect(decodeImport(encodeExport(p))).toEqual(p);
     expect(sanitize(JSON.parse(JSON.stringify(p)))).toEqual(p);
   });
+  it('closeCalls defaults on, survives a round trip, and only false turns it off', () => {
+    expect(sanitize({ version: 1, drill: {} })!.drill.closeCalls).toBe(true);
+    expect(sanitize({ version: 1, drill: { closeCalls: 'no' } })!.drill.closeCalls).toBe(true);
+    const off = sanitize({ version: 1, drill: { closeCalls: false } })!;
+    expect(off.drill.closeCalls).toBe(false);
+    expect(decodeImport(encodeExport(off))!.drill.closeCalls).toBe(false);
+  });
   it('export codes round-trip and reject other prefixes', () => {
     const d = defaultPersisted();
     expect(decodeImport(encodeExport(d))).toEqual(d);

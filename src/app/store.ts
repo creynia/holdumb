@@ -223,6 +223,12 @@ export class Store {
     this.commit({ ...this.data, drill: { ...this.data.drill, lens } });
   }
 
+  /** Drill: the "Close calls" mix on or off (persisted). */
+  setDrillCloseCalls(on: boolean) {
+    if (on === this.data.drill.closeCalls) return;
+    this.commit({ ...this.data, drill: { ...this.data.drill, closeCalls: on } });
+  }
+
   resetDrill() {
     this.streaks = { perfect: 0, practical: 0 };
     this.commit({ ...this.data, drill: emptyDrill() });

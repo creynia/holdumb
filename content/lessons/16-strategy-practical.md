@@ -29,15 +29,15 @@ You know this already. It's what Perfect strategy I taught, minus the EV sheet's
 
 | Strategy | House edge per Ante | Extra cost vs perfect | Extra per hour at $10 |
 |---|---|---|---|
-| Perfect (EV sheet) | 2.185% | — | — |
-| Basic card | 2.381% | 0.196% | **$0.59** |
+| Perfect (EV sheet) | {{num:perfect-edge-3}} | — | — |
+| Basic card | {{num:basic-edge-3}} | {{num:basic-extra-3}} | **{{num:basic-extra-per-hour}}** |
 | Basic card without the flush rule | 2.449% | 0.264% | $0.79 |
-| Simple card | 2.708% | 0.523% | **$1.57** |
+| Simple card | {{num:simple-edge-3}} | {{num:simple-extra-3}} | **{{num:simple-extra-per-hour}}** |
 
 **Why the river matters most.** Every shortcut that drops the outs count costs about **5% of the Ante**,
 far more than all the other simplifications put together. "Bet 1x only with a pair" sounds safe, but it
 folds hands that win often enough. Even with the chart's preflop and the basic flop rule, a river rule of
-"bet 1x only with a hidden pair or better" raises the edge from 2.18% to **7.13%**. Simplifying preflop to
+"bet 1x only with a hidden pair or better" raises the edge from {{num:perfect-edge-2}} to **7.13%**. Simplifying preflop to
 "any pair or ace" costs 3.5% on its own. Keep the chart's preflop rules and the outs count, and you're within
 pennies of perfect.
 
@@ -48,13 +48,13 @@ view: preflop-grid
 
 **A practical session, at $10 and 30 hands an hour**
 
-* Expected cost: about **$7.14 an hour** with the basic card.
-* Money in action: about **$1,249 an hour** (4.16 antes per hand).
+* Expected cost: about **{{num:basic-per-hour}} an hour** with the basic card.
+* Money in action: about **{{num:basic-action-per-hour}} an hour** ({{num:basic-wager}} antes per hand).
 * Bring a bankroll that fits the swings (lesson 17). Practise in Drill until the card is automatic.
 
-:::math Where the basic card loses its 0.196%
+:::math Where the basic card loses its {{num:basic-extra-3}}
 Exact decomposition, each step changing one street:
-* Perfect preflop + basic flop + perfect river (`expert`): 2.2714%, so the flop rule costs **0.086%**.
+* Perfect preflop + basic flop + perfect river (`expert`): 2.2714%, so the flop rule costs **{{num:expert-extra-3}}**.
 * Then the outs-count river instead of a perfect river: 2.3814%, so the river rule costs **0.110%**.
 * The basic preflop rules are exactly the perfect ones, so preflop costs **0**.
 
@@ -65,7 +65,7 @@ Basic card EV = −54758439/2299422125 antes per hand. Simple card EV = −47068
 - q: How much more per hour does the basic card cost than perfect play, at $10 and 30 hands an hour?
   options: ["About 6¢", "About 59¢", "About $5", "About $15"]
   answer: 1
-  explain: "0.196% × $10 × 30 ≈ $0.59."
+  explain: "{{num:basic-extra-3}} × $10 × 30 ≈ {{num:basic-extra-per-hour}}."
 - q: Which shortcut costs the most?
   options: ["Dropping the flush-draw rule on the flop", "Using 'any king' preflop", "Playing the river 1x only with a pair", "Checking pocket deuces"]
   answer: 2
@@ -74,4 +74,11 @@ Basic card EV = −54758439/2299422125 antes per hand. Simple card EV = −47068
   options: ["Bet 4x", "Check"]
   answer: 0
   explain: "The simple card bets 4x with any king. (Perfect play checks K3o, a small mistake that's part of the simple card's price.)"
+```
+
+```practise
+- label: "Drill rivers near 21 outs"
+  to: "#/drill?category=river-outs-edge"
+- label: "Drill flop flush draws"
+  to: "#/drill?category=flop-flush-draw"
 ```
