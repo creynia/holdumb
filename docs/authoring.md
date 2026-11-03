@@ -44,6 +44,7 @@ Headings: use any depth; the shallowest is shifted to `h2` (the page title is th
 | Inline cards | `{{As Kd}}` | Rank `23456789TJQKA`, suit `shdc`. Parsed with the engine's `parseCards`: bad or duplicate cards fail. Works in prose, tips, math boxes, quiz text, options and explanations, scene step text. Not inside code spans. |
 | Glossary link | `[[term]]` or `[[term\|label]]` | The term (or slug) must exist in `glossary.json`. |
 | Chart | ` ```chart ` YAML `{ strategy, view, highlight? }` | `strategy` is a registry id, `view` is `preflop-grid`, `flop` or `river`, `highlight` is a list of **quoted** classes: `["33", "AKs", "T9o"]`. |
+| Progressive calculator | ` ```progressive ` YAML `{ meter? }` | I063, lesson 20: a meter slider ($10,000–$300,000) for the example $1 progressive, with its exact house edge, cost per hour and break-even (3,050,080/19 ≈ $160,530.53). `meter` is the start, whole thousands (default 50,000). The figures come from `math/progressive.ts`. |
 | Scene | ` ```scene ` YAML | A `SceneConfig` (`docs/design/simulator.md` §4.1, with the D25-D27a mappings). Checked by `validateScene`. Scene ids are unique within a lesson. |
 | Quiz | ` ```quiz ` YAML list | See below. |
 

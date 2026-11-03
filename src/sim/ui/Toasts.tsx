@@ -1,4 +1,6 @@
 import './sim.css';
+import { useEffect } from 'preact/hooks';
+import { announce } from './announcer';
 
 export interface Toast {
   id: number;
@@ -8,7 +10,7 @@ export interface Toast {
   spoken?: string;
 }
 
-/** Results announced politely; the app decides when to drop them. */
+/** Visible results. They are spoken through the app's single announcer, not a live region here. */
 export function Toasts({
   toasts,
   onDismiss,
@@ -16,8 +18,16 @@ export function Toasts({
   toasts: readonly Toast[];
   onDismiss?: (id: number) => void;
 }) {
+  const last = toasts[toasts.length - 1];
+  useEffect(() => {
+    if (last)
+      announce(last.spoken ?? last.text, {
+        politeness: last.tone === 'bad' ? 'assertive' : 'polite',
+        dedupeKey: 'toast',
+      });
+  }, [last?.id]);
   return (
-    <div class="sim-toasts" aria-live="polite" role="log">
+    <div class="sim-toasts">
       {toasts.map((t) => (
         <div key={t.id} class={`sim-toast sim-toast-${t.tone ?? 'info'}`}>
           <span aria-hidden={t.spoken ? 'true' : undefined}>{t.text}</span>

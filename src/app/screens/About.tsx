@@ -1,3 +1,4 @@
+import { Say } from '../../sim';
 import { useState } from 'preact/hooks';
 import { InstallButton } from '../components/InstallButton';
 import { Link } from '../components/Link';
@@ -41,7 +42,8 @@ export function About(props: { check?: () => Promise<UpdateCheck> }) {
       >
         Check for updates
       </button>
-      <p role="status" class="muted">
+      <p class="muted" data-testid="update-status">
+        <Say text={msg} dedupeKey="about" />
         {msg}
       </p>
       <p class="muted">
