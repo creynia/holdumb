@@ -345,9 +345,7 @@ describe('Simulator container', () => {
       fireEvent.click(screen.getByText('Deal'));
       await waitFor(() => expect(screen.queryByTestId('ev-details')).toBeTruthy());
       await ready();
-      fireEvent.click(document.querySelector('[data-option="play-4"]')!);
-      await flush();
-      fireEvent.click(screen.getByTestId('confirm'));
+      fireEvent.click(document.querySelector('[data-option="play-4"]')!); // one tap acts (D40)
       await waitFor(() =>
         expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
       );
