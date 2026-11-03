@@ -669,6 +669,33 @@ describe('small pieces', () => {
     fireEvent.click(screen.getByRole('radio', { name: '$25' }));
     expect(onSelect).toHaveBeenCalledWith(2500);
   });
+  it('StatusBar shows EV / Details in the third column until a result is showing (I092)', () => {
+    const onDetails = vi.fn();
+    const { rerender } = render(
+      <StatusBar bankroll={49_000} onFelt={2000} hand={null} onDetails={onDetails} />,
+    );
+    const btn = screen.getByTestId('ev-details');
+    expect(btn.textContent).toBe('Details');
+    expect(btn.getAttribute('aria-label')).toBe('EV details');
+    expect(screen.queryByTestId('hand-result')).toBeNull();
+    fireEvent.click(btn);
+    expect(onDetails).toHaveBeenCalledTimes(1);
+    // a settled result wins over Details
+    rerender(
+      <StatusBar
+        bankroll={49_000}
+        onFelt={0}
+        hand={{ outcome: 'win', net: 1000 }}
+        onDetails={onDetails}
+      />,
+    );
+    expect(screen.queryByTestId('ev-details')).toBeNull();
+    expect(screen.getByTestId('hand-result').textContent).toContain('Won');
+    // without a handler the column is the reserved "Hand —"
+    rerender(<StatusBar bankroll={49_000} onFelt={2000} hand={null} />);
+    expect(screen.getByTestId('hand-result').textContent).toContain('Hand');
+    expect(screen.getByLabelText('Table status')).toBeTruthy();
+  });
   it('StatusBar keeps a one-line hand result, reserved before the hand settles (I012)', () => {
     const { rerender } = render(<StatusBar bankroll={49_000} onFelt={2000} hand={null} />);
     expect(screen.getByTestId('hand-result').textContent).toBe('Hand\u2014');
