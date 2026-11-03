@@ -17,22 +17,40 @@ import { Sources } from './screens/Sources';
 import { Strategy } from './screens/Strategy';
 
 type Render = (p: Record<string, string>, r: ParsedHash) => VNode;
+/** The screen's name for the document title; undefined keeps the SEO title (Home). */
+type Name = (
+  p: Record<string, string>,
+  lessonTitle: (id: string) => string | undefined,
+) => string | undefined;
 
-export const ROUTES: { pattern: string; render: Render }[] = [
-  { pattern: '/', render: () => <Home /> },
-  { pattern: '/learn', render: () => <Learn /> },
-  { pattern: '/learn/:lessonId', render: (p) => <LessonView id={p.lessonId!} /> },
-  { pattern: '/play', render: (_p, r) => <Play query={r.query} /> },
-  { pattern: '/drill', render: (_p, r) => <Drill query={r.query} /> },
-  { pattern: '/strategy', render: (_p, r) => <Strategy query={r.query} /> },
-  { pattern: '/hands', render: () => <Hands /> },
-  { pattern: '/bets', render: () => <BetsList /> },
-  { pattern: '/bets/:wagerId', render: (p) => <BetDetail id={p.wagerId!} /> },
-  { pattern: '/glossary', render: (_p, r) => <Glossary query={r.query} /> },
-  { pattern: '/settings', render: () => <Settings /> },
-  { pattern: '/sources', render: () => <Sources /> },
-  { pattern: '/about', render: () => <About /> },
-  { pattern: '/more', render: () => <More /> },
+export const ROUTES: { pattern: string; render: Render; name: Name }[] = [
+  { pattern: '/', render: () => <Home />, name: () => undefined },
+  { pattern: '/learn', render: () => <Learn />, name: () => 'Learn' },
+  {
+    pattern: '/learn/:lessonId',
+    render: (p) => <LessonView id={p.lessonId!} />,
+    name: (p, lessonTitle) =>
+      lessonTitle(p.lessonId!) ? `${lessonTitle(p.lessonId!)} · Learn` : 'Learn',
+  },
+  { pattern: '/play', render: (_p, r) => <Play query={r.query} />, name: () => 'Practice table' },
+  { pattern: '/drill', render: (_p, r) => <Drill query={r.query} />, name: () => 'Drill' },
+  {
+    pattern: '/strategy',
+    render: (_p, r) => <Strategy query={r.query} />,
+    name: () => 'Strategy charts',
+  },
+  { pattern: '/hands', render: () => <Hands />, name: () => 'Hand rankings' },
+  { pattern: '/bets', render: () => <BetsList />, name: () => 'Paytables' },
+  {
+    pattern: '/bets/:wagerId',
+    render: (p) => <BetDetail id={p.wagerId!} />,
+    name: () => 'Paytable detail',
+  },
+  { pattern: '/glossary', render: (_p, r) => <Glossary query={r.query} />, name: () => 'Glossary' },
+  { pattern: '/settings', render: () => <Settings />, name: () => 'Settings' },
+  { pattern: '/sources', render: () => <Sources />, name: () => 'Sources' },
+  { pattern: '/about', render: () => <About />, name: () => 'About' },
+  { pattern: '/more', render: () => <More />, name: () => 'More' },
 ];
 
 export function renderRoute(route: ParsedHash): VNode {
@@ -41,4 +59,19 @@ export function renderRoute(route: ParsedHash): VNode {
     if (params) return r.render(params, route);
   }
   return <NotFound />;
+}
+
+/**
+ * The screen name for the document title ("Drill · holdumb"), or undefined on Home, which keeps
+ * the SEO title. Unknown paths name the not-found screen.
+ */
+export function routeName(
+  route: ParsedHash,
+  lessonTitle: (id: string) => string | undefined,
+): string | undefined {
+  for (const r of ROUTES) {
+    const params = matchPath(r.pattern, route.path);
+    if (params) return r.name(params, lessonTitle);
+  }
+  return 'Not found';
 }
