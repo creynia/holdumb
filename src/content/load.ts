@@ -7,6 +7,7 @@ import type {
   Chapter,
   ContentBundle,
   GlossaryEntry,
+  DrillReminders,
   HandCopy,
   Lesson,
   SourceGroup,
@@ -56,6 +57,7 @@ export interface ContentSources {
   bets: Record<string, BetCopy>;
   hands: Record<string, HandCopy>;
   strategy: Record<string, StrategyCopy>;
+  drill: DrillReminders;
   sources: SourceGroup[];
   samplesActive: boolean;
   lessonFiles: { file: string; slug: string; source: string }[];
@@ -89,6 +91,7 @@ export function readSources(root: string, includeSamples = false): ContentSource
     bets: normalizeBets(json<unknown>('bets.json', '_sample-bets.json', {})),
     hands: json<Record<string, HandCopy>>('hands.json', '_sample-hands.json', {}),
     strategy: json<Record<string, StrategyCopy>>('strategy.json', '_sample-strategy.json', {}),
+    drill: json<DrillReminders>('drill.json', '_sample-drill.json', {}),
     sources: has('sources.json')
       ? (JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')) as SourceGroup[])
       : [],
@@ -162,6 +165,7 @@ export function buildContent(root: string): ContentBundle {
     bets,
     hands: src.hands,
     strategy,
+    drill: src.drill,
     sources: src.sources,
   };
 }

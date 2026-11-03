@@ -6,6 +6,7 @@ import type { ContentBundle } from '../../src/content/types';
 const bundle = (ids: string[]): ContentBundle => ({
   chapters: [{ id: 'c', title: 'C', summary: '', lessons: ids }],
   sources: [],
+  drill: {},
   lessons: ids.map((id) => ({
     id,
     title: id,

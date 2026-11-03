@@ -1,7 +1,7 @@
 import type { HandCategory, WagerId } from '../sim/engine/types';
 import type { WagerTier } from '../sim/math/types';
 import type { SceneConfig } from '../sim/scene/types';
-import type { StrategyId } from '../sim/strategy/types';
+import type { DrillCategoryId, StrategyId } from '../sim/strategy/types';
 
 export type LessonId = string;
 export type ChapterId = string;
@@ -119,6 +119,9 @@ export interface StrategyCopy {
   rules: string[]; // markdown in source, HTML in the bundle
 }
 
+/** content/drill.json: the grading reminder per Drill category (curriculum.md 9.2). `{outs}` is filled in. */
+export type DrillReminders = Partial<Record<DrillCategoryId, string>>;
+
 export interface ContentBundle {
   chapters: Chapter[];
   lessons: Lesson[];
@@ -126,5 +129,6 @@ export interface ContentBundle {
   bets: Record<WagerId, BetCopy>;
   hands: Record<HandCategory, HandCopy>;
   strategy: Record<StrategyId, StrategyCopy>;
+  drill: DrillReminders;
   sources: SourceGroup[];
 }

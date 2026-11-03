@@ -1,9 +1,17 @@
 export type * from './types';
 export { previewJob } from './preview';
 export { decisionTier, wagerTier } from './tiers';
-export { betterAlternative, riverFacts, flopFacts, groupOuts, RIVER_UNSEEN } from './alternatives';
+export {
+  basicFlopRule,
+  betterAlternative,
+  riverFacts,
+  flopFacts,
+  groupOuts,
+  RIVER_UNSEEN,
+} from './alternatives';
 export type {
   AlternativeCopyKey,
+  BasicFlopRule,
   AlternativeVars,
   MadeHand,
   BetterAlternative,
