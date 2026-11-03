@@ -4,7 +4,7 @@ import { useState } from 'preact/hooks';
 import { formatMoney } from '../engine';
 import { GAME_EDGE } from '../math';
 import type { SessionView } from '../scene';
-import { fmtPct } from './text';
+import { fmtPct, typographic } from './text';
 
 export interface SessionPanelProps {
   session: SessionView;
@@ -13,7 +13,8 @@ export interface SessionPanelProps {
   defaultOpen?: boolean;
 }
 
-const m = (c: number, sign = false): string => formatMoney(Math.round(c), { sign });
+/** Money with the real minus sign (curriculum 8.6). */
+const m = (c: number, sign = false): string => typographic(formatMoney(Math.round(c), { sign }));
 
 /**
  * Session panel (curriculum 8.5): your result, total wagered, what perfect play expects, what your
