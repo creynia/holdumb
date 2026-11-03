@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame, equity, evaluate7, parseCards } from '../engine';
 import type { Card as PlayingCard, HandRecord } from '../engine';
+import { classEv, preflopPreview } from '../math';
 import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey, SessionView } from '../scene';
 import { ActionBar, optionsFor, slotOf } from './ActionBar';
@@ -26,7 +27,13 @@ import {
 } from './fixtures';
 import { StatusBar } from './StatusBar';
 import { statusMoney } from './status';
-import { StrategyChart, chartClasses, preflop4xSet } from './StrategyChart';
+import {
+  StrategyChart,
+  cellEv,
+  chartClasses,
+  closeCallClasses,
+  preflop4xSet,
+} from './StrategyChart';
 import { Table } from './Table';
 import { TierBadge } from './TierBadge';
 import { Toasts } from './Toasts';
@@ -508,7 +515,7 @@ describe('ActionBar', () => {
     expect(b.textContent).toContain('+3.601 · Best');
     expect(screen.getByText('Check').closest('button')!.textContent).toContain('Big mistake');
   });
-  it('shows no EV when practice mode leaves the preview off', () => {
+  it('shows no EV when EV after the move leaves the preview off', () => {
     render(<ActionBar street="flop" />);
     expect(screen.getByText('Bet 2x').closest('button')!.textContent).toBe('Bet 2x');
   });
@@ -971,9 +978,61 @@ describe('StrategyChart', () => {
   it('names each cell and shows the answer on tap, text not colour', () => {
     const onSelect = vi.fn();
     render(<StrategyChart strategy="basic" view="preflop" onSelect={onSelect} />);
-    fireEvent.click(screen.getByRole('gridcell', { name: 'K4o: Check' }));
+    fireEvent.click(screen.getByRole('gridcell', { name: 'K4o: Check, close call' }));
     expect(onSelect).toHaveBeenCalledWith('K4o');
-    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe('K4o: Check.');
+    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe(
+      'K4o: Check. Bet 4x \u22120.229 \u00b7 Check \u22120.206 \u00b7 margin 0.023 \u00b7 close call',
+    );
+  });
+  it('the close-call dots are exactly the seven classes of curriculum 7.3, computed from the table', () => {
+    expect([...closeCallClasses()].sort()).toEqual(
+      ['J8s', 'K2s', 'K4o', 'Q5s', 'Q6s', 'Q8o', 'T9s'].sort(),
+    );
+    // Independently from the exact table: |EV(4x) - EV(check)| < 0.03 antes, no rounding.
+    const set = chartClasses().filter((c) => {
+      const e = classEv('blind-standard', c);
+      const d = e.bet4.num * e.check.den - e.check.num * e.bet4.den;
+      const den = e.bet4.den * e.check.den;
+      return (d < 0n ? -d : d) * 100n < 3n * den;
+    });
+    expect(set.sort()).toEqual([...closeCallClasses()].sort());
+    const { container } = render(<StrategyChart strategy="perfect" view="preflop" />);
+    const dots = [...container.querySelectorAll('.sim-chart-cell.is-close')];
+    expect(dots.map((d) => d.getAttribute('data-class')).sort()).toEqual([...set].sort());
+    for (const d of dots) expect(d.getAttribute('aria-label')).toMatch(/, close call$/);
+    expect(container.querySelectorAll('[aria-label$="close call"]')).toHaveLength(7);
+  });
+  it('classEv equals the preflop EV sheet options exactly for all 169 classes', () => {
+    for (const cls of chartClasses()) {
+      const [a, b] = [cls[0]!, cls[1]!];
+      const text =
+        cls.length === 2 ? `${a}s${b}h` : cls.endsWith('s') ? `${a}s${b}s` : `${a}s${b}h`;
+      const cards = parseCards(text);
+      const hole: [number, number] = [cards[0]!, cards[1]!];
+      const p = preflopPreview({
+        street: 'preflop',
+        hole,
+        board: [],
+        blindPaytable: 'blind-standard',
+        ante: 100,
+      });
+      const bet = p.options.find((o) => o.action.type === 'play' && o.action.multiple === 4)!;
+      const chk = p.options.find((o) => o.action.type === 'check')!;
+      const e = classEv('blind-standard', cls);
+      // cross-multiplied: identical fractions, not just close ones
+      expect(e.bet4.num * bet.ev.den, cls).toBe(bet.ev.num * e.bet4.den);
+      expect(e.check.num * chk.ev.den, cls).toBe(chk.ev.num * e.check.den);
+    }
+  });
+  it('shows exact signed EVs for a bet cell, never hard-coded', () => {
+    render(<StrategyChart strategy="perfect" view="preflop" />);
+    fireEvent.click(screen.getByRole('gridcell', { name: 'AKs: Bet 4x' }));
+    const e = cellEv('AKs');
+    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe(
+      `AKs: Bet 4x. Bet 4x ${e.bet4} \u00b7 Check ${e.check} \u00b7 margin ${e.margin}`,
+    );
+    expect(e.bet4.startsWith('+')).toBe(true);
+    expect(e.close).toBe(false);
   });
   it('accepts the strategy module data', () => {
     const { container } = render(
@@ -1343,7 +1402,9 @@ describe('StrategyChart keyboard', () => {
     fireEvent.keyDown(aa, { key: 'ArrowRight' });
     expect(document.activeElement?.getAttribute('data-class')).toBe('AKs');
     fireEvent.keyDown(document.activeElement!, { key: 'Enter' });
-    expect(document.querySelector('.sim-chart-legend')!.textContent).toBe('AKs: Bet 4x.');
+    expect(document.querySelector('.sim-chart-legend')!.textContent).toMatch(
+      /^AKs: Bet 4x\. Bet 4x \+1\.658 /,
+    );
   });
 });
 
@@ -1381,7 +1442,7 @@ describe('review fixes', () => {
       'Bet 4x instead: AA is a 4x hand. +$36.01 vs +$21.93.',
     );
   });
-  it('ActionBar practice mode shows no EV', () => {
+  it('ActionBar with EV after the move shows no EV', () => {
     render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} hideEv />);
     expect(document.body.textContent).not.toMatch(/Best|3\.601|Calculating|not available/);
   });

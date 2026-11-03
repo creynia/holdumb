@@ -4,7 +4,7 @@ import { basicRiverLine, dealerOutsLine, hiddenPairLine, outsDetailText } from '
 export interface DealerOutsProps {
   facts: RiverFacts;
   request: PreviewRequest;
-  /** `before`: the move is still open; `after`: in a result (practice, drill). Both show the basic card. */
+  /** `before`: the move is still open; `after`: in a result (EV after the move, drill). Both show the basic card. */
   mode: 'before' | 'after';
 }
 
