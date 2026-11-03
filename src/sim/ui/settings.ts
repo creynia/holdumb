@@ -86,11 +86,13 @@ export function resolveEvShown(
   settings: SimSettings,
   scene: SceneConfig,
   sandbox: boolean,
-  stepShowEV?: boolean,
+  step?: SceneStep | null,
 ): boolean {
-  const explicit = stepShowEV ?? scene.showEV;
+  // A lesson: its own evMode (or the showEV / practice aliases), step first (D39).
+  if (!sandbox) return evVisibleAfter(stepEvMode(scene, step));
+  const explicit = step?.showEV ?? scene.showEV;
   if (explicit !== undefined) return explicit;
-  return !(sandbox && !evVisibleAfter(settings.evMode));
+  return evVisibleAfter(settings.evMode);
 }
 
 export function randomSeed(): number {

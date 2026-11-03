@@ -13,6 +13,12 @@ import {
 } from './settings';
 import { DEFAULT_SIM_SETTINGS } from './types';
 
+const step = (o: object) => ({
+  id: 'a',
+  text: '',
+  completeWhen: { acknowledged: true as const },
+  ...o,
+});
 const TIERS: DecisionTier[] = ['best', 'close', 'small', 'costly', 'blunder'];
 
 describe('D39 settings helpers', () => {
@@ -52,7 +58,12 @@ describe('D39 settings helpers', () => {
     expect(resolveEvShown(s('never'), scene, false)).toBe(true);
     expect(resolveEvShown(s('before'), { ...scene, showEV: false }, true)).toBe(false);
     expect(resolveEvShown(s('never'), { ...scene, showEV: true }, true)).toBe(true);
-    expect(resolveEvShown(s('before'), scene, true, false)).toBe(false);
+    expect(resolveEvShown(s('before'), scene, true, step({ showEV: false }))).toBe(false);
+    // Lessons follow the scene's evMode keys, step first.
+    expect(resolveEvShown(s('before'), { ...scene, evMode: 'never' }, false)).toBe(false);
+    expect(resolveEvShown(s('never'), { ...scene, evMode: 'after' }, false)).toBe(true);
+    expect(resolveEvShown(s('before'), scene, false, step({ evMode: 'never' }))).toBe(false);
+    expect(resolveEvShown(s('before'), { ...scene, showEV: false }, false, step({}))).toBe(false);
   });
   describe('resolveEvMode / resolveConfirm (D39)', () => {
     const users = EV_MODES.flatMap((evMode) =>
