@@ -9,6 +9,7 @@ import {
   gradeSpot,
   nextSpot,
   optionKeyOf,
+  riverFacts,
 } from '../../sim';
 import type {
   DecisionAction,
@@ -24,7 +25,7 @@ import type {
 } from '../../sim';
 import { Cards } from '../components/Cards';
 import { Link } from '../components/Link';
-import { useStore } from '../context';
+import { useContent, useStore } from '../context';
 import { getEvClient } from '../evClient';
 import { navigate } from '../router';
 import { DRILL_STREETS, lensStats } from '../storage';
@@ -87,6 +88,28 @@ const HEADLINE = {
   blunder: 'Big mistake.',
 } as const;
 
+/** curriculum.md 9.2: the sentence under the headline, per tier. */
+export function gradingBody(
+  tier: keyof typeof HEADLINE,
+  reminder: string,
+  bestLabel: string,
+  chosenLabel: string,
+  regret: string,
+  cost: string,
+): string {
+  const tail = reminder ? ` ${reminder}` : '';
+  switch (tier) {
+    case 'best':
+      return reminder || `${chosenLabel} is the best play.`;
+    case 'close':
+      return `${bestLabel} is better by just ${regret} antes (${cost}). Either is fine.`;
+    case 'small':
+      return `${bestLabel} is better by ${regret} antes (${cost} per hand).${tail}`;
+    default:
+      return `${bestLabel} earns ${regret} antes (${cost}) more on average.${tail}`;
+  }
+}
+
 /**
  * splitmix32 -> the engine's four-word RNG state. Seeding after SplitMix (Steele, Lea and Flood,
  * 2014), mixing with the MurmurHash3 fmix32 constants 0x85ebca6b / 0xc2b2ae35 (Austin Appleby,
@@ -120,6 +143,7 @@ const labelOf = (street: DecisionStreet, a: DecisionAction) =>
 export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const deps = props.deps ?? defaultDrillDeps;
   const store = useStore();
+  const content = useContent();
   const q = props.query.get('street');
   const qStreet: DecisionStreet | 'mixed' =
     q === 'preflop' || q === 'flop' || q === 'river' ? q : 'mixed';
@@ -211,6 +235,13 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   ) => `${antes(f)} antes (${fmtCostC(costCents(ref!, o))}`;
   const hole = spot ? spot.hole.map(cardCode).join('') : '';
   const board = spot ? spot.board.map(cardCode).join('') : '';
+  // curriculum.md 9.2: the category's reminder (river categories name the dealer-outs count).
+  const reminder = spot
+    ? (content.drill[spot.category] ?? '').replace(
+        '{outs}',
+        spot.street === 'river' ? String(riverFacts(spot.hole, spot.board).outs) : '',
+      )
+    : '';
 
   return (
     <div class="page">
@@ -261,6 +292,9 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       {spot && (
         <section class="card drill-spot" data-testid="drill-spot" data-street={spot.street}>
           <h2 class="sr">Your hand</h2>
+          <p class="drill-spot-category muted" data-testid="drill-category-label">
+            {DRILL_CATEGORY_LABELS[spot.category]}
+          </p>
           <div class="drill-cards">
             <Cards cards={spot.hole} />
             {spot.board.length > 0 && <Cards cards={spot.board} />}
@@ -293,11 +327,20 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             <strong>{HEADLINE[answer.tier]}</strong>{' '}
             {answer.tier === 'best'
               ? answer.grade.lens === 'perfect'
-                ? `${chosenOpt.label} is the best play.`
-                : chosenIsCard
-                  ? `${chosenOpt.label} is the card's play.`
-                  : `${chosenOpt.label} is the best play (the card says ${gradeBest} here).`
-              : `${gradeBest} is better by ${money(answer.grade.regret, refOpt, chosenOpt)} per hand).`}
+                ? reminder || `${chosenOpt.label} is the best play.`
+                : `${
+                    chosenIsCard
+                      ? `${chosenOpt.label} is the card's play.`
+                      : `${chosenOpt.label} is the best play (the card says ${gradeBest} here).`
+                  }${reminder ? ` ${reminder}` : ''}`
+              : gradingBody(
+                  answer.tier,
+                  reminder,
+                  gradeBest,
+                  chosenOpt.label,
+                  antes(answer.grade.regret),
+                  fmtCostC(costCents(refOpt!, chosenOpt)),
+                )}
             {answer.grade.lens === 'practical' && perfectDiffers && chosenOpt !== perfectBest && (
               <>
                 {' '}
