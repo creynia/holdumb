@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEvClient } from '../worker/client';
-import { AutoPlayPanel } from './AutoPlayPanel';
+import { AutoPlayPanel, shownNet } from './AutoPlayPanel';
 import { DEFAULT_SIM_SETTINGS } from './types';
 
 afterEach(cleanup);
@@ -57,5 +57,22 @@ describe('AutoPlayPanel layout', () => {
     expect(screen.getAllByRole('option').filter((o) => o.textContent === '30')).toHaveLength(1);
     expect(screen.queryByText('3,000')).toBeNull();
     evClient.dispose();
+  });
+});
+
+describe('shown net figures add up to the cent', () => {
+  it('Expected + Luck equals Actual, including half-cent splits', () => {
+    const pairs: Array<[number, number]> = [
+      [1234.5, 2000.4],
+      [-0.5, 0.5],
+      [999.5, 1000.49],
+      [-2500.5, -2499.5],
+      [3.5, -3.5],
+    ];
+    for (const [exact, sim] of pairs) {
+      const shown = shownNet(exact, sim);
+      expect(shown.expected + shown.luck).toBe(shown.actual);
+    }
+    expect(shownNet(1234.5, 2000.4)).toEqual({ expected: 1235, actual: 2000, luck: 765 });
   });
 });

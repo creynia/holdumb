@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EvSheet, cardCode, formatMoney, nextSpot, optionKeyOf } from '../../sim';
+import { EvSheet, cardCode, costCents, fmtCostC, fmtFixed, nextSpot, optionKeyOf } from '../../sim';
 import type {
   DecisionAction,
   DecisionPreview,
@@ -75,7 +75,8 @@ export function rngFromSeed(seed: number): RngState {
   return { s: [next(), next(), next(), next()] };
 }
 
-const antes = (f: { num: bigint; den: bigint }) => (Number(f.num) / Number(f.den)).toFixed(3);
+/** Antes to three decimals, exact and rounded half away from zero (same as the EV sheet). */
+const antes = (f: { num: bigint; den: bigint }) => fmtFixed(f, 3);
 
 interface Answer {
   chosen: number;
@@ -230,11 +231,8 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             <strong>{HEADLINE[chosenOpt.tier]}</strong>{' '}
             {chosenOpt.tier === 'best'
               ? `${chosenOpt.label} is the best play.`
-              : `${best.label} is better by ${antes(chosenOpt.regret)} antes (${formatMoney(
-                  Math.round(
-                    (Number(chosenOpt.regret.num) * store.settings.anteUnitCents) /
-                      Number(chosenOpt.regret.den),
-                  ),
+              : `${best.label} is better by ${antes(chosenOpt.regret)} antes (${fmtCostC(
+                  costCents(best, chosenOpt),
                 )} per hand).`}
           </p>
           <EvSheet
