@@ -23,7 +23,11 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /perf\.spec\.ts/ },
   ],
   webServer: {
-    command: `npm run build:all && npx vite preview --port ${PORT} --strictPort`,
+    // CI's e2e job downloads the `build` artifact from the check job and sets PREBUILT=1, so it
+    // only serves what was already built (I043). Locally it builds first, as before.
+    command: process.env.PREBUILT
+      ? `npx vite preview --port ${PORT} --strictPort`
+      : `npm run build:all && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
