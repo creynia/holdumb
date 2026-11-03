@@ -121,3 +121,32 @@
 .sim-reveal-lose {
   border-left-color: var(--tier-best);
 }
+
+/* ---------- forced colours (Windows High Contrast) ----------
+   System colours replace the tier and accent colours here, so each tier gets its own border
+   style as well as its word, and the selected button gets a system-coloured outline. The felt is
+   a picture of a table: its colours stay as drawn. */
+@media (forced-colors: active) {
+  .sim-act-decision.tier-best {
+    border-bottom-style: solid;
+  }
+  .sim-act-decision.tier-close {
+    border-bottom-style: dashed;
+  }
+  .sim-act-decision.tier-small {
+    border-bottom-style: dotted;
+  }
+  .sim-act-decision.tier-costly {
+    border-bottom-style: double;
+  }
+  .sim-act-decision.tier-blunder {
+    border-bottom-style: groove;
+  }
+  .sim-act.is-selected {
+    outline: 3px solid CanvasText;
+    outline-offset: 2px;
+  }
+  .sim-felt {
+    forced-color-adjust: none;
+  }
+}
