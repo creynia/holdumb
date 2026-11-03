@@ -37,7 +37,7 @@ You know this already. It's what Perfect strategy I taught, minus the EV sheet's
 **Why the river matters most.** Every shortcut that drops the outs count costs about **5% of the Ante**,
 far more than all the other simplifications put together. "Bet 1x only with a pair" sounds safe, but it
 folds hands that win often enough. Even with the chart's preflop and the basic flop rule, a river rule of
-"bet 1x only with a hidden pair or better" raises the edge from 2.19% to **7.13%**. Simplifying preflop to
+"bet 1x only with a hidden pair or better" raises the edge from 2.18% to **7.13%**. Simplifying preflop to
 "any pair or ace" costs 3.5% on its own. Keep the chart's preflop rules and the outs count, and you're within
 pennies of perfect.
 
