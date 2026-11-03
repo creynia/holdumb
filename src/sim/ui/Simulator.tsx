@@ -160,7 +160,11 @@ export function Simulator(props: SimulatorProps) {
       data-mode={mode}
       data-ev={view.preview.status}
       data-equity={eq}
-      style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
+      style={
+        orientation === 'landscape'
+          ? '--sim-table-h: calc(100dvh - var(--chrome-h, 100px))'
+          : undefined
+      }
     >
       {orientation === 'portrait' || autoOnly ? stepPanel : null}
       {autoOnly ? null : table}

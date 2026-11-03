@@ -62,6 +62,8 @@
   max-width: none;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 284px;
+  /* One row of exactly the table height: an open EV sheet scrolls inside the rail, never grows it. */
+  grid-template-rows: minmax(0, 1fr);
   height: var(--sim-table-h, 100dvh);
   min-height: 0;
 }
