@@ -979,30 +979,6 @@ textarea {
 [data-view] {
   scroll-margin-top: 16px;
 }
-
-/* Placeholders while a lazy screen or the lesson bundle loads (I039): visible, never blank. */
-.route-loading {
-  min-height: 70vh;
-}
-.skel-block {
-  display: block;
-  min-height: 56px;
-  margin: 1rem 0;
-  border-radius: 12px;
-  background: var(--surface-2);
-}
-.ring-skel {
-  display: block;
-  flex: none;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: var(--surface-2);
-}
-.route-failed .btn {
-  min-height: 44px;
-  min-width: 44px;
-
 /* The Drill category label sits in the card's top padding, so it adds no row and the cards and the
    choice row stay where they were (I015). */
 .drill-spot {
@@ -1026,4 +1002,28 @@ textarea {
   /* Three lines: the longest copy (with the install hint) at 360px. Same height in every state. */
   min-height: 4.5em;
   margin: 0.25rem 0 0;
+}
+
+/* Placeholders while a lazy screen or the lesson bundle loads (I039): visible, never blank. */
+.route-loading {
+  min-height: 70vh;
+}
+.skel-block {
+  display: block;
+  min-height: 56px;
+  margin: 1rem 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.ring-skel {
+  display: block;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.route-failed .btn {
+  min-height: 44px;
+  min-width: 44px;
 }
