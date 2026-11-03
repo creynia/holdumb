@@ -461,4 +461,34 @@ test.describe('sandbox', () => {
     if (vp.width > vp.height && vp.height < 520)
       expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
   });
+
+  test('Six Card Bonus: off by default, on it settles at the deal off the felt (I062)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?seed=7&speed=instant');
+    const sim = page.getByTestId('simulator');
+    const panel = page.getByTestId('six-card');
+    await expect(page.getByTestId('six-card-toggle')).not.toBeChecked();
+    await page.getByTestId('six-card-toggle').check();
+    await expect(page.getByTestId('six-card-edge')).toContainText('8.56%');
+    await expect(page.getByTestId('six-card-edge')).toContainText('$12.84 an hour');
+    const before = Number(await sim.getAttribute('data-equity'));
+    await page.locator('button[data-action="deal"]').click();
+    const last = page.getByTestId('six-card-last');
+    await expect(last).toBeVisible();
+    await expect(last.locator('.sim-inline-card')).toHaveCount(4);
+    // The bet settled with the deal: equity moved by exactly the Six Card profit ($5 bet).
+    const text = (await last.textContent()) ?? '';
+    const m = /([+−])\$([\d,.]+)\s*$/.exec(text);
+    expect(m).not.toBeNull();
+    const profit = Math.round(Number(m![2]!.replace(/,/g, '')) * 100) * (m![1] === '−' ? -1 : 1);
+    expect(profit === -500 || profit >= 3_500).toBe(true);
+    expect(Number(await sim.getAttribute('data-equity'))).toBe(before + profit);
+    // Never on the felt; its controls are full tap targets.
+    const felt = (await page.locator('svg.sim-felt').boundingBox())!;
+    const box = (await panel.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(felt.y + felt.height);
+    for (const id of ['six-card-amount', 'six-card-paytable'])
+      expect((await page.getByTestId(id).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  });
 });

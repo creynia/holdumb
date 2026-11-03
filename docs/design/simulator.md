@@ -29,7 +29,7 @@ and/or exact rationals in Python. The scratch code is in
 | Engine | Pure, immutable, framework-free TS in `src/sim/engine/`. No DOM, no `Math.random`, no `Date`. |
 | Rules | Standard UTH (D9): Ante = Blind, Play 4x/3x preflop, 2x flop, 1x river, fold only at the river. Dealer qualifies with a pair or better; if not, the Ante pushes. The Trips bet stays in action when you fold. |
 | Paytables | Config in a registry. **Blind**: one preset, `blind-standard` 500/50/10/3/3:2/1 (D12). **Trips**: `trips-8-6-5` (default, D6) plus `trips-9-7-4`, `trips-8-7-4`, `trips-7-6-5`, `trips-8-6-4`. Types and generator are parameterised by the Blind table so presets can be added later. |
-| Side bets | Trips only (D5). The `SideBetDef` interface lets 6-Card Bonus etc. be added later as a contract extension. |
+| Side bets | Trips (D5), plus the optional Six Card Bonus in the sandbox (D5a, I062: `engine/sixcard.ts`, `scene/sixcard.ts`, `ui/SixCardPanel.tsx`; settles at the deal, outside the frozen wager registry). |
 | Cards | `Card = rank*4 + suit` (0..51), rank 0 = deuce .. 12 = ace, suit order `s h d c`. Text codes `As`, `Td` via `parseCards` (shared with content and URLs). |
 | RNG | crappy's `xoshiro128**` seeded through `splitmix32`, plus `randBelow(n)` with rejection sampling. Each hand gets a Fisher-Yates shuffle of the cards not forced. RNG state lives in `GameState`, so play is replayable. |
 | Forced decks | `ForcedDeal` lists any subset of player / dealer / flop / turn / river cards as codes. The rest is shuffled from the seed. A queue is kept per scene and per step. |
@@ -43,7 +43,7 @@ and/or exact rationals in Python. The scratch code is in
 | Transport | All EV goes through architecture.md's `EvClient` (`preview`, `simulate` jobs, generator-based, cancellable, worker with in-thread fallback). |
 | Rendering | SVG felt, data-driven layouts for portrait (390×844) and landscape (844×390), HTML action bar and EV sheet. Every target is at least 44 px. |
 | Fold reveal | When you fold, the dealer's cards are revealed with "You would have won $X / lost $Y" (D7). |
-| EV visibility (was Practice mode) | Setting `evMode`: EV `before` I choose (default) / `after` I choose (the move is graded once you act) / `never`. `confirmOn` (default `never`: one tap acts) adds a confirm step for all bets, Mistake + Big mistake, or Big mistake only (D11, D24, D39). |
+| EV visibility (was Practice mode) | Setting `evMode`: EV `before` I choose (default) / `after` I choose (the move is graded once you act) / `never`. `confirmOn` (default `never`: one tap acts) adds a confirm step for all bets, Mistake + Big mistake, or Big mistake only (D11, D24, D39). The app's Confirm box stores that scope as `confirmTiers` and turns it on or off without losing it (D40). |
 | Strategies | Ladder `perfect` → `basic` → `simple` (D16), plus `expert` (fast perfect for sims), `check-to-river`, `never-fold`, `always-max`, and lesson-only `riverLeak`, each with an **exact** EV per hand and a Trips amount. Multi-session sims with charts. |
 
 ---
