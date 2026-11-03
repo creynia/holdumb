@@ -6,6 +6,7 @@ import { frac } from '../math/fraction';
 import type { Fraction } from '../math';
 import { EMPTY_TOTALS, MAX_MISTAKE_SPOTS } from '../scene';
 import type { SessionTotals, SimDriver } from '../scene';
+import type { LoggedHand } from './moveLog';
 import { EV_MODES, evModeOfPractice } from './settings';
 import type { EvMode } from './types';
 
@@ -28,6 +29,8 @@ export interface SandboxSnapshot {
   mistakeSpots?: string[];
   /** The table's EV visibility (D39). Older snapshots carry a boolean `practice` instead. */
   evMode: EvMode;
+  /** The move log (I081), newest hand first; read back with decodeMoveLog. Optional. */
+  log?: LoggedHand[];
 }
 
 const isFraction = (v: unknown): v is Fraction =>
@@ -42,7 +45,11 @@ export function encodeTotals(t: SessionTotals): SessionTotalsJson {
 }
 
 /** `evMode` defaults to the driver's table mode. */
-export function encodeSnapshot(d: SimDriver, evMode?: EvMode): SandboxSnapshot {
+export function encodeSnapshot(
+  d: SimDriver,
+  evMode?: EvMode,
+  log?: readonly LoggedHand[],
+): SandboxSnapshot {
   const s = d.snapshotData();
   return {
     v: 1,
@@ -51,6 +58,7 @@ export function encodeSnapshot(d: SimDriver, evMode?: EvMode): SandboxSnapshot {
     totals: encodeTotals(s.totals),
     mistakeSpots: s.mistakeSpots,
     evMode: evMode ?? s.evMode,
+    ...(log && log.length ? { log: log.slice() } : {}),
   };
 }
 

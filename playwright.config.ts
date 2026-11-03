@@ -19,6 +19,18 @@ export default defineConfig({
       use: { ...devices['Pixel 7 landscape'], viewport: { width: 844, height: 390 } },
       testMatch: /(sandbox|lessons|layout|drill|tabs|screenshots)\.spec\.ts/,
     },
+    // 360x740: the narrowest invariant viewport (no horizontal scroll, tab bar overlaps)
+    {
+      name: 'narrow',
+      use: { ...devices['Pixel 7'], viewport: { width: 360, height: 740 } },
+      testMatch: /(sandbox|lessons|drill|tabs|a11y|update-toast)\.spec\.ts/,
+    },
+    // 667x375: the short landscape invariant viewport (answer buttons under the tab bar)
+    {
+      name: 'landscape-small',
+      use: { ...devices['Pixel 7 landscape'], viewport: { width: 667, height: 375 } },
+      testMatch: /(sandbox|lessons|drill|tabs|a11y|update-toast)\.spec\.ts/,
+    },
     // perf.spec.ts runs in the mobile project only (CPU-throttled budgets)
     { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /perf\.spec\.ts/ },
   ],

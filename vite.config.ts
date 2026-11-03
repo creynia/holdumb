@@ -22,6 +22,19 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
+        // Code splitting per build: lazy screens + on-demand content (PWA) vs static + inlined (single).
+        '#screens': fileURLToPath(
+          new URL(
+            single ? './src/app/screens-static.ts' : './src/app/screens-lazy.tsx',
+            import.meta.url,
+          ),
+        ),
+        '#content': fileURLToPath(
+          new URL(
+            single ? './src/app/content-eager.ts' : './src/app/content-none.ts',
+            import.meta.url,
+          ),
+        ),
         // Worker transport per build: inline (iife, works on file://) vs separate file (Pages/PWA).
         '#ev-worker': fileURLToPath(
           new URL(

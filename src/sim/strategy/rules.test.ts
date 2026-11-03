@@ -2,11 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { seedRng, shuffle } from '../engine/rng';
 import { createGame, applyAction, visibleView } from '../engine/game';
 import { validateAction } from '../engine/validate';
-import { flopFacts } from '../math/alternatives';
+import { basicFlopRule, flopFacts } from '../math/alternatives';
 import { riverFacts } from '../math/alternatives';
 import type { Card, RngState } from '../engine/types';
 import { strategyChart } from './chart';
-import { dealerOuts, flopMade, flushDrawFlop, hiddenPairFlop, isHidden } from './predicates';
+import {
+  dealerOuts,
+  flopMade,
+  flushDrawFlop,
+  hiddenPairFlop,
+  isHidden,
+  matchesAny,
+} from './predicates';
+import { RULE_DEFS } from './rules';
 import { STRATEGIES } from './presets';
 import { riverCounts, riverPlays } from './river';
 import { STRATEGY_IDS } from './ids';
@@ -17,6 +25,28 @@ function deck(r: RngState): [Card[], RngState] {
     Array.from({ length: 52 }, (_, i) => i),
   );
 }
+
+describe('basicFlopRule is the same rule as the basic strategy (I058)', () => {
+  it('raises exactly when basic.flop2x matches, on 10,000 random flops', () => {
+    let r = seedRng(58);
+    let raises = 0;
+    for (let i = 0; i < 10_000; i++) {
+      let d: Card[];
+      [d, r] = deck(r);
+      const hole: [Card, Card] = [d[0]!, d[1]!];
+      const flop = d.slice(2, 5);
+      const b = basicFlopRule(hole, flop);
+      const strategy = matchesAny(RULE_DEFS.basic.flop2x, hole, flop);
+      if (b.raise !== strategy)
+        throw new Error(`disagree on ${hole.join(',')} / ${flop.join(',')}`);
+      expect(b.rule !== null).toBe(strategy);
+      if (strategy) raises++;
+    }
+    // both branches were exercised
+    expect(raises).toBeGreaterThan(1000);
+    expect(raises).toBeLessThan(9000);
+  });
+});
 
 describe('predicates agree with math facts (decisions.md section 3)', () => {
   it('flop (a)(b)(c) and river hidden/outs on 3000 random deals', () => {
