@@ -122,6 +122,7 @@ export function useEvSheet(
           confirmBlunder: needsConfirm(settings.confirmOn, 'blunder'),
           hideEv: practice,
           alternative,
+          request: sheetReq,
           chosen: reveal?.chosen ?? null,
           onContinue: () => {
             setReveal(null);
