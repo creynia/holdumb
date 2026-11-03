@@ -3308,12 +3308,12 @@ you'd really face. `?street=mixed` draws categories in proportion to how often t
 | `pre-small-pair` | preflop | 22–66 | {{2c 2d}}: check (−0.179 vs −0.288) |
 | `pre-low` | preflop | top card T or lower, not a pair | {{Ts 9s}}: check (+0.205 vs +0.185) |
 | `flop-hidden-pair` | flop | a hole card pairs the flop, or a pocket pair 33+ | {{9s 7d}} on {{9h Kc 2s}}: 2x (+0.865 vs +0.429) |
-| `flop-two-pair-plus` | flop | two pair or better using a hole card | {{Qc 5d}} on {{Qs 5h 9d}}: 2x (+2.517 vs +1.726) |
+| `flop-two-pair-plus` | flop | two pair or better using a hole card, including a set of deuces | {{Qc 5d}} on {{Qs 5h 9d}}: 2x (+2.517 vs +1.726) |
 | `flop-board-pair` | flop | paired flop, no hole-card help | {{9c 8d}} on {{Ks Kd 4c}}: check (−1.144 vs −1.548) |
 | `flop-flush-draw` | flop | four to a flush | {{Th 4h}} on {{Jh 8h 2c}}: 2x; {{9h 4h}}: check |
 | `flop-straight-draw` | flop | open-ended or gutshot, no pair, no 4-flush | {{9c 8d}} on {{Ts 7h 2c}}: check (−0.140 vs −0.235) |
 | `flop-nothing` | flop | none of the above | {{Kc 3d}} on {{8s 5h 2c}}: check (−1.108 vs −1.373) |
-| `flop-deuces` | flop | pocket 22 | {{2c 2d}} on {{9s 9h 5c}}: check (−0.131 vs −0.284) |
+| `flop-deuces` | flop | pocket 22 and no deuce on the flop | {{2c 2d}} on {{9s 9h 5c}}: check (−0.131 vs −0.284) |
 | `river-hidden-pair` | river | hidden pair or better | {{Td 4c}} on {{Ts Kh 7d 3s 2c}}: 1x (+0.261) |
 | `river-outs-low` | river | no hidden pair, ≤ 18 outs | (generated) |
 | `river-outs-edge` | river | no hidden pair, 19–23 outs | {{Qc 7d}} on {{Kd Jh 9s 5c 2d}}: 1x (19 outs); {{Jc 9d}} on {{8s 8h 5c 3d 2s}}: fold (23) |
@@ -3350,7 +3350,7 @@ exact EV still shown). The tier comes from §8.2.
 | `flop-flush-draw` | "Four to a flush: 2x only with a ten or better of that suit in your hand." |
 | `flop-straight-draw` | "Straight draws: check, and bet 1x on the river if it comes." |
 | `flop-nothing` | "No pair, no draw: check." |
-| `flop-deuces` | "Pocket deuces with no third deuce: check, even on a paired flop. Hit a set and rule (a) says 2x." |
+| `flop-deuces` | "Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board). Hit a set and rule (a) says 2x." |
 | `river-hidden-pair` | "Hidden pair or better: always bet 1x." |
 | `river-outs-low` / `-edge` / `-high` | "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}." |
 | `river-board-plays` | "When the board plays, bet 1x: it's usually a tie." |
