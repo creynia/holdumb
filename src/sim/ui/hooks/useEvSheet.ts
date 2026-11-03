@@ -89,8 +89,11 @@ export function useEvSheet(
   const fromDetails = useRef(false);
   const openDetails = () => {
     const pvNow = d.view.preview.value;
-    const first = optionsFor(d.view.state.street, d.view.allowedOptions)[0];
-    const k = pvNow ? optionKeyOf(bestOf(pvNow).action) : first;
+    const allowed = d.view.allowedOptions;
+    const first = optionsFor(d.view.state.street, allowed)[0];
+    const best = pvNow ? optionKeyOf(bestOf(pvNow).action) : undefined;
+    // A gated step never opens the sheet on an option it hides.
+    const k = best && (!allowed || allowed.includes(best)) ? best : first;
     if (!k) return;
     fromDetails.current = true;
     setOpen(k);

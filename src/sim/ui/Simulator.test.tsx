@@ -274,6 +274,44 @@ describe('Simulator container', () => {
       expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('preflop');
       evClient.dispose();
     });
+    it('a gated step never opens Details on an option it hides', async () => {
+      // AA preflop: Bet 4x is best, but the step only allows Check and Bet 3x.
+      const scene = {
+        id: 'gated',
+        version: 1,
+        bankroll: 50_000,
+        bets: { ante: 1000 },
+        showEV: true,
+        steps: [
+          {
+            id: 'deal',
+            text: 'Deal.',
+            deals: [{ player: ['As', 'Ad'] }],
+            allowedActions: ['deal'],
+            completeWhen: { action: { type: 'deal' } },
+          },
+          {
+            id: 'read',
+            text: 'Read.',
+            allowedActions: ['check', 'play'],
+            allowedOptions: ['play-3', 'check'],
+            confirmOn: 'all',
+            expect: [{ type: 'fold' }],
+            completeWhen: { previewed: { option: 'check' } },
+          },
+        ],
+      } as unknown as SceneConfig;
+      const { evClient } = mount(scene);
+      fireEvent.click(screen.getByText('Deal'));
+      await waitFor(() => expect(screen.queryByTestId('ev-details')).toBeTruthy());
+      await ready();
+      fireEvent.click(screen.getByTestId('ev-details'));
+      await flush();
+      expect(screen.getByTestId('ev-sheet')).toBeTruthy();
+      // the best option (Bet 4x) is hidden by the step, so the sheet opens on an allowed one
+      expect(screen.getByTestId('confirm').textContent).toMatch(/^Confirm (Bet 3x|Check)$/);
+      evClient.dispose();
+    });
     it.each([['after'], ['never']] as const)('absent with EV %s', async (evMode) => {
       const { evClient } = mount(FLOP, { settings: { ...settings, evMode } });
       await ready();
