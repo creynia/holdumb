@@ -3,6 +3,7 @@
 import { Component } from 'preact';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { onUpdateAvailable } from '../../pwa/register';
 import { trackError } from '../analytics';
 
 interface Props {
@@ -29,21 +30,27 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
     return (
       <section class="error-screen" role="alert" data-testid="error-screen">
         <h1>This screen hit a problem</h1>
-        <p>Your progress is safe. Reloading usually fixes it.</p>
+        <p>
+          {this.props.route === '/play'
+            ? 'Reload usually fixes it. If it keeps happening, reset the table. That clears the practice table only. Lessons and stats are kept.'
+            : 'Your progress is safe. Reloading usually fixes it.'}
+        </p>
         <p class="error-actions">
           <button type="button" class="btn" onClick={() => location.reload()}>
             Reload
           </button>
-          <button
-            type="button"
-            class="btn"
-            onClick={() => {
-              this.props.onReset();
-              this.setState({ error: null });
-            }}
-          >
-            Reset table
-          </button>
+          {this.props.route === '/play' && (
+            <button
+              type="button"
+              class="btn"
+              onClick={() => {
+                this.props.onReset();
+                this.setState({ error: null });
+              }}
+            >
+              Reset table
+            </button>
+          )}
         </p>
         <p class="error-build">
           Build <span data-testid="error-build-sha">{__BUILD_SHA__}</span>
@@ -54,11 +61,18 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
 }
 
 /** Shows a short notice for uncaught errors and rejected promises outside rendering. */
+/** Chrome reports these harmlessly when a ResizeObserver callback needs another frame. */
+export const isBenignError = (message: string) => /^ResizeObserver loop/.test(message);
+
 export function ErrorToast({ route }: { route: string }) {
   const [shown, setShown] = useState(false);
+  // One top-bar notice at a time: the update toast (I037's Reload target) wins.
+  const [updating, setUpdating] = useState(false);
+  useEffect(() => onUpdateAvailable(() => setUpdating(true)), []);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const on = (message: string) => {
+      if (isBenignError(message)) return;
       trackError(route, message);
       setShown(true);
       clearTimeout(timer);
@@ -75,7 +89,7 @@ export function ErrorToast({ route }: { route: string }) {
       window.removeEventListener('unhandledrejection', onRejection);
     };
   }, [route]);
-  if (!shown) return null;
+  if (!shown || updating) return null;
   return (
     <div class="toast error-toast" role="status" data-testid="error-toast">
       <span>Something went wrong</span>

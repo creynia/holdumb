@@ -83,18 +83,23 @@ export function trackEvent(name: string): void {
 
 /**
  * Count an app error (I074): the route path and a short message only. The message is cut to 80
- * characters and long digit runs are masked, so it can hold no identifier.
+ * characters and every digit masked (amounts, ids), so it can hold no identifier.
  */
 export function errorHit(route: string, message: string): Hit {
-  const title = message
-    .replace(/\s+/g, ' ')
-    .replace(/\d{4,}/g, '#')
-    .slice(0, 80);
+  const title = message.replace(/\s+/g, ' ').replace(/\d+/g, '#').slice(0, 80);
   return { path: `holdumb:error${route}`, title, event: true };
 }
 
-export function trackError(route: string, message: string): void {
-  send(errorHit(route, message));
+const seenErrors = new Set<string>();
+
+/** Once per route and message per session, so a render loop cannot flood the counter. */
+export function trackError(route: string, message: string): boolean {
+  const hit = errorHit(route, message);
+  const key = `${hit.path} ${hit.title}`;
+  if (seenErrors.has(key)) return false;
+  seenErrors.add(key);
+  send(hit);
+  return true;
 }
 
 /** The page path for a hash route: '/holdumb/' or '/holdumb/#/learn/welcome'. */

@@ -104,6 +104,46 @@ describe('error boundary', () => {
     expect(el.querySelector('nav.tabbar')).not.toBeNull();
   });
 
+  it('offers Reset table only on /play; elsewhere it is Reload only and nothing is wiped', async () => {
+    class BrokenStatusStore extends Store {
+      override status(): ReturnType<Store['status']> {
+        throw new Error('broken learn');
+      }
+    }
+    const store = new BrokenStatusStore(new MemoryStorage());
+    store.setSandbox({ keep: 'me' });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { el } = await mount('#/learn', store);
+    expect(el.querySelector('[data-testid="error-screen"]')).not.toBeNull();
+    expect(btn(el, 'Reload')).toBeTruthy();
+    expect(btn(el, 'Reset table')).toBeUndefined();
+    expect(store.sandbox).toEqual({ keep: 'me' });
+  });
+
+  it('ignores the harmless ResizeObserver error', async () => {
+    const { el } = await mount('#/more');
+    await act(() => {
+      window.dispatchEvent(
+        new ErrorEvent('error', {
+          message: 'ResizeObserver loop completed with undelivered notifications.',
+        }),
+      );
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+  });
+
+  it('shows one top-bar notice at a time: the update toast wins over the error toast', async () => {
+    const { simulateUpdateAvailable } = await import('../../src/pwa/register');
+    const { el } = await mount('#/more');
+    await act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')).not.toBeNull();
+    await act(() => simulateUpdateAvailable());
+    expect(el.querySelector('.pwa-toast')).not.toBeNull();
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+  });
+
   it('shows a toast for an uncaught window error', async () => {
     const { el } = await mount('#/more');
     expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
