@@ -844,6 +844,13 @@ textarea {
 .page .card {
   max-width: 100%;
 }
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 767px) {
+  /* The bottom tab bar hides the last 48px of the landscape table (rail bottom 373 vs tab bar top
+     325 at 667x375), so the rail's EV sheet stops above it (I012; I030 reworks this chrome). */
+  .sim-table-landscape {
+    --sim-table-bottom-cover: calc(48px + env(safe-area-inset-bottom));
+  }
+}
 @media (orientation: landscape) and (max-height: 500px) {
   .page {
     padding-top: 0.5rem;

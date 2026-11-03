@@ -4,7 +4,7 @@ import { applyAction, createGame, equity, parseCards } from '../engine';
 import type { Card as PlayingCard } from '../engine';
 import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey, SessionView } from '../scene';
-import { ActionBar, optionsFor } from './ActionBar';
+import { ActionBar, optionsFor, slotOf } from './ActionBar';
 import { BetCircle } from './BetCircle';
 import { Card } from './Card';
 import { ChipRack } from './ChipRack';
@@ -373,6 +373,14 @@ describe('ActionBar', () => {
       'change-bets',
     ]);
   });
+  it('a lone allowed preflop bet spans b + c like the flop and river bets', () => {
+    expect(slotOf('play-4', ['check', 'play-4'])).toBe('bc');
+    expect(slotOf('play-3', ['play-3'])).toBe('bc');
+    expect(slotOf('play-4', ['check', 'play-3', 'play-4'])).toBe('c');
+    expect(slotOf('check', ['check', 'play-4'])).toBe('a');
+    render(<ActionBar street="preflop" allowed={['play-4']} />);
+    expect(screen.getByText('Bet 4x').closest('button')!.dataset.slot).toBe('bc');
+  });
   it('Clear and Change bets take slot a; Deal and Rebet span b + c', () => {
     render(<ActionBar street="betting" />);
     expect(screen.getAllByRole('button').map((b) => [b.dataset.action, b.dataset.slot])).toEqual([
@@ -576,6 +584,21 @@ describe('small pieces', () => {
     expect(screen.getByRole('radio', { name: '$5' }).getAttribute('aria-checked')).toBe('true');
     fireEvent.click(screen.getByRole('radio', { name: '$25' }));
     expect(onSelect).toHaveBeenCalledWith(2500);
+  });
+  it('StatusBar keeps a one-line hand result, reserved before the hand settles (I012)', () => {
+    const { rerender } = render(<StatusBar bankroll={49_000} onFelt={2000} hand={null} />);
+    expect(screen.getByTestId('hand-result').textContent).toBe('Hand\u2014');
+    for (const [outcome, net, text] of [
+      ['win', 15_000, 'Won+$150'],
+      ['lose', -3000, 'Lost\u2212$30'],
+      ['tie', 0, 'Push$0'],
+      ['fold', -2000, 'Folded\u2212$20'],
+    ] as const) {
+      rerender(<StatusBar bankroll={49_000} onFelt={0} hand={{ outcome, net }} />);
+      expect(screen.getByTestId('hand-result').textContent).toBe(text);
+    }
+    rerender(<StatusBar bankroll={49_000} onFelt={0} />);
+    expect(screen.queryByTestId('hand-result')).toBeNull();
   });
   it('StatusBar shows bankroll, felt and session', () => {
     render(<StatusBar bankroll={49_000} onFelt={2500} sessionNet={-1000} />);

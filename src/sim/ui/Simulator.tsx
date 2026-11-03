@@ -96,6 +96,7 @@ export function Simulator(props: SimulatorProps) {
             bankroll={settled ? eq : state.bankroll}
             onFelt={onFelt}
             sessionNet={state.stats.hands ? eq - view.startEquity : undefined}
+            hand={settled && result ? result : null}
           />
         )
       }

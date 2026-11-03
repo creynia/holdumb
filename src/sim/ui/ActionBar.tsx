@@ -7,6 +7,7 @@ import {
   DECISION_TIER_SHORT,
   OPTION_LABELS,
   OPTION_SLOT,
+  type ActionSlot,
   SLOT_ORDER,
   isUsablePreview,
   fmtAnteUnits,
@@ -63,6 +64,17 @@ export function dealSubtitle(ante: Cents, trips: Cents): string {
 export function optionsFor(street: Street, allowed?: readonly OptionKey[]): OptionKey[] {
   const set = BY_STREET[street] ?? [];
   return SLOT_ORDER.filter((k) => set.includes(k) && (!allowed || allowed.includes(k)));
+}
+
+/**
+ * The slot an option takes. A scene that allows only one of the two preflop bets gets that bet
+ * across b + c, like the flop and river bets, so no narrow button sits alone in one column.
+ */
+export function slotOf(k: OptionKey, keys: readonly OptionKey[]): ActionSlot {
+  const s = OPTION_SLOT[k];
+  if (s !== 'b' && s !== 'c') return s;
+  const bets = keys.filter((x) => OPTION_SLOT[x] === 'b' || OPTION_SLOT[x] === 'c');
+  return bets.length === 1 ? 'bc' : s;
 }
 
 /** DOM order = visual order: left to right in the bar, top to bottom (largest first) in the rail. */
@@ -153,7 +165,7 @@ export function ActionBar({
             aria-pressed={selected === k}
             onClick={() => onOption?.(k)}
             data-option={k}
-            data-slot={OPTION_SLOT[k]}
+            data-slot={slotOf(k, keys)}
           >
             <span class="sim-act-label">{OPTION_LABELS[k]}</span>
             {o ? (

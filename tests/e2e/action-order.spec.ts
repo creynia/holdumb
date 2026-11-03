@@ -92,6 +92,28 @@ async function onScreen(l: Locator, vp: { width: number; height: number }, what:
 }
 
 /**
+ * The open EV sheet's Confirm is fully on screen and is what a tap at its centre hits (nothing,
+ * e.g. the tab bar, covers it). In landscape the sheet covers only the rail, never the felt.
+ */
+async function confirmReachable(page: Page, vp: { width: number; height: number }) {
+  const confirm = page.getByTestId('confirm');
+  await onScreen(confirm, vp, 'Confirm');
+  const b = await box(confirm);
+  const hit = await page.evaluate(
+    ([x, y]) => !!document.elementFromPoint(x!, y!)?.closest('[data-testid="confirm"]'),
+    [b.x + b.width / 2, b.y + b.height / 2],
+  );
+  expect(hit, 'a tap on Confirm reaches Confirm').toBe(true);
+  if (vp.width > vp.height) {
+    const sheet = await box(page.getByTestId('ev-sheet'));
+    const felt = await box(page.locator('.sim-felt'));
+    expect(sheet.x, 'the rail sheet stays right of the felt').toBeGreaterThanOrEqual(
+      felt.x + felt.width,
+    );
+  }
+}
+
+/**
  * The settled hand's outcome stays readable without scrolling (INVARIANTS): both hand names on the
  * felt, and the signed session net, now that the result toast sits below the bar.
  */
@@ -103,6 +125,10 @@ async function resultVisible(page: Page, vp: { width: number; height: number }) 
     await expect(labels.nth(i)).not.toHaveText('');
     await onScreen(labels.nth(i), vp, `hand label ${i}`);
   }
+  // The one-line result in the status row: outcome word and the hand's net.
+  const hand = page.getByTestId('hand-result');
+  await expect(hand).toHaveText(/^(Won|Lost|Push|Folded)([+\u2212]\$[\d,.]+|\$0)$/);
+  await onScreen(hand, vp, 'hand result');
   const net = page.getByTestId('session-net');
   await expect(net).toHaveText(/^([+\u2212]\$[\d,.]+|\$0)$/);
   await onScreen(net, vp, 'session net');
@@ -126,6 +152,7 @@ for (const vp of VIEWPORTS) {
       // in landscape, leaves the status bar where it was.
       await decide(page, 'check', 'flop', async () => {
         shots.push({ ...(await measure(page, 'preflop')), state: 'preflop, sheet open' });
+        await confirmReachable(page, vp);
       });
       shots.push(await measure(page, 'flop'));
       await decide(page, 'check', 'river');
@@ -133,6 +160,9 @@ for (const vp of VIEWPORTS) {
       await decide(page, 'play-1', 'settled');
       shots.push(await measure(page, 'settled'));
       await resultVisible(page, vp);
+      // "Change bets" stays on one line in slot a.
+      const change = await box(page.locator('[data-action="change-bets"] .sim-act-label'));
+      expect(change.height, 'Change bets on one line').toBeLessThan(24);
       // A fold settles with the fold reveal under the bar: still nothing moves.
       await page.locator('.sim-actions [data-action="rebet"]').click();
       await street(page, 'preflop');

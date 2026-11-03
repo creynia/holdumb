@@ -43,8 +43,9 @@ export interface TableProps {
 /**
  * Layout shell. Portrait: status, felt, action bar, toasts, chip rack. Landscape (844x390): the felt
  * on the left and a 284 px rail on the right: the fixed action rows, the status bar under them, then
- * a scrolling body with the chip rack, toasts, step panel and EV sheet. Everything that comes and
- * goes (toasts, the fold reveal, the rack) sits below the actions, so no button moves (I012).
+ * a scrolling body with the chip rack, toasts and step panel. The open EV sheet covers the rail
+ * (never the felt) at full height until it closes. Everything that comes and goes (toasts, the
+ * fold reveal, the rack) sits below the actions, so no button moves (I012).
  */
 export function Table({
   orientation,
@@ -67,8 +68,8 @@ export function Table({
             {chips}
             {toasts}
             {rail}
-            {sheet}
           </div>
+          {sheet ? <div class="sim-rail-sheet">{sheet}</div> : null}
         </aside>
       </section>
     );

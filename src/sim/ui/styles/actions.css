@@ -71,6 +71,11 @@
   font-weight: 700;
   font-size: 1rem;
 }
+/* "Change bets" fits slot a on one line even at 360px (about 79px inside the button). */
+.sim-actions-bar .sim-act-secondary .sim-act-label {
+  font-size: min(1rem, 3.6vw);
+  white-space: nowrap;
+}
 .sim-act-sub {
   font-size: 0.75rem;
   color: var(--muted);
