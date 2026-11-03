@@ -1,8 +1,8 @@
 // Move log disclosure under the session panel (I081). Plain text in lists, newest hand first; it
 // never announces (no live region), so auto-play and fast play cannot flood a screen reader.
 import './styles/movelog.css';
-import { formatLine } from './moveLog';
-import type { LoggedHand } from './moveLog';
+import { formatLine } from './moveLogData';
+import type { LoggedHand } from './moveLogData';
 import type { EvMode } from './types';
 
 export interface MoveLogProps {
