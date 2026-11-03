@@ -174,6 +174,41 @@ function randomClassSpot(rng: RngState, cls: string): [DrillSpot, RngState] {
   return [makeSpot('preflop', hole, []), r];
 }
 
+/**
+ * Spaced review (I067): maybe deal one of the `due` spot codes instead of a fresh spot. Returns the
+ * chosen spot (or null) and the advanced rng. Only codes inside the street/category filter count,
+ * and the pick is seeded like everything else here. `allowed` is the caller's share cap.
+ */
+export function pickDueReview(
+  rng: RngState,
+  due: readonly string[],
+  filter: Pick<DrillFilter, 'street' | 'category'>,
+  allowed: boolean,
+): [DrillSpot | null, RngState] {
+  if (!allowed) return [null, rng];
+  const spots: DrillSpot[] = [];
+  for (const code of due) {
+    try {
+      const s = spotFromCode(code);
+      if (filter.street !== 'mixed' && s.street !== filter.street) continue;
+      if (filter.category && s.category !== filter.category) continue;
+      spots.push(s);
+    } catch {
+      /* a stale code: skip it */
+    }
+  }
+  if (spots.length === 0) return [null, rng];
+  let r: RngState;
+  let u: number;
+  [u, r] = randBelow(rng, 100);
+  if (u >= REVIEW_PICK_PERCENT) return [null, r];
+  let k: number;
+  [k, r] = randBelow(r, spots.length);
+  return [spots[k]!, r];
+}
+/** When a review is allowed and something is due, this share of draws is a review. */
+const REVIEW_PICK_PERCENT = 50;
+
 export function nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngState] {
   let r = rng;
   if (filter.focus && filter.focus.length > 0) {

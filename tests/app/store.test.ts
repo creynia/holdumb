@@ -98,7 +98,7 @@ describe('Store', () => {
     s.markQuiz('final-exam', 'q2', true);
     expect(finalExamScore(c, s)).toBe(0.5);
   });
-  it('Drill: streak, best streak, per-street accuracy and recent misses', () => {
+  it('Drill: streak, best streak, per-street accuracy and the review deck', () => {
     const s = new Store(new MemoryStorage());
     s.recordDrill('preflop', true, 'p:a');
     s.recordDrill('preflop', true, 'p:b');
@@ -107,12 +107,15 @@ describe('Store', () => {
     expect(s.drill.bestStreak).toBe(2);
     expect(s.drill.byStreet.preflop).toEqual({ answered: 2, correct: 2 });
     expect(s.drill.byStreet.flop).toEqual({ answered: 1, correct: 0 });
-    expect(s.drill.recentMisses).toEqual(['f:x']);
+    // the 3rd answer was a miss: box 1, due once 3 more answers are given (6 given)
+    expect(s.drill.review).toEqual([{ code: 'f:x', box: 1, due: 6 }]);
     s.recordDrill('flop', true, undefined, 'flop-nothing');
     s.recordDrill('flop', false, undefined, 'flop-nothing');
     expect(s.drill.byCategory['flop-nothing']).toEqual({ answered: 2, correct: 1 });
-    s.recordDrill('flop', true, 'f:x'); // answering a miss correctly clears it
-    expect(s.drill.recentMisses).toEqual([]);
+    s.recordDrill('flop', true, 'f:x'); // 5 given: not due yet, a correct answer changes nothing
+    expect(s.drill.review).toEqual([{ code: 'f:x', box: 1, due: 6 }]);
+    s.recordDrill('flop', true, 'f:x'); // 6 given and due: a correct review moves it up a box
+    expect(s.drill.review).toEqual([{ code: 'f:x', box: 2, due: 7 + 8 }]);
     const code = s.exportCode();
     s.reset();
     expect(s.drill.bestStreak).toBe(0);

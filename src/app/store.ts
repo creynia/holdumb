@@ -1,5 +1,6 @@
+import { dueCodes, reviewAfterAnswer } from './review';
 import {
-  MAX_RECENT_MISSES,
+  DRILL_STREETS,
   createStorage,
   decodeImport,
   defaultPersisted,
@@ -189,11 +190,8 @@ export class Store {
     const cur = lensStats(d);
     const row = cur.byStreet[street];
     const cat = category ? cur.byCategory[category] : undefined;
-    const misses = spotCode
-      ? correct
-        ? cur.recentMisses.filter((c) => c !== spotCode)
-        : [spotCode, ...cur.recentMisses.filter((c) => c !== spotCode)].slice(0, MAX_RECENT_MISSES)
-      : cur.recentMisses;
+    const clock = DRILL_STREETS.reduce((n, s) => n + cur.byStreet[s].answered, 0);
+    const review = spotCode ? reviewAfterAnswer(cur.review, spotCode, correct, clock) : cur.review;
     const next: LensStats = {
       bestStreak: Math.max(cur.bestStreak, streak),
       byStreet: {
@@ -209,12 +207,21 @@ export class Store {
             },
           }
         : cur.byCategory,
-      recentMisses: misses,
+      review,
     };
     this.commit({
       ...this.data,
       drill: lens === 'practical' ? { ...d, practical: next } : { ...d, ...next },
     });
+  }
+
+  /** Drill: spot codes due for review now in the current lens, longest overdue first (I067). */
+  dueReview(): string[] {
+    const cur = lensStats(this.data.drill);
+    return dueCodes(
+      cur.review,
+      DRILL_STREETS.reduce((n, s) => n + cur.byStreet[s].answered, 0),
+    );
   }
 
   /** Drill: choose the grading lens (kept across visits; accuracy is tracked per lens). */

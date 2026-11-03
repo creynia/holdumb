@@ -689,7 +689,7 @@ describe('Drill', () => {
     expect(el.querySelector('[data-testid="drill-result"]')!.getAttribute('data-tier')).toBe(
       'costly',
     );
-    expect(store.drill.recentMisses).toEqual(['f:x']);
+    expect(store.drill.review).toEqual([{ code: 'f:x', box: 1, due: 4 }]);
     expect(store.drill.bestStreak).toBe(0);
     await act(() => btn(el, 'Next hand').click());
     expect(el.querySelector('[data-testid="drill-result"]')).toBeNull();
@@ -796,9 +796,9 @@ describe('Drill', () => {
         answered: 5,
         correct: 0,
       });
-      expect(store.drill.practical.recentMisses).toHaveLength(5);
+      expect(store.drill.practical.review).toHaveLength(5);
       expect(store.drill.byCategory).toEqual({});
-      expect(store.drill.recentMisses).toEqual([]);
+      expect(store.drill.review).toEqual([]);
       expect(weakestCategory(store.drill)?.id).toBe('flop-flush-draw');
       store.setDrillLens('perfect');
       expect(weakestCategory(store.drill)).toBeNull();

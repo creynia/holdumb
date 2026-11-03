@@ -77,7 +77,7 @@ describe('storage', () => {
       drill: {
         bestStreak: 3,
         byStreet: { flop: { answered: 2, correct: 9 } },
-        recentMisses: ['a', 5],
+        recentMisses: ['f:2dJd.4h6d9d', 'a', 5],
       },
     })!;
     expect(p.settings).toMatchObject({
@@ -90,7 +90,8 @@ describe('storage', () => {
     });
     expect(Object.keys(p.lessons)).toEqual(['ok']);
     expect(p.drill.byStreet.flop).toEqual({ answered: 2, correct: 2 });
-    expect(p.drill.recentMisses).toEqual(['a']);
+    // the pre-I067 miss list migrates into box 1 (due now); junk and unknown codes are dropped
+    expect(p.drill.review).toEqual([{ code: 'f:2dJd.4h6d9d', box: 1, due: 2 }]);
   });
   it('drill lens and per-lens stats round-trip; a pre-lens record gets perfect', () => {
     const p = sanitize({
@@ -178,14 +179,14 @@ describe('storage', () => {
       drill: {
         bestStreak: 7,
         byStreet: { preflop: { answered: 4, correct: 3 }, river: { answered: 1, correct: 0 } },
-        recentMisses: ['f:x'],
+        recentMisses: ['f:2dJd.4h6d9d'],
       },
     };
     const p = migrate(old)!;
     expect(p.drill.bestStreak).toBe(7);
     expect(p.drill.byStreet.preflop).toEqual({ answered: 4, correct: 3 });
     expect(p.drill.byStreet.river).toEqual({ answered: 1, correct: 0 });
-    expect(p.drill.recentMisses).toEqual(['f:x']);
+    expect(p.drill.review).toEqual([{ code: 'f:2dJd.4h6d9d', box: 1, due: 5 }]);
     expect(p.drill.byCategory).toEqual({});
   });
   it('sanitizes byCategory: unknown ids dropped, correct clamped, round-trips', () => {

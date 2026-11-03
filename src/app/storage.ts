@@ -1,7 +1,8 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
 import { PAYTABLE_PRESET_IDS } from '../sim/engine';
 import { CONFIRM_ON, EV_MODES, evModeOfPractice } from '../sim/ui/settings';
-import { DRILL_CATEGORY_IDS } from '../sim/strategy';
+import { DRILL_CATEGORY_IDS, spotFromCode } from '../sim/strategy';
+import { MAX_REVIEW, REVIEW_BOXES, type ReviewItem } from './review';
 import type { DrillCategoryId } from '../sim/strategy';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
@@ -63,7 +64,6 @@ export interface LessonProgress {
 
 export type DrillStreet = 'preflop' | 'flop' | 'river';
 export const DRILL_STREETS: readonly DrillStreet[] = ['preflop', 'flop', 'river'];
-export const MAX_RECENT_MISSES = 50;
 
 export type DrillLens = 'perfect' | 'practical';
 type StreetCounts = Record<DrillStreet, { answered: number; correct: number }>;
@@ -74,8 +74,8 @@ export interface LensStats {
   byStreet: StreetCounts;
   /** per spot category (I016); absent key = never answered. Records written before I016 lack it. */
   byCategory: Partial<Record<DrillCategoryId, { answered: number; correct: number }>>;
-  /** spot codes (strategy/drill.ts), newest first */
-  recentMisses: string[];
+  /** The spaced-review deck of missed spots (I067); `clock` is the answers given in this lens. */
+  review: ReviewItem[];
 }
 
 /**
@@ -111,7 +111,7 @@ const emptyLens = (): LensStats => ({
   bestStreak: 0,
   byStreet: emptyStreets(),
   byCategory: {},
-  recentMisses: [],
+  review: [],
 });
 
 export function emptyDrill(): DrillStats {
@@ -222,10 +222,34 @@ function sanitizeLens(raw: unknown): LensStats {
         correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered),
       };
     }
-  if (Array.isArray(raw.recentMisses))
-    d.recentMisses = raw.recentMisses
-      .filter((x): x is string => typeof x === 'string' && x.length <= 64)
-      .slice(0, MAX_RECENT_MISSES);
+  const clock = DRILL_STREETS.reduce((n, s) => n + d.byStreet[s].answered, 0);
+  const seen = new Set<string>();
+  const keep = (code: unknown): code is string => {
+    if (typeof code !== 'string' || code.length > 64 || seen.has(code)) return false;
+    try {
+      spotFromCode(code);
+    } catch {
+      return false; // unknown or malformed code
+    }
+    seen.add(code);
+    return true;
+  };
+  if (Array.isArray(raw.review)) {
+    for (const x of raw.review) {
+      if (!isObj(x) || !keep(x.code)) continue;
+      d.review.push({
+        code: x.code as string,
+        box: clampInt(x.box, 1, REVIEW_BOXES, 1),
+        due: clampInt(x.due, 0, 100_000_000, clock),
+      });
+    }
+    d.review = d.review.slice(0, MAX_REVIEW);
+  } else if (Array.isArray(raw.recentMisses)) {
+    // Before I067 the deck was a flat list of misses: each goes to box 1, due now.
+    for (const code of raw.recentMisses)
+      if (keep(code)) d.review.push({ code, box: 1, due: clock });
+    d.review = d.review.slice(0, MAX_REVIEW);
+  }
   return d;
 }
 
