@@ -124,8 +124,9 @@ test.describe('sandbox', () => {
       await ready(page);
       await opt(page, 'check').click();
       await page.getByTestId('confirm').click();
-      const again = page.getByRole('button', { name: 'Do it anyway' });
-      if (await again.isVisible().catch(() => false)) await again.click();
+      // This scenario never flags a check as a big mistake, so the prompt is asserted absent.
+      // If a change makes it appear, this fails and the scenario should say so explicitly.
+      await expect(page.getByRole('button', { name: 'Do it anyway' })).toHaveCount(0);
       await page.waitForTimeout(150);
     }
     const sim = page.getByTestId('simulator');
