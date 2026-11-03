@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, parseCards } from '../engine';
-import type { Card, GameEvent } from '../engine';
+import type { Card, GameEvent, HandResult } from '../engine';
 import {
   FLOP_HIDDEN_PAIR,
   FOLDED_DEALER_CARDS,
@@ -16,11 +16,15 @@ import {
   eventsForHandInProgress,
   formatLine,
 } from './moveLog';
-import type { LoggedHand } from './moveLog';
+import type { AppendContext, LoggedHand } from './moveLog';
 import { DECISION_TIER_LABEL } from './text';
 
 const c = (s: string) => parseCards(s);
-const ctx = { bets: { ante: 1000, trips: 500 }, preview: null };
+const ctx: AppendContext = {
+  bets: { ante: 1000, trips: 500 },
+  preview: null,
+  tripsPaytable: 'trips-8-6-5',
+};
 const text = (hands: readonly LoggedHand[], mode: 'before' | 'after' | 'never' = 'before') =>
   hands[0]!.lines.map((l) => formatLine(l, mode));
 
@@ -111,6 +115,34 @@ describe('move log lines', () => {
     ]);
     const res = h[0]!.lines.at(-1)!;
     expect(res.t === 'result' && res.net).toBe(5000);
+  });
+
+  it("the result line names the table's Trips preset, as the toast does (I011)", () => {
+    const win: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'full-house' },
+      wagers: [{ wager: 'trips', amount: 1000, result: 'win', profit: 9000, reason: 'trips-pays' }],
+      net: 9000,
+    };
+    const settle = (tripsPaytable: AppendContext['tripsPaytable']) =>
+      text(
+        appendEvents(appendEvents([], dealEvents, ctx), [{ type: 'hand-settled', result: win }], {
+          ...ctx,
+          tripsPaytable,
+        }),
+      ).at(-1);
+    expect(settle('trips-9-7-4')).toContain('full house pays 9 to 1 on Trips 9/7/4');
+    expect(settle('trips-8-6-5')).toContain('full house pays 8 to 1 on Trips 8/6/5');
+    // Stored at append time, so a reload keeps the preset the hand settled at.
+    const h = appendEvents(
+      appendEvents([], dealEvents, ctx),
+      [{ type: 'hand-settled', result: win }],
+      {
+        ...ctx,
+        tripsPaytable: 'trips-9-7-4',
+      },
+    );
+    expect(text(decodeMoveLog(JSON.parse(JSON.stringify(h)))).at(-1)).toContain('on Trips 9/7/4');
   });
 
   it('events with no line (bets, dealer face down, clear) add nothing', () => {

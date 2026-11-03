@@ -3,9 +3,19 @@
 // source of truth; a decision's tier and cost come from the preview that was ready when it was
 // made. Shared formatting lives here so hand history / replay (I055) can build on it.
 import { formatMoney } from '../engine';
-import type { Card, Cents, DecisionStreet, GameEvent, GameState, PlayMultiple } from '../engine';
+import type {
+  Card,
+  Cents,
+  Deal,
+  DecisionStreet,
+  GameEvent,
+  GameState,
+  PlayMultiple,
+} from '../engine';
+import type { TripsPaytableId } from '../engine';
 import type { DecisionPreview, DecisionTier } from '../math';
 import { DECISION_TIER_LABEL, bestOf, costCents, describeResult, fmtCostC, handName } from './text';
+import { tablesFor } from './text';
 import { isUsablePreview, withArticle } from './text';
 import type { EvMode } from './types';
 
@@ -40,6 +50,10 @@ export interface AppendContext {
   bets: { ante: Cents; trips: Cents };
   /** The decision preview that was ready before these events, if any. */
   preview: DecisionPreview | null;
+  /** The Trips preset the hand settles at (the table's own rules), so the result line names it. */
+  tripsPaytable: TripsPaytableId;
+  /** The hand's deal, for the result line's near-miss note (as the settled toast). */
+  deal?: Deal;
 }
 
 const MOVE_LABEL = (l: Extract<MoveLine, { t: 'move' }>): string =>
@@ -127,7 +141,12 @@ export function appendEvents(
         });
         break;
       case 'hand-settled':
-        push({ t: 'result', net: e.result.net, text: describeResult(e.result) });
+        // Same text as the settled toast: the table's Trips preset and the deal's near-miss note.
+        push({
+          t: 'result',
+          net: e.result.net,
+          text: describeResult(e.result, tablesFor(ctx.tripsPaytable), ctx.deal),
+        });
         break;
       default:
         break;

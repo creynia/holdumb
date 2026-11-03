@@ -27,6 +27,8 @@ export function useMoveLog(view: DriverView, initial: () => LoggedHand[]): reado
         {
           bets: { ante: view.state.bets.ante, trips: view.state.bets.trips },
           preview: cur.pv,
+          tripsPaytable: view.state.rules.tripsPaytable,
+          ...(view.state.hand ? { deal: view.state.hand.deal } : {}),
         },
       );
     cur.pv = null;
