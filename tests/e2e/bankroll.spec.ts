@@ -47,7 +47,7 @@ test.describe('bankroll control (I083)', () => {
     await expect(sim).toHaveAttribute('data-hands', before ?? '1');
     await page.getByTestId('session-toggle').click();
     await expect(page.getByTestId('session-topups')).toHaveText('$100');
-    await expect(page.getByTestId('session-net-detail')).toHaveText('-$10');
+    await expect(page.getByTestId('session-net-detail')).toHaveText('−$10');
 
     // Play on.
     await page.getByRole('button', { name: /Rebet/ }).click();

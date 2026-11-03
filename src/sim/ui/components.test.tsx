@@ -697,6 +697,7 @@ describe('SessionPanel (curriculum 8.5)', () => {
     scoredAnteCents: 20_000,
     tripsCents: 2500,
     tripsWageredCents: 21_000,
+    topUpCents: 0,
     tripsExpectedCents: frac(-400),
     decisions: 5,
     mistakes: 3,
