@@ -130,7 +130,8 @@ test('drill result', async ({ page }) => {
   await open(page, '/drill?street=flop&focus=f:2dJd.4h6d9d');
   await expect(page.getByTestId('drill-spot')).toBeVisible();
   await expect(page.getByTestId('drill-spot')).toHaveAttribute('data-street', 'flop');
-  await page.locator('.choice-row button').first().click();
+  // Bet 2x is the small-mistake answer here, so the baseline shows the mistake path.
+  await page.locator('.choice-row button', { hasText: 'Bet 2x' }).click();
   await expect(page.getByTestId('drill-result')).toBeVisible();
   await shoot(page, 'drill-result', true);
 });
