@@ -85,7 +85,7 @@ describe('always bet 4x versus never fold', () => {
 
   it('the note names the same loss per hand and the two elements of risk', () => {
     const note = alwaysMaxNote(spec('always-max'), rules, 30);
-    expect(note).toContain('Same loss per hand as Never fold (40.70% of the Ante)');
+    expect(note).toContain('Same expected loss per hand as Never fold (40.70% of the Ante)');
     expect(note).toContain('a lower element of risk (6.78% vs 13.57%)');
     expect(note).not.toMatch(/you will lose/i);
   });
@@ -102,5 +102,23 @@ describe('always bet 4x versus never fold', () => {
     const b = strategyMetrics(spec('always-max'), rules, 30).evPerHourCents;
     expect(a.num * b.den).toBe(b.num * a.den);
     expect(Math.round(fracToNumber(b))).toBe(-12211);
+  });
+});
+
+describe('strategy note under the select', () => {
+  it('shows for always bet 4x and not for the other strategies', () => {
+    const evClient = createEvClient({ mode: 'inthread' });
+    render(
+      <AutoPlayPanel evClient={evClient} settings={DEFAULT_SIM_SETTINGS} onEvent={() => {}} />,
+    );
+    const select = screen.getByRole('combobox', { name: 'Strategy' });
+    expect(screen.queryByTestId('strategy-note')).toBeNull();
+    fireEvent.change(select, { target: { value: 'always-max' } });
+    expect(screen.getByTestId('strategy-note').textContent).toContain(
+      'Same expected loss per hand',
+    );
+    fireEvent.change(select, { target: { value: 'never-fold' } });
+    expect(screen.queryByTestId('strategy-note')).toBeNull();
+    evClient.dispose();
   });
 });

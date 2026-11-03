@@ -62,7 +62,7 @@ export function alwaysMaxNote(
 ): string {
   const never = strategyMetrics({ ...spec, id: 'never-fold' }, rules, handsPerHour);
   const always = strategyMetrics({ ...spec, id: 'always-max' }, rules, handsPerHour);
-  return `Same loss per hand as Never fold (${formatPct(never.edgePerAnte, 2)} of the Ante), but twice the money in action, so a lower element of risk (${formatPct(always.elementOfRisk, 2)} vs ${formatPct(never.elementOfRisk, 2)}).`;
+  return `Same expected loss per hand as Never fold (${formatPct(never.edgePerAnte, 2)} of the Ante), but twice the money in action, so a lower element of risk (${formatPct(always.elementOfRisk, 2)} vs ${formatPct(never.elementOfRisk, 2)}).`;
 }
 
 export function AutoPlayPanel({
@@ -188,7 +188,11 @@ export function AutoPlayPanel({
           </select>
           {id === 'always-max' ? (
             <small data-testid="strategy-note" style={{ display: 'block', marginTop: '4px' }}>
-              {alwaysMaxNote(spec, { tripsPaytable: settings.paytable }, settings.handsPerHour)}
+              {alwaysMaxNote(
+                { ...spec, trips: 0 },
+                { tripsPaytable: settings.paytable },
+                settings.handsPerHour,
+              )}
             </small>
           ) : null}
         </label>
