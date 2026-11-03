@@ -36,6 +36,8 @@
   flex-direction: column;
   gap: 4px;
   color: var(--text);
+  /* When it scrolls into view it clears the app's fixed bottom tab bar. */
+  scroll-margin-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 /* The controls row comes first and never moves; the hand's toast (if any) follows below it. */
 .sim-watch-row {
@@ -45,10 +47,6 @@
   gap: 8px;
   min-height: 52px;
   padding: 0 4px;
-}
-/* Portrait: when it scrolls into view it clears the app's fixed bottom tab bar. */
-.sim-watch-portrait {
-  scroll-margin-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 .sim-watch-line {
   display: flex;

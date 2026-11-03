@@ -87,9 +87,9 @@ export function WatchStatus({
 }) {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // Watch is started from below the table: bring the play back into view (portrait only; in
-    // landscape the strip is in the rail, and the page must not move).
-    if (orientation === 'portrait') el.current?.scrollIntoView?.({ block: 'end' });
+    // Watch is started from below the table: scroll the window (never the layout) so the strip sits
+    // at the bottom of the screen, clear of the tab bar, with the felt and ActionBar above it.
+    el.current?.scrollIntoView?.({ block: 'end' });
   }, []);
   return (
     <div class={`sim-watch-status sim-watch-${orientation}`} data-testid="watch-status" ref={el}>

@@ -197,10 +197,16 @@ test.describe('sandbox', () => {
     await expect(sim).toHaveAttribute('data-hands', '0');
     const vp = page.viewportSize()!;
     const landscape = vp.width > vp.height && vp.height < 520;
+    // Page (document) coordinates: scrolling the window is not a layout move.
+    const doc = (sel: string) =>
+      page.locator(sel).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height };
+      });
     const boxes = async () => ({
-      table: (await page.locator('.sim-table').boundingBox())!,
-      actions: (await page.locator('.sim-actions').boundingBox())!,
-      rail: landscape ? (await page.locator('.sim-rail').boundingBox())! : null,
+      table: await doc('.sim-table'),
+      actions: await doc('.sim-actions'),
+      rail: landscape ? await doc('.sim-rail') : null,
     });
     const near = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
       Math.abs(a.x - b.x) <= 1 &&
@@ -219,6 +225,11 @@ test.describe('sandbox', () => {
       const during = await boxes();
       expect(near(during.table, before.table)).toBe(true);
       expect(near(during.rail!, before.rail!)).toBe(true);
+      expect(near(during.actions, before.actions)).toBe(true);
+      // ...and Stop is on screen, above the tab bar if there is one.
+      const stop = (await page.getByTestId('watch-stop').boundingBox())!;
+      const tab = await page.locator('.tabbar').boundingBox();
+      expect(stop.y + stop.height).toBeLessThanOrEqual(tab && tab.height ? tab.y : vp.height);
     }
     // The strip never sits on the felt, and Pause / Stop are full tap targets.
     const felt = (await page.locator('svg.sim-felt').boundingBox())!;
