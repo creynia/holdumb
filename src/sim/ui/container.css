@@ -283,6 +283,14 @@
   align-items: center;
   text-decoration: none;
 }
+/* "Review N mistakes": a link to Drill with the table mistakes (I056). */
+.sim-session-review {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+  font-weight: 600;
+}
 .sim-bankroll-short {
   display: flex;
   flex-wrap: wrap;

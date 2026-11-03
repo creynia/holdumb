@@ -12,6 +12,7 @@ import {
 } from '../engine';
 import type {
   Action,
+  Card,
   Cents,
   DecisionStreet,
   GameEvent,
@@ -41,6 +42,8 @@ import type {
   Fraction,
   PreviewRequest,
 } from '../math/types';
+import { categorize } from '../strategy/categories';
+import { spotCode } from '../strategy/drill';
 import type { StrategyId } from '../strategy/types';
 import { effectiveGate, gatedOptions, optionKeyOfAction, gateAllows } from './gate';
 import type { Gate } from './gate';
@@ -147,7 +150,12 @@ export interface SessionView extends SessionTotals {
   tripsExpectedRoundedCents: Cents;
   /** −(expected − mistakes) / antes of the scored hands; null before the first scored hand. */
   edgePerAnte: Fraction | null;
+  /** Drill spot codes of the decisions graded small or worse, newest first (I056). */
+  mistakeSpots: string[];
 }
+
+/** Most recent distinct mistakes kept for "Review N mistakes". */
+export const MAX_MISTAKE_SPOTS = 20;
 
 export interface PreviewState {
   key: string | null;
@@ -214,6 +222,7 @@ export interface DriverOptions {
     startEquity: Cents;
     totals: SessionTotals;
     history?: readonly HandRecord[];
+    mistakeSpots?: string[];
   };
 }
 
@@ -262,6 +271,7 @@ export class SimDriver {
   private rt: SceneRuntime;
   private startEq: Cents;
   private totals: SessionTotals;
+  private mistakeSpots: string[] = [];
   private hand: {
     base: Fraction | null;
     regret: Fraction;
@@ -270,6 +280,8 @@ export class SimDriver {
     mistakes: number;
     /** One entry per decision taken: its tier and exact regret when a preview scored it. */
     notes: ({ tier: HandTierCode; regret: string } | null)[];
+    /** Drill spots of this hand's mistakes, in order; kept only if the hand ends scored. */
+    spots: string[];
   } | null = null;
   private history: HandRecord[] = [];
   private lastEvents: GameEvent[] = [];
@@ -300,6 +312,7 @@ export class SimDriver {
       this.startEq = opts.restore.startEquity;
       this.totals = { ...EMPTY_TOTALS, ...opts.restore.totals };
       this.history = [...(opts.restore.history ?? [])];
+      this.mistakeSpots = (opts.restore.mistakeSpots ?? []).slice(0, MAX_MISTAKE_SPOTS);
       // A restored hand has no earlier previews: it stays out of the luck split.
       if (this.game.hand && !this.game.hand.result) {
         // The hand's earlier decisions have no notes (no preview survives a reload): one null
@@ -404,6 +417,7 @@ export class SimDriver {
           t.scoredAnteCents > 0
             ? div(neg(sub(t.expectedCents, t.mistakeCents)), frac(t.scoredAnteCents))
             : null,
+        mistakeSpots: this.mistakeSpots,
       },
       startEquity: this.startEq,
       result: this.game.hand?.result ?? null,
@@ -416,6 +430,7 @@ export class SimDriver {
     state: GameState;
     startEquity: Cents;
     totals: SessionTotals;
+    mistakeSpots: string[];
     evMode: EvMode;
     history: readonly HandRecord[];
   } {
@@ -423,6 +438,7 @@ export class SimDriver {
       state: this.game,
       startEquity: this.startEq,
       totals: this.totals,
+      mistakeSpots: this.mistakeSpots,
       evMode: this.evMode,
       history: this.history,
     };
@@ -532,6 +548,7 @@ export class SimDriver {
       ante: this.game.bets.ante,
       mistakes: 0,
       notes: Array<null>(decisionsSoFar).fill(null),
+      spots: [],
     };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
@@ -547,7 +564,21 @@ export class SimDriver {
     if (this.hand.base === null) this.hand.base = pv.options[pv.bestIndex]!.evCents;
     this.hand.regret = add(this.hand.regret, scale(opt.regret, this.hand.ante));
     // Counted per hand and added only if the hand ends scored (see finishHandTrack).
-    if (opt.tier !== 'best' && opt.tier !== 'close') this.hand.mistakes += 1;
+    if (opt.tier !== 'best' && opt.tier !== 'close') {
+      this.hand.mistakes += 1;
+      this.noteMistakeSpot();
+    }
+  }
+  /** Notes the decision on the table now as a Drill spot (the full board, so it replays). */
+  private noteMistakeSpot(): void {
+    const deal = this.game.hand?.deal;
+    if (!deal || !this.hand) return;
+    const street = this.game.street;
+    if (street !== 'preflop' && street !== 'flop' && street !== 'river') return;
+    const hole: [Card, Card] = [deal.player[0], deal.player[1]];
+    const board = deal.board.slice(0, street === 'preflop' ? 0 : street === 'flop' ? 3 : 5);
+    const code = spotCode({ street, hole, board, category: categorize(hole, board) });
+    if (!this.hand.spots.includes(code)) this.hand.spots.push(code);
   }
   private finishHandTrack(result: HandResult): void {
     const h = this.hand;
@@ -589,6 +620,12 @@ export class SimDriver {
       t.expectedCents = add(t.expectedCents, h.base);
       t.mistakeCents = add(t.mistakeCents, h.regret);
       t.mistakes = t.mistakes + h.mistakes;
+      // Same rule as the mistake count: only a fully scored hand feeds the review list.
+      for (const code of h.spots)
+        this.mistakeSpots = [code, ...this.mistakeSpots.filter((c) => c !== code)].slice(
+          0,
+          MAX_MISTAKE_SPOTS,
+        );
       t.scoredMainCents += main;
       t.scoredAnteCents += h.ante;
     }
@@ -782,6 +819,7 @@ export class SimDriver {
     this.startEq = bankroll;
     this.totals = { ...EMPTY_TOTALS };
     this.history = [];
+    this.mistakeSpots = [];
     this.hand = null;
     this.lastEvents = [];
     this.eventSeq++;

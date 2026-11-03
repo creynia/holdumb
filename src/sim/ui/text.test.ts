@@ -34,9 +34,10 @@ import {
   foldRevealText,
   handLabel,
   handName,
-  headline,
+  narrationText,
   playerNearMiss,
   optionKeyOf,
+  typographic,
 } from './text';
 
 describe('exact fraction formatting', () => {
@@ -123,11 +124,61 @@ describe('option labels (D31)', () => {
   it('maps actions and option keys both ways', () => {
     for (const k of OPTION_ORDER) expect(optionKeyOf(actionOfKey(k))).toBe(k);
   });
-  it('builds the headline and the spoken name', () => {
-    expect(headline(PREFLOP_AA.preview, 0)).toBe('Bet 4x: +$36.01 · Best play');
+  it('builds the spoken name', () => {
     expect(ariaForOption(PREFLOP_AA.preview.options[2]!)).toBe(
       'Check, EV plus $21.93, big mistake',
     );
+  });
+});
+
+describe('post-action narration (I080)', () => {
+  it('best play: names the tier and labels the whole-hand EV', () => {
+    expect(narrationText(PREFLOP_AA.preview, 0)).toBe(
+      'Bet 4x: best play. Whole-hand expected result from here: +$36.01.',
+    );
+  });
+  it('a mistake leads with the cost against the best option, to the cent', () => {
+    // Bet 4x +$36.01 vs Check +$21.93: $14.08, the same figure as the EV sheet row.
+    expect(narrationText(PREFLOP_AA.preview, 2)).toBe(
+      'Check: a big mistake, costs $14.08 against Bet 4x. Whole-hand expected result from here: +$21.93.',
+    );
+  });
+  it('matches fmtVsBest for every option of every fixture, whatever the street or tier', () => {
+    const tiers = new Set<string>();
+    for (const f of [PREFLOP_AA, FLOP_HIDDEN_PAIR, RIVER_ACE_HIGH]) {
+      const best = f.preview.options[f.preview.bestIndex]!;
+      f.preview.options.forEach((o, i) => {
+        const text = narrationText(f.preview, i);
+        tiers.add(o.tier);
+        expect(text.startsWith(`${o.label}: `)).toBe(true);
+        expect(text).not.toMatch(/-\$/); // the typographic minus, never an ASCII hyphen
+        expect(text).toContain(
+          `Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents))}.`,
+        );
+        if (o === best) expect(text).toContain('best play');
+        else {
+          // Displayed costs add up from the displayed (rounded) EVs, like the EV sheet's rows.
+          const shownCents = (x: typeof o) =>
+            Math.round(Number(fmtCentsFraction(x.evCents).replace('+', '').replace('$', '')) * 100);
+          const cost = `$${((shownCents(best) - shownCents(o)) / 100).toFixed(2)}`;
+          expect(text).toContain(`costs ${cost} against ${best.label}.`);
+        }
+      });
+    }
+    expect(tiers.size).toBeGreaterThanOrEqual(2);
+  });
+  it('words each tier', () => {
+    const p = PREFLOP_AA.preview;
+    for (const [tier, phrase] of [
+      ['close', 'a close call'],
+      ['small', 'a small mistake'],
+      ['costly', 'a mistake'],
+      ['blunder', 'a big mistake'],
+    ] as const) {
+      const o = { ...p.options[2]!, tier };
+      const pv = { ...p, options: [p.options[0]!, p.options[1]!, o] };
+      expect(narrationText(pv, 2)).toContain(`Check: ${phrase}, costs $14.08 against Bet 4x.`);
+    }
   });
 });
 
