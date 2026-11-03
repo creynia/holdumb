@@ -186,6 +186,68 @@ describe('EvSheet', () => {
   });
 });
 
+describe('EvSheet flop basic-card rule line (I058)', () => {
+  const request = (f: {
+    hole: [PlayingCard, PlayingCard];
+    board: PlayingCard[];
+  }): PreviewRequest => ({
+    street: 'flop',
+    hole: f.hole,
+    board: f.board,
+    blindPaytable: 'blind-standard',
+    ante: 1000,
+  });
+  it('names the rule and says perfect play agrees', () => {
+    sheet({
+      preview: FLOP_HIDDEN_PAIR.preview,
+      selected: 'play-2',
+      request: request(FLOP_HIDDEN_PAIR),
+    });
+    expect(screen.getByTestId('flop-rule').textContent).toBe(
+      'Basic card: rule (b), a hidden pair of sevens: Bet 2x. Perfect play agrees.',
+    );
+  });
+  it('says so when perfect play prefers the other option (curriculum 8.4 wording)', () => {
+    // Same cards, but Check is the exact best: the card's Bet 2x is the rare exception.
+    const p = FLOP_HIDDEN_PAIR.preview;
+    const swapped = {
+      ...p,
+      bestIndex: 1,
+      options: [
+        {
+          ...p.options[0]!,
+          tier: 'small' as const,
+          evCents: frac(-100_000, 100),
+          ev: frac(-1, 100),
+        },
+        { ...p.options[1]!, tier: 'best' as const },
+      ],
+    } as unknown as DecisionPreview;
+    sheet({ preview: swapped, selected: 'check', request: request(FLOP_HIDDEN_PAIR) });
+    const line = screen.getByTestId('flop-rule').textContent;
+    expect(line).toMatch(
+      /^Basic card: rule \(b\), a hidden pair of sevens: Bet 2x\. Perfect play prefers Check\. \(The basic card says Bet 2x here, a rare exception worth \$[\d,.]+\.\)$/,
+    );
+  });
+  it('is hidden while practice mode hides the EV, and shown after the move', () => {
+    const props = {
+      preview: FLOP_HIDDEN_PAIR.preview,
+      selected: 'play-2' as OptionKey,
+      request: request(FLOP_HIDDEN_PAIR),
+      hideEv: true,
+    };
+    sheet(props);
+    expect(screen.queryByTestId('flop-rule')).toBeNull();
+    cleanup();
+    sheet({ ...props, chosen: 'play-2' });
+    expect(screen.getByTestId('flop-rule')).toBeTruthy();
+  });
+  it('is absent on the river and without cards', () => {
+    sheet({ preview: FLOP_HIDDEN_PAIR.preview, selected: 'play-2' });
+    expect(screen.queryByTestId('flop-rule')).toBeNull();
+  });
+});
+
 describe('EvSheet river dealer outs (lesson 12)', () => {
   const request = (f: {
     hole: [PlayingCard, PlayingCard];
