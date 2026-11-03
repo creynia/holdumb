@@ -53,10 +53,42 @@ test('forced colours: tier borders differ, the selection outline shows, the felt
     host.remove();
     return { decisions, selected, tab, feltAdjust };
   });
-  const [, , , costly, blunder] = styles.decisions;
   expect(new Set(styles.decisions.map((d) => d.style)).size).toBe(5);
-  expect(costly!.width).not.toBe(blunder!.width);
+  // Every tier keeps the same border width, so the action bar never moves between tiers.
+  expect(new Set(styles.decisions.map((d) => d.width)).size).toBe(1);
   expect(styles.selected).not.toBe('none');
   expect(styles.tab).toContain('underline');
   expect(styles.feltAdjust).toBe('none');
+});
+
+// In forced colours every tier's button must have the same box at both tight viewports, or the
+// action bar moves between tiers. Probe buttons with the tier classes stand in for the real ones.
+test('forced colours: every tier button has the same box at 360x740 and 844x390', async ({
+  page,
+}) => {
+  await page.emulateMedia({ forcedColors: 'active' });
+  await page.goto('/#/play?speed=instant');
+  await expect(page.getByTestId('simulator')).toBeVisible();
+  for (const viewport of [
+    { width: 360, height: 740 },
+    { width: 844, height: 390 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const boxes = await page.evaluate(() => {
+      const host = document.createElement('div');
+      host.innerHTML = ['best', 'close', 'small', 'costly', 'blunder']
+        .map(
+          (t) => `<button type="button" class="sim-act sim-act-decision tier-${t}">Bet 2x</button>`,
+        )
+        .join('');
+      document.body.append(host);
+      const out = [...host.querySelectorAll('button')].map((b) => {
+        const r = b.getBoundingClientRect();
+        return `${r.width}x${r.height}`;
+      });
+      host.remove();
+      return out;
+    });
+    expect(new Set(boxes).size, `${viewport.width}x${viewport.height}: ${boxes.join(' ')}`).toBe(1);
+  }
 });

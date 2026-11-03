@@ -148,8 +148,7 @@
     border-bottom-style: double;
   }
   .sim-act-decision.tier-blunder {
-    border-bottom-style: groove;
-    border-bottom-width: 8px;
+    border-bottom-style: ridge;
   }
   .sim-act.is-selected {
     outline: 3px solid CanvasText;
