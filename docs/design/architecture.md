@@ -67,7 +67,7 @@ update toast, the TierBadge pattern, theme tokens with the dark/light guard.
 | Content format | `:::math`, `:::tip`, ` ```scene `, ` ```quiz ` | Same, **plus** inline cards `{{As Kd}}`, an optional `hand:` field on quizzes, and a ` ```chart ` block that embeds a strategy chart | UTH lessons talk about specific hands constantly. §3. |
 | Reference data | `bets.json` keyed by bet id | `bets.json` keyed by **wager id** (ante, blind, play, trips, plus any simulated side bet) + `hands.json` (hand-ranking copy) | Numbers still come from the engine registry, never the JSON. |
 | Screens and tabs | Learn · Play · Bets · More; Bets, Glossary | Tabs **Learn · Play · Drill · More** (user answer D4). New screens: **Drill** (quick-fire decision trainer, a tab), **Strategy** charts (no tab; reached from Learn, More, Drill and lessons), **Hands** (rankings with exact counts), Paytables (`#/bets`) | §2. |
-| Settings | rollsPerHour, confirmSuckerBets | `handsPerHour`, `confirmCostlyMoves`, `fourColorDeck`, `paytable` preset, `anteUnit` | §2.4. |
+| Settings | rollsPerHour, confirmSuckerBets | `handsPerHour`, `evMode`, `confirmOn` (D39), `fourColorDeck`, `paytable` preset, `anteUnit` | §2.4. |
 | Build info | `__APP_VERSION__` | Adds `__BUILD_SHA__` (short `GITHUB_SHA`, `dev` locally), shown in Settings → About and in the single file's footer | Lets the user confirm on the phone that the new build arrived (crappy lesson: the SW kept serving old builds). |
 | Update path | toast only | toast + **Settings → Check for updates** (`registration.update()`) | Same lesson. |
 | Size check | finalize-single only checks external refs | finalize-single also enforces a **size budget** (§5.4) | The single file now carries a worker copy of the math. |
@@ -149,7 +149,8 @@ interface Settings {
   defaultBankrollCents: number; // default 50_000 ($500)
   anteUnitCents: number;        // default 1_000 ($10); per-hour lines scale by it
   handsPerHour: number;         // default from curriculum.md (placeholder 30)
-  confirmCostlyMoves: boolean;  // default true: red tier needs a second tap
+  evMode: 'before' | 'after' | 'never';               // default 'before' (D11, D39)
+  confirmOn: 'all' | 'costly' | 'blunder' | 'never';  // default 'never' (D24, D39)
   fourColorDeck: boolean;       // default false
   paytable: string;             // preset id from the engine registry; default per decisions.md
 }

@@ -570,6 +570,40 @@ textarea {
   width: 22px;
   height: 22px;
 }
+.form fieldset.radios {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.form fieldset.radios legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+.form label.radio {
+  min-height: 44px;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  cursor: pointer;
+}
+.form label.radio input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+.form fieldset.radios .radios-note {
+  margin: 0 0 0.25rem;
+  font-size: 0.85em;
+}
+.form label.radio small {
+  display: block;
+  font-size: 0.85em;
+}
 
 [data-motion='reduce'] *,
 [data-motion='reduce'] *::before,
@@ -585,30 +619,32 @@ textarea {
   flex-wrap: wrap;
 }
 .toast {
-  position: fixed;
-  left: 16px;
-  right: 16px;
-  bottom: calc(72px + env(safe-area-inset-bottom));
-  z-index: 20;
+  /* Lives inside the top bar's own 44px row: adds no height, so nothing below it ever moves,
+     and it can never sit over the table or the ActionBar. */
   display: flex;
-  gap: 0.6rem;
+  gap: 0.5rem;
   align-items: center;
-  justify-content: space-between;
-  max-width: 28rem;
-  margin: 0 auto;
-  padding: 0.6rem 0.9rem;
-  background: var(--surface-2);
-  border: 1px solid var(--focus);
-  border-radius: 12px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  justify-content: flex-end;
+  flex: 1;
+  min-width: 0;
+  margin-left: auto;
+  font-size: 0.85rem;
+  line-height: 1.2;
 }
 .toast span {
-  flex: 1;
+  flex: 0 1 auto;
+  text-align: right;
 }
-@media (min-width: 768px) {
-  .toast {
-    bottom: 24px;
-  }
+.toast button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--focus);
+  color: #0b2e4a;
+  font: inherit;
+  font-weight: 700;
 }
 
 .tier-best,
