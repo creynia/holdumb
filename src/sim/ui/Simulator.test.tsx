@@ -474,7 +474,7 @@ describe('Simulator container', () => {
       const { evClient } = mount(FLOP_SCENE);
       await ready();
       const check = document.querySelector('[data-option="check"]')!;
-      act(() => {
+      await act(() => {
         // Both clicks run before the first act has been awaited.
         check.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         check.dispatchEvent(new MouseEvent('click', { bubbles: true }));

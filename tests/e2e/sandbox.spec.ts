@@ -260,7 +260,7 @@ test.describe('sandbox', () => {
         return out;
       };
       const withToast = await boxes();
-      await toast.locator('button').click();
+      await toast.getByRole('button', { name: 'Dismiss' }).click();
       await expect(toast).toHaveCount(0);
       const without = await boxes();
       for (const k of Object.keys(withToast)) {
@@ -305,7 +305,7 @@ test.describe('sandbox', () => {
         ),
       );
     const withToast = await at();
-    await toast.locator('button').click();
+    await toast.getByRole('button', { name: 'Dismiss' }).click();
     await expect(toast).toHaveCount(0);
     const without = await at();
     withToast
