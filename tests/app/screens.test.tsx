@@ -621,6 +621,7 @@ describe('Drill', () => {
       const store = new Store(new MemoryStorage());
       const el = await mountDrill(store, {
         nextSpot: (r) => [spot('flop', `f:${i}`), r],
+        gradeSpot: realGradeSpot,
         preview: () => Promise.resolve(pv),
       });
       await act(() => btn(el, 'Check').click());
