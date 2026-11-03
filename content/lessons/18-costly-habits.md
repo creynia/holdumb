@@ -11,7 +11,7 @@ figures are exact, at a $10 Ante and 30 hands an hour.
 
 | Habit | House edge per Ante | Cost per hour | Extra vs perfect |
 |---|---|---|---|
-| Perfect play | 2.19% | $6.55 | — |
+| Perfect play | 2.18% | $6.55 | — |
 | Basic card | 2.38% | $7.14 | $0.59 |
 | Simple card | 2.71% | $8.12 | $1.57 |
 | 4x only with pairs and aces | 5.65% | $16.94 | $10.39 |
