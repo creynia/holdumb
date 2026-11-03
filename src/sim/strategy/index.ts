@@ -1,7 +1,7 @@
 export * from './types';
 export { STRATEGY_IDS } from './ids';
 export { simulateJob } from './simulate';
-export { nextSpot, spotCode, spotFromCode, gradeSpot } from './drill';
+export { nextSpot, spotCode, spotFromCode, gradeSpot, pickOutsCategory, OUTS_MIX } from './drill';
 export { categorize, DRILL_STREET_OF } from './categories';
 export { STRATEGIES, getStrategy, strategyAction, PICKER_GROUPS } from './presets';
 export { STRATEGY_CONSTANTS } from './constants';

@@ -1,4 +1,4 @@
-import { Say, useAnnounceFrom } from '../../sim';
+import { Say, pickOutsCategory, useAnnounceFrom } from '../../sim';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   EvSheet,
@@ -28,6 +28,7 @@ import type {
   RngState,
 } from '../../sim';
 import { Cards } from '../components/Cards';
+import { OutsInput, outsFeedback } from './DrillOuts';
 import { Link } from '../components/Link';
 import { useContent, useStore } from '../context';
 import { getEvClient } from '../evClient';
@@ -141,17 +142,19 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const deps = props.deps ?? defaultDrillDeps;
   const store = useStore();
   const content = useContent();
-  const q = props.query.get('street');
+  // ?mode=outs: count the dealer's outs on river spots without a hidden pair (I060).
+  const outsMode = props.query.get('mode') === 'outs';
+  const q = outsMode ? 'river' : props.query.get('street');
   const qStreet: DecisionStreet | 'mixed' =
     q === 'preflop' || q === 'flop' || q === 'river' ? q : 'mixed';
   // ?category= wins over ?street= unless they disagree (then the category is ignored).
-  const qCat = props.query.get('category');
+  const qCat = outsMode ? null : props.query.get('category');
   const category =
     isCategoryId(qCat) && (qStreet === 'mixed' || DRILL_STREET_OF[qCat] === qStreet)
       ? qCat
       : undefined;
   const street: DecisionStreet | 'mixed' = category ? DRILL_STREET_OF[category] : qStreet;
-  const focus = (props.query.get('focus') ?? '').split(',').filter(Boolean);
+  const focus = outsMode ? [] : (props.query.get('focus') ?? '').split(',').filter(Boolean);
   const focusKey = focus.join(',');
   const rng = useRef<RngState>(rngFromSeed(deps.seed ?? Date.now()));
   const [spot, setSpot] = useState<DrillSpot | null>(null);
@@ -162,18 +165,30 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   useAnnounceFrom(gradeRef, answer, { dedupeKey: 'drill' });
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Count-the-outs: the number said for this spot, once checked; the action question follows it.
+  const [said, setSaid] = useState<number | null>(null);
+  const outsRef = useRef<HTMLParagraphElement>(null);
+  useAnnounceFrom(outsRef, said, { dedupeKey: 'drill-outs' });
 
   const deal = () => {
     setAnswer(null);
+    setSaid(null);
     setFailed(false);
     try {
       const filter: DrillFilter = {
         street,
         ...(category ? { category } : {}),
         ...(focus.length ? { focus } : {}),
-        ...(store.drill.closeCalls ? { interesting: true } : {}),
+        ...(store.drill.closeCalls && !outsMode ? { interesting: true } : {}),
       };
-      const [s, r] = deps.nextSpot(rng.current, filter);
+      let from = rng.current;
+      if (outsMode) {
+        // A band for this spot (the edge band 19-23 gets 45%), then a river spot in it.
+        const [cat, r0] = pickOutsCategory(from);
+        from = r0;
+        filter.category = cat;
+      }
+      const [s, r] = deps.nextSpot(from, filter);
       rng.current = r;
       setSpot(s);
       setUnavailable(false);
@@ -182,7 +197,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       setUnavailable(true);
     }
   };
-  useEffect(deal, [street, category, focusKey, store.drill.closeCalls]);
+  useEffect(deal, [street, category, focusKey, store.drill.closeCalls, outsMode]);
 
   const choose = (i: number) => {
     if (!spot || busy || answer) return;
@@ -297,27 +312,48 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       {spot && (
         <section class="card drill-spot" data-testid="drill-spot" data-street={spot.street}>
           <h2 class="sr">Your hand</h2>
-          <p class="drill-spot-category muted" data-testid="drill-category-label">
-            {DRILL_CATEGORY_LABELS[spot.category]}
-          </p>
+          {!outsMode && (
+            <p class="drill-spot-category muted" data-testid="drill-category-label">
+              {DRILL_CATEGORY_LABELS[spot.category]}
+            </p>
+          )}
           <div class="drill-cards">
             <Cards cards={spot.hole} />
             {spot.board.length > 0 && <Cards cards={spot.board} />}
           </div>
-          <div class="choice-row" role="group" aria-label="Your decision">
-            {CHOICES[spot.street].map((c, i) => (
-              <button
-                key={c.label}
-                type="button"
-                class={`btn ${answer?.chosen === i ? '' : answer ? 'btn-ghost' : ''}`}
-                disabled={busy || answer !== null}
-                aria-pressed={answer?.chosen === i}
-                onClick={() => choose(i)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          {outsMode && said === null ? (
+            <OutsInput
+              onSubmit={(n) => {
+                const facts = riverFacts(spot.hole, spot.board);
+                store.recordOuts(n, facts.outs);
+                setSaid(n);
+              }}
+            />
+          ) : (
+            <>
+              {outsMode && said !== null && (
+                <p class="drill-outs-feedback" data-testid="outs-feedback" ref={outsRef}>
+                  {outsFeedback(said, riverFacts(spot.hole, spot.board), spot.hole, spot.board)}
+                  <br />
+                  So: bet 1x or fold?
+                </p>
+              )}
+              <div class="choice-row" role="group" aria-label="Your decision">
+                {CHOICES[spot.street].map((c, i) => (
+                  <button
+                    key={c.label}
+                    type="button"
+                    class={`btn ${answer?.chosen === i ? '' : answer ? 'btn-ghost' : ''}`}
+                    disabled={busy || answer !== null}
+                    aria-pressed={answer?.chosen === i}
+                    onClick={() => choose(i)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {failed && (
             <p class="warn">
               <Say
@@ -430,7 +466,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             </button>
           ))}
         </div>
-        {street !== 'mixed' && (
+        {street !== 'mixed' && !outsMode && (
           <label class="drill-category">
             <span>Category</span>
             <select
@@ -452,6 +488,24 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
               ))}
             </select>
           </label>
+        )}
+        <p>
+          {outsMode ? (
+            <Link to="/drill?street=river" class="btn btn-ghost" data-testid="outs-mode-off">
+              Back to the action drill
+            </Link>
+          ) : (
+            <Link to="/drill?mode=outs" class="btn btn-ghost" data-testid="outs-mode-on">
+              Count the dealer's outs
+            </Link>
+          )}
+        </p>
+        {outsMode && d.outs.answered > 0 && (
+          <p class="muted" data-testid="outs-stats">
+            Outs counting: {Math.round((100 * d.outs.exact) / d.outs.answered)}% exact,{' '}
+            {Math.round((100 * d.outs.within2) / d.outs.answered)}% within 2, average miss{' '}
+            {(d.outs.absErrorTotal / d.outs.answered).toFixed(1)} ({d.outs.answered} answers)
+          </p>
         )}
         {weakest && (
           <p class="muted" data-testid="drill-weakest">

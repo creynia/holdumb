@@ -217,6 +217,24 @@ export class Store {
     });
   }
 
+  /** Count the outs (I060): one answer, the number said against the exact count. */
+  recordOuts(guess: number, actual: number) {
+    const o = this.data.drill.outs;
+    const miss = Math.abs(guess - actual);
+    this.commit({
+      ...this.data,
+      drill: {
+        ...this.data.drill,
+        outs: {
+          answered: o.answered + 1,
+          exact: o.exact + (miss === 0 ? 1 : 0),
+          within2: o.within2 + (miss <= 2 ? 1 : 0),
+          absErrorTotal: o.absErrorTotal + miss,
+        },
+      },
+    });
+  }
+
   /** Drill: choose the grading lens (kept across visits; accuracy is tracked per lens). */
   setDrillLens(lens: DrillLens) {
     if (lens === this.data.drill.lens) return;

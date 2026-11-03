@@ -82,11 +82,23 @@ export interface LensStats {
  * The top-level fields are the perfect-play lens (the only one before I017, so old records migrate
  * into it unchanged); `practical` holds the basic-card lens. Switching lenses never mixes them.
  */
+/** Count-the-outs answers (I060): hit rate and mean absolute error, kept over all answers. */
+export interface OutsStats {
+  answered: number;
+  exact: number;
+  within2: number;
+  /** Sum of |guess - actual|, so the mean error is absErrorTotal / answered. */
+  absErrorTotal: number;
+}
+export const emptyOuts = (): OutsStats => ({ answered: 0, exact: 0, within2: 0, absErrorTotal: 0 });
+
 export interface DrillStats extends LensStats {
   lens: DrillLens;
   practical: LensStats;
   /** "Close calls" (I068): about 60% of spots are close, streets weighted by real play. Default on. */
   closeCalls: boolean;
+  /** Count the dealer's outs (I060); not per lens, it has no grading lens. */
+  outs: OutsStats;
 }
 
 /** Stats of the lens currently selected. */
@@ -115,7 +127,13 @@ const emptyLens = (): LensStats => ({
 });
 
 export function emptyDrill(): DrillStats {
-  return { ...emptyLens(), lens: 'perfect', practical: emptyLens(), closeCalls: true };
+  return {
+    ...emptyLens(),
+    lens: 'perfect',
+    practical: emptyLens(),
+    closeCalls: true,
+    outs: emptyOuts(),
+  };
 }
 
 export function defaultPersisted(): PersistedV1 {
@@ -236,7 +254,18 @@ function sanitizeDrill(raw: unknown): DrillStats {
     lens: raw.lens === 'practical' ? 'practical' : 'perfect',
     practical: sanitizeLens(raw.practical),
     closeCalls: raw.closeCalls !== false,
+    outs: sanitizeOuts(raw.outs),
   };
+}
+
+function sanitizeOuts(raw: unknown): OutsStats {
+  const o = emptyOuts();
+  if (!isObj(raw)) return o;
+  o.answered = clampInt(raw.answered, 0, 10_000_000, 0);
+  o.exact = Math.min(clampInt(raw.exact, 0, 10_000_000, 0), o.answered);
+  o.within2 = Math.min(Math.max(clampInt(raw.within2, 0, 10_000_000, 0), o.exact), o.answered);
+  o.absErrorTotal = clampInt(raw.absErrorTotal, 0, 450_000_000, 0);
+  return o;
 }
 
 /** Validates arbitrary parsed JSON into PersistedV1; malformed parts fall back to defaults. */
