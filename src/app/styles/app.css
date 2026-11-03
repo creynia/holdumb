@@ -123,7 +123,9 @@ h3 {
   z-index: 10;
 }
 .tabbar a {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0; /* large text (I053): the four tabs share the width instead of overflowing it */
+  overflow-wrap: anywhere;
   min-height: 56px;
   display: flex;
   flex-direction: column;
@@ -202,7 +204,11 @@ main:has(> .page-wide) {
 .page-play {
   /* topbar 66.2 + 8 + table options 44 + gap 8 (I090) + status 44 + gap 8 + felt + gap 8 + action
      bar (67 with a wrapped sub-label) + 8 + tab bar 58 */
-  --play-chrome: calc(320px + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+  /* Large text (I053): each extra px of root font adds ~17px of chrome (labels, status, options,
+     the taller bar), so the felt gives way and the bar stays above the tab bar at 200%. */
+  --play-chrome: calc(
+    320px + (1rem - 16px) * 17 + env(safe-area-inset-top) + env(safe-area-inset-bottom)
+  );
 }
 .page-play .sim-table-portrait .sim-felt {
   /* The table options row (44 + gap 8, I090) comes out of the felt, never out of the action bar's
@@ -212,7 +218,7 @@ main:has(> .page-wide) {
 }
 @media (min-width: 768px) {
   .page-play {
-    --play-chrome: calc(262px + env(safe-area-inset-top)); /* no tab bar */
+    --play-chrome: calc(262px + (1rem - 16px) * 17 + env(safe-area-inset-top)); /* no tab bar */
   }
 }
 .card {
@@ -599,7 +605,13 @@ textarea {
 }
 .form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* large text (I053): no control widens the card */
   gap: 0.9rem;
+}
+.form select,
+.form input:not([type='checkbox']):not([type='radio']) {
+  max-width: 100%;
+  min-width: 0;
 }
 .form label {
   display: grid;

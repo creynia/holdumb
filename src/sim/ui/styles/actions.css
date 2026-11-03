@@ -225,3 +225,34 @@
     forced-color-adjust: none;
   }
 }
+
+/* ---------- large text (I053) ----------
+   The portrait bar is a size container: when it is narrower than 13rem (the root font at ~150% or
+   more on a phone), labels may wrap to two lines and the EV line to three in a smaller face, all
+   inside a taller but still fixed row, so nothing is clipped and nothing moves between streets. */
+.sim-table-actions {
+  container: sim-bar / inline-size;
+}
+@container sim-bar (max-width: 13rem) {
+  .sim-actions {
+    --sim-act-h: calc(21px + 1.955rem + 2.2425rem);
+  }
+  .sim-act {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .sim-act-label,
+  .sim-act-sub {
+    max-width: 100%;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .sim-act-decision .sim-act-sub {
+    font-size: 0.65rem;
+    min-height: 3.45em;
+  }
+  /* "Check" and "Fold" still fit a third of 312px whole; anywhere-wrapping is the last resort. */
+  .sim-act .sim-act-label {
+    font-size: 0.85rem;
+  }
+}

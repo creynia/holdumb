@@ -106,3 +106,63 @@ for (const size of TARGET_SIZES) {
     }
   });
 }
+
+// I053: large text. With the root font at 200% (Android / iOS large-text settings), the Play table
+// still fits: no horizontal scroll, no text clipped across inside an ActionBar button, the bar fully
+// on screen at scrollY 0 and above the tab bar on every street; Settings and Drill do not scroll
+// sideways either.
+test.describe('text zoom 200%', () => {
+  const ZOOM = 'html { font-size: 200% !important; }';
+  for (const [w, h] of [
+    [360, 740],
+    [390, 844],
+  ] as const) {
+    test(`${w}x${h}: table, Settings and Drill at 200% text`, async ({ browser }, info) => {
+      test.skip(info.project.name !== 'mobile', 'sets its own viewports');
+      const page = await browser.newPage({ viewport: { width: w, height: h } });
+      const zoom = () => page.addStyleTag({ content: ZOOM });
+      const noHScroll = async (where: string) =>
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth),
+          `${where}: horizontal scroll`,
+        ).toBeLessThanOrEqual(w);
+      const bar = async (where: string) => {
+        await page.evaluate(() => scrollTo(0, 0));
+        const m = await page.evaluate(() => {
+          const r = (s: string) => document.querySelector(s)?.getBoundingClientRect() ?? null;
+          const clipped = [...document.querySelectorAll<HTMLElement>('.sim-act, .sim-act *')]
+            .filter((e) => e.scrollWidth > e.clientWidth + 1)
+            .map((e) => `${e.className}: ${e.textContent}`);
+          return { act: r('.sim-actions'), tab: r('.tabbar'), clipped };
+        });
+        expect(m.clipped, `${where}: clipped labels`).toEqual([]);
+        expect(m.act!.top, `${where}: bar top`).toBeGreaterThanOrEqual(0);
+        expect(m.act!.bottom, `${where}: bar on screen`).toBeLessThanOrEqual(h);
+        if (m.tab) expect(m.act!.bottom, `${where}: bar vs tab bar`).toBeLessThanOrEqual(m.tab.top);
+        await noHScroll(where);
+        return m.act!;
+      };
+      await page.goto('/#/play?seed=3&speed=instant');
+      await zoom();
+      const sim = page.getByTestId('simulator');
+      await expect(sim).toHaveAttribute('data-street', 'betting');
+      const first = await bar('betting');
+      await page.locator('button[data-action="deal"]').click();
+      await expect(sim).toHaveAttribute('data-street', 'preflop');
+      await expect(sim).toHaveAttribute('data-ev', 'ready', { timeout: 20_000 });
+      // The bar keeps its box between states at large text too.
+      const pre = await bar('preflop');
+      expect(Math.abs(pre.top - first.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(pre.height - first.height)).toBeLessThanOrEqual(1);
+      await page.goto('/#/settings');
+      await zoom();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await noHScroll('settings');
+      await page.goto('/#/drill?street=flop');
+      await zoom();
+      await expect(page.getByTestId('drill-spot')).toBeVisible();
+      await noHScroll('drill');
+      await page.close();
+    });
+  }
+});

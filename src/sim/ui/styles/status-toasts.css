@@ -63,9 +63,10 @@
 /* ---------- table options (I090): EV segments and the Confirm box ---------- */
 .sim-options {
   display: flex;
+  flex-wrap: wrap; /* large text (I053): Confirm moves under the EV group instead of overflowing */
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   min-height: 44px;
   font-size: 0.9rem;
   flex: none;
@@ -161,7 +162,7 @@
 /* The button's 44px hit area overflows its 24px slot so the status bar keeps its height. */
 .sim-status [data-testid='ev-details-column'] dd {
   position: relative;
-  height: 24px;
+  height: 1.5em; /* 24px at the default size; grows with large text (I053) */
   width: 100%;
   display: flex;
   justify-content: center;
