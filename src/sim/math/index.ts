@@ -37,3 +37,13 @@ export { riverPreview, preflopPreview } from './preview';
 export { riverTotals, flopTotalsJob, blindX2 } from './enumerate';
 export type { RiverTotals, FlopTotals, FlopRequest } from './enumerate';
 export { classWeight } from './preflop';
+export {
+  progressiveEv,
+  progressiveEdge,
+  progressiveBreakEven,
+  progressiveMeterForEdge,
+  PROGRESSIVE_EXAMPLE,
+  FIVE_CARD_COUNTS,
+  FIVE_CARD_TOTAL,
+} from './progressive';
+export type { ProgressiveTable } from './progressive';
