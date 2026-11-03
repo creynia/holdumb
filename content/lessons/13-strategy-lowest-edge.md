@@ -35,7 +35,7 @@ On average you'll have **4.15 antes** in action per hand, and lose **2.185% of o
 Ante and 30 hands an hour, that's an expected cost of **$6.55 an hour**.
 
 **What perfect means, and what it doesn't.** No decision you make can give you an edge over the house.
-"Perfect" means you lose the least possible: 2.19% of the Ante. It doesn't mean you'll win tonight, and it
+"Perfect" means you lose the least possible: 2.18% of the Ante. It doesn't mean you'll win tonight, and it
 doesn't make Trips or any other side bet cheaper.
 
 ```chart
@@ -72,7 +72,7 @@ steps:
 
 ```quiz
 - q: What's the house edge of UTH with perfect strategy (standard Blind)?
-  options: ["0.53% of the Ante", "1.09% of the Ante", "2.19% of the Ante", "3.5% of the Ante"]
+  options: ["0.53% of the Ante", "1.09% of the Ante", "2.18% of the Ante", "3.5% of the Ante"]
   answer: 2
   explain: "2.185% of the Ante. 0.53% is the element of risk (lesson 15)."
 - q: What share of hands are 4x bets under perfect play?

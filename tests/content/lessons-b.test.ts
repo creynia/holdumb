@@ -642,7 +642,7 @@ describe('lesson 13: the whole picture (decisions.md §4)', () => {
       'all 19,600 flops',
       '1,081',
       '990 dealer hands',
-      'lose the least possible: 2.19% of the Ante',
+      'lose the least possible: 2.18% of the Ante',
       '33+, any ace, any suited king, K5o+, Q6s+, Q8o+, J8s+, JTo',
       'Never bet 3x.',
     ])
@@ -651,7 +651,7 @@ describe('lesson 13: the whole picture (decisions.md §4)', () => {
   });
   it('quiz answers and scenes', () => {
     const qs = quizzes('strategy-lowest-edge');
-    expect(qs[0]!.choices[qs[0]!.answer]).toBe('2.19% of the Ante');
+    expect(qs[0]!.choices[qs[0]!.answer]).toBe('2.18% of the Ante');
     expect(qs[1]!.choices[qs[1]!.answer]).toBe('About 38%');
     expect(qs[2]!.choices[qs[2]!.answer]).toMatch(/22¢/);
     const [s] = scenes('strategy-lowest-edge');
