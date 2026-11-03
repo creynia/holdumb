@@ -791,7 +791,7 @@ textarea {
   flex-wrap: wrap;
   gap: 0.4rem 1.2rem;
 }
-.drill-result [role='status'] {
+.drill-result [data-testid='drill-headline'] {
   margin-top: 0;
 }
 .rankings {

@@ -86,25 +86,25 @@ describe('announcer region (I036)', () => {
   it('a repeated message changes the region again, so it is spoken again', async () => {
     vi.useRealTimers();
     const { Announcer } = await import('../../app/announcer');
-    const { act, render: r } = await import('@testing-library/preact');
+    const { render: r } = await import('@testing-library/preact');
     r(<Announcer />);
     const region = document.querySelector('[aria-live=polite]')!;
-    const seen: string[] = [];
-    const mo = new MutationObserver(() => seen.push(region.textContent ?? ''));
+    let writes = 0;
+    const mo = new MutationObserver((recs) => (writes += recs.length));
     mo.observe(region, { childList: true, characterData: true, subtree: true });
     const say = async () => {
       announce('Correct.');
-      await act(async () => {
-        flushAnnouncements();
-        await new Promise((res) => setTimeout(res, 60));
-      });
+      // Not inside act(): its batching would merge the clear and the rewrite into one render.
+      flushAnnouncements();
+      await new Promise((res) => setTimeout(res, 60));
     };
     await say();
     await say();
     mo.disconnect();
-    // Each repeat clears the region and writes it again: two separate writes of the text.
-    expect(seen.filter((t) => t === 'Correct.')).toHaveLength(2);
-    expect(seen.filter((t) => t === '')).toHaveLength(2);
+    // First say: one write. Second (identical) say: the region is cleared and written again, so
+    // there are two more. Without the clear the repeat would not touch the DOM at all.
+    expect(writes).toBeGreaterThanOrEqual(3);
+    expect(region.textContent).toBe('Correct.');
   });
   it('keeps what was said before anyone listened, and delivers it to the first listener', () => {
     off();
