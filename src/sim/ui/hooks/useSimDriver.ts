@@ -132,7 +132,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
 
 /**
  * Sandbox sync: saves a snapshot after every driver event (PersistedV1.sandbox, owned by the app
- * store) and keeps the table's practice mode in step with the settings, its source of truth.
+ * store) and keeps the table's EV mode in step with the settings, its source of truth.
  */
 export function useSandboxSync(
   h: SimDriverHandle,
