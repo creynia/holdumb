@@ -155,6 +155,46 @@ test.describe('sandbox', () => {
     await expect(page.getByTestId('ev-hidden')).toHaveCount(0);
   });
 
+  test('two Check taps 150 ms apart play the preflop only: the flop is still to decide (D40)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    await ready(page);
+    const check = opt(page, 'check');
+    const box = (await check.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.click(x, y);
+    await page.waitForTimeout(150);
+    await page.mouse.click(x, y); // the same spot: slot a is Check on the flop too
+    await page.waitForTimeout(600);
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+    // After the guard a tap acts again.
+    await ready(page);
+    await opt(page, 'check').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'river');
+  });
+
+  for (const vp of [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+  ])
+    test(`"After I choose" + confirm: focus goes into the sheet, then to Continue (${vp.width}x${vp.height})`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(vp);
+      await seedSettings(page, { evMode: 'after', confirmOn: 'all' });
+      await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+      await ready(page);
+      await opt(page, 'check').click();
+      const sheet = page.getByTestId('ev-sheet');
+      await expect(sheet).toBeVisible();
+      expect(await sheet.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+      await page.getByTestId('confirm').click();
+      await expect(page.getByTestId('reveal-result')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Continue' })).toBeFocused();
+    });
+
   test('by default a blunder acts at once: no sheet, no warning (D40)', async ({ page }) => {
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);

@@ -16,6 +16,9 @@ import { optionsFor } from '../ActionBar';
 import { actionOfKey, bestOf, narrationText, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
+/** How long taps are ignored after an act or a new street (the double-tap guard, D40). */
+export const TAP_GUARD_MS = 450;
+
 /** The preview request for the decision on the table now, or null between decisions. */
 export function requestNow(d: SimDriver): PreviewRequest | null {
   const st = d.view.state;
@@ -41,6 +44,8 @@ export interface EvSheetState {
   open: OptionKey | null;
   /** The effective EV visibility this hook ran with. */
   evMode: EvMode;
+  /** Taps are being ignored for a moment after an act or a new street (double-tap guard). */
+  guarding: boolean;
   /** Tap on an ActionBar option. */
   onOption: (k: OptionKey) => void;
   /** The status bar's Details button: opens the sheet on the best option without acting (I092). */
@@ -83,6 +88,28 @@ export function useEvSheet(
     }
   }, [handKey, reveal]);
 
+  // Double-tap guard (D40): slot a sits in the same place on every street, so a second tap on Check
+  // would play the next street unseen. Taps are ignored for a short while after an act or a new
+  // street, and until the new street's preview has started.
+  const lastActAt = useRef(0);
+  const mounted = useRef(false);
+  // Rendered state of the guard (a counter, so a second act restarts the timer), so the table can
+  // say it is not taking taps yet (data-ev).
+  const [guard, setGuard] = useState(0);
+  const startGuard = () => {
+    lastActAt.current = Date.now();
+    setGuard((g) => g + 1);
+  };
+  useEffect(() => {
+    if (guard === 0) return;
+    const h = setTimeout(() => setGuard(0), TAP_GUARD_MS);
+    return () => clearTimeout(h);
+  }, [guard]);
+  useEffect(() => {
+    // A new street or hand (a Deal tap included) starts the guard; the first render does not.
+    if (mounted.current) startGuard();
+    mounted.current = true;
+  }, [handKey]);
   // The table that holds the tapped option (a lesson page has several) and its slot (I012).
   const tapped = useRef<{ root: Element | null; slot: string | undefined } | null>(null);
   const rememberSlot = (k: OptionKey) => {
@@ -124,6 +151,7 @@ export function useEvSheet(
     sim.narration.current = said;
     const r = await d.act(actionOfKey(k));
     sim.narration.current = null;
+    if (r.ok) startGuard();
     if (r.ok && evMode === 'after' && before)
       setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
@@ -154,11 +182,16 @@ export function useEvSheet(
     d.previewed(k, false);
   };
   const onOption = (k: OptionKey) => {
+    const pv = d.view.preview;
+    const st = d.view.state;
+    if (Date.now() - lastActAt.current < TAP_GUARD_MS) return;
+    if (isDecisionStreet(st.street) && pv.key !== `${st.hand?.n ?? 0}:${st.street}`) return;
     rememberSlot(k);
     const p = policy();
-    if (p === 'never') return void confirm(k);
+    // 'after' reveals the move against its preview: a tap before it is ready waits for it.
+    if (p === 'never')
+      return evMode === 'after' && pv.status === 'pending' ? openSheet(k, true) : void confirm(k);
     if (p === 'all') return openSheet(k);
-    const pv = d.view.preview;
     if (pv.status === 'error') return void confirm(k); // EV is advisory (architecture §4.2)
     const o =
       pv.status === 'ready' ? pv.value?.options.find((x) => optionKeyOf(x.action) === k) : null;
@@ -218,7 +251,8 @@ export function useEvSheet(
           // Opened by Details: the primary reads "Confirm <label>", warnings stay inline.
           confirming: !fromDetails.current,
           checking: pending,
-          focusOnOpen: fromDetails.current,
+          // Focus moves into the sheet when it opens, in the rail too (landscape).
+          focusOnOpen: true,
           alternative,
           request: sheetReq,
           chosen: reveal?.chosen ?? null,
@@ -235,5 +269,5 @@ export function useEvSheet(
           allowed: d.view.allowedOptions,
         }
       : null;
-  return { open, evMode, onOption, openDetails, sheet };
+  return { open, evMode, guarding: guard > 0, onOption, openDetails, sheet };
 }

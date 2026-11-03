@@ -165,6 +165,12 @@ export function EvSheet({
     if (modal || focusOnOpen)
       rootRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
   }, [modal, focusOnOpen]);
+  // The confirm sheet turns into the reveal in place ('after'): focus moves to Continue, so it
+  // never falls back to the page body when the Confirm button goes away.
+  const revealed = chosen != null;
+  useEffect(() => {
+    if (revealed) rootRef.current?.querySelector<HTMLElement>('[data-continue]')?.focus();
+  }, [revealed]);
 
   const confirmed = chosen != null;
   // 'never' shows no EV at all; 'after' hides it until the move is made (then the reveal shows it).
@@ -410,7 +416,12 @@ export function EvSheet({
       {readOnly ? null : (
         <div class="sim-evsheet-actions">
           {confirmed ? (
-            <button type="button" class="sim-btn sim-btn-primary" onClick={onContinue ?? onCancel}>
+            <button
+              type="button"
+              class="sim-btn sim-btn-primary"
+              onClick={onContinue ?? onCancel}
+              data-continue
+            >
               Continue
             </button>
           ) : (

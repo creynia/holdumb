@@ -9,7 +9,7 @@ import { isDecisionStreet } from '../simView';
 import { optionKeyOf } from '../text';
 import { DEFAULT_SIM_SETTINGS } from '../types';
 import type { ConfirmOn, EvMode, SimSettings, SimulatorProps } from '../types';
-import { useEvSheet } from './useEvSheet';
+import { TAP_GUARD_MS, useEvSheet } from './useEvSheet';
 import { useSimDriver } from './useSimDriver';
 
 const settings = { ...DEFAULT_SIM_SETTINGS, animationSpeed: 'instant' as const };
@@ -200,6 +200,36 @@ describe('useEvSheet', () => {
     expect(result.current.ev.sheet!.confirming).toBe(false);
     await act(() => result.current.ev.sheet!.onConfirm!('check'));
     await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('flop'));
+  });
+
+  it('double-tap guard: a second tap right after an act is ignored, later taps act (D40)', async () => {
+    const { client } = fakeClient(() => withCheckTier('best'));
+    const { result } = mount('before', 'never', client, AA);
+    await ready(result);
+    await act(() => result.current.ev.onOption('check'));
+    await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('flop'));
+    expect(result.current.ev.guarding).toBe(true);
+    await act(() => result.current.ev.onOption('check')); // the same slot, 0 ms later
+    await act(() => new Promise((r) => setTimeout(r, 150)));
+    await act(() => result.current.ev.onOption('check')); // 150 ms later: still guarded
+    expect(result.current.sim.d.view.state.street).toBe('flop');
+    await waitFor(() => expect(result.current.ev.guarding).toBe(false), { timeout: 2000 });
+    await act(() => result.current.ev.onOption('check'));
+    await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('river'));
+    expect(TAP_GUARD_MS).toBeGreaterThanOrEqual(300);
+  });
+
+  it("'after' tapped before the preview is ready waits for it, then acts and reveals", async () => {
+    const f = fakeClient(() => withCheckTier('best'), true);
+    const { result } = mount('after', 'never', f.client, AA);
+    await waitFor(() => expect(result.current.sim.d.view.preview.status).toBe('pending'));
+    await act(() => result.current.ev.onOption('check'));
+    expect(result.current.ev.sheet?.checking).toBe(true);
+    expect(result.current.sim.d.view.state.street).toBe('preflop');
+    await act(() => f.release());
+    await waitFor(() => expect(result.current.ev.sheet?.chosen).toBe('check'));
+    expect(result.current.sim.d.view.state.street).toBe('flop');
+    expect(result.current.ev.sheet?.preview?.street).toBe('preflop');
   });
 
   it('select switches the open option', async () => {

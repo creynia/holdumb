@@ -202,6 +202,13 @@ describe('EvSheet', () => {
     expect(screen.queryByText('Why?')).toBeNull();
     expect(screen.queryByTestId('alternative')).toBeNull();
   });
+  it('when the confirm sheet turns into the reveal, focus moves to Continue', () => {
+    const props = baseProps({ evMode: 'after', selected: 'check', confirming: true });
+    const { rerender } = render(<EvSheet {...props} variant="rail" focusOnOpen />);
+    expect(document.activeElement?.getAttribute('data-autofocus')).not.toBeNull();
+    rerender(<EvSheet {...props} variant="rail" focusOnOpen chosen="check" />);
+    expect(document.activeElement?.textContent).toBe('Continue');
+  });
   it("evMode 'after' hides every EV until the move, then shows the result", () => {
     const props = baseProps({ evMode: 'after', selected: 'check' });
     const { container, rerender } = render(<EvSheet {...props} />);

@@ -186,7 +186,8 @@ export function Simulator(props: SimulatorViewProps) {
       data-street={street}
       data-hands={state.stats.hands}
       data-mode={mode}
-      data-ev={view.preview.status}
+      // 'pending' while the double-tap guard ignores taps, so "ready" means a tap will act.
+      data-ev={ev.guarding && view.preview.status === 'ready' ? 'pending' : view.preview.status}
       data-equity={eq}
       style={
         orientation === 'landscape'
