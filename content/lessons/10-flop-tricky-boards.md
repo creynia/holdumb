@@ -108,3 +108,12 @@ steps:
   answer: 0
   explain: "{{num:expert-extra-3}} of the Ante, with a perfect river. About 26¢ an hour at $10."
 ```
+
+```practise
+- label: "Drill paired flops"
+  to: "#/drill?category=flop-board-pair"
+- label: "Drill flop flush draws"
+  to: "#/drill?category=flop-flush-draw"
+- label: "Play seven-six of hearts on 8-5-2 with two hearts"
+  to: "#/play?hole=7h6h&board=8h5c2h"
+```

@@ -155,3 +155,12 @@ steps:
   answer: 1
   explain: "One of your cards pairs the board, or you hold a pocket pair. On the flop, pocket deuces are the exception."
 ```
+
+```practise
+- label: "Drill flop hidden pairs"
+  to: "#/drill?category=flop-hidden-pair"
+- label: "Drill flop flush draws"
+  to: "#/drill?category=flop-flush-draw"
+- label: "Play ten-four of hearts on J-8-2 with two hearts"
+  to: "#/play?hole=Th4h&board=Jh8h2c"
+```
