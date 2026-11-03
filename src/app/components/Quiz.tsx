@@ -1,5 +1,5 @@
-import { Say } from '../../sim';
-import { useState } from 'preact/hooks';
+import { useAnnounceFrom } from '../../sim';
+import { useRef, useState } from 'preact/hooks';
 import type { Quiz as QuizData } from '../../content/types';
 import { Cards, InlineText } from './Cards';
 
@@ -12,6 +12,9 @@ export function Quiz(props: {
   const [picked, setPicked] = useState<number | null>(null);
   const [checked, setChecked] = useState(false);
   const correct = checked && picked === quiz.answer;
+  const resultRef = useRef<HTMLDivElement>(null);
+  // The verdict and the explanation are spoken as shown, once per check.
+  useAnnounceFrom(resultRef, checked, { dedupeKey: 'quiz' });
   const name = `quiz-${quiz.id}`;
   return (
     <fieldset class="card quiz" data-testid="quiz">
@@ -58,8 +61,11 @@ export function Quiz(props: {
           Check answer
         </button>
       ) : (
-        <div class={`quiz-result ${correct ? 'ok' : 'no'}`} data-testid="quiz-result">
-          <Say text={correct ? 'Correct.' : 'Not quite.'} dedupeKey="quiz" />
+        <div
+          class={`quiz-result ${correct ? 'ok' : 'no'}`}
+          data-testid="quiz-result"
+          ref={resultRef}
+        >
           <strong>{correct ? 'Correct.' : 'Not quite.'}</strong>{' '}
           <InlineText text={quiz.explanation} />
           {!correct && (

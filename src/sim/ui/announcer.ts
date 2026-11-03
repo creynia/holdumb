@@ -2,6 +2,7 @@
 // owning an aria-live region; the app renders two hidden regions (polite, assertive) from it.
 // Framework-free so the sim, the app and (through a window event) the PWA layer can share it.
 import { useEffect } from 'preact/hooks';
+import type { RefObject } from 'preact';
 
 export type Politeness = 'polite' | 'assertive';
 export interface AnnounceOptions {
@@ -25,6 +26,7 @@ interface Pending {
 const listeners = new Set<Listener>();
 const queue: Record<Politeness, Pending[]> = { polite: [], assertive: [] };
 const timers: Partial<Record<Politeness, ReturnType<typeof setTimeout>>> = {};
+const backlog: [Politeness, string][] = [];
 let muted = 0;
 let seq = 0;
 
@@ -32,7 +34,10 @@ function flush(p: Politeness): void {
   timers[p] = undefined;
   const text = queue[p].map((m) => m.text).join(' ');
   queue[p] = [];
-  if (text) listeners.forEach((l) => l(p, text));
+  if (!text) return;
+  // Nobody is listening yet (spoken before the Announcer mounted): keep it for the first listener.
+  if (listeners.size === 0) backlog.push([p, text]);
+  else listeners.forEach((l) => l(p, text));
 }
 
 export function announce(text: string, opts: AnnounceOptions = {}): void {
@@ -61,6 +66,7 @@ export function muteAnnouncements(): () => void {
 
 export function subscribeAnnouncements(l: Listener): () => void {
   listeners.add(l);
+  for (const [p, t] of backlog.splice(0)) l(p, t);
   return () => listeners.delete(l);
 }
 
@@ -78,6 +84,22 @@ export function resetAnnouncer(): void {
     queue[p] = [];
   }
   muted = 0;
+  backlog.length = 0;
+}
+
+/**
+ * Announces the rendered text of `ref` when `trigger` becomes truthy or changes, so what is shown
+ * and what is spoken are one string (Drill grades, quiz explanations).
+ */
+export function useAnnounceFrom(
+  ref: RefObject<HTMLElement>,
+  trigger: unknown,
+  opts: AnnounceOptions = {},
+): void {
+  useEffect(() => {
+    const text = ref.current?.textContent?.replace(/\s+/g, ' ').trim();
+    if (trigger && text) announce(text, opts);
+  }, [trigger]);
 }
 
 /** Renders nothing; announces `text` when it appears or changes (for conditionally shown notes). */

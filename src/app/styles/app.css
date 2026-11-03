@@ -950,3 +950,19 @@ textarea {
 [data-view] {
   scroll-margin-top: 16px;
 }
+
+/* The one pair of live regions (I036): out of flow and out of the scroll area, so it never
+   changes page height. */
+.announcer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  pointer-events: none;
+}

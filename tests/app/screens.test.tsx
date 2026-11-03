@@ -23,6 +23,11 @@ import { Drill, rngFromSeed, type DrillDeps } from '../../src/app/screens/Drill'
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
+import {
+  flushAnnouncements,
+  resetAnnouncer,
+  subscribeAnnouncements,
+} from '../../src/sim/ui/announcer';
 
 /** The `_sample-*` fixtures in tests/fixtures/content, so real lessons can never break these tests. */
 function fixtureContent() {
@@ -57,7 +62,16 @@ const btn = (el: HTMLElement, text: string | RegExp) =>
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  resetAnnouncer();
 });
+/** What the single announcer would speak now. */
+function heard(): string[] {
+  const out: string[] = [];
+  const off = subscribeAnnouncements((_p, t) => out.push(t));
+  flushAnnouncements();
+  off();
+  return out;
+}
 
 describe('shell', () => {
   it('has exactly the four D4 tabs, in order, and marks the current one', async () => {
@@ -174,6 +188,17 @@ describe('Lesson', () => {
     });
     await act(() => btn(el, 'Check answer').click());
     expect(el.querySelector('.quiz-result.no')).toBeTruthy();
+    // The verdict and the explanation are both spoken, exactly as shown (I036).
+    const spokenQuiz = heard();
+    expect(spokenQuiz).toHaveLength(1);
+    expect(spokenQuiz[0]).toBe(
+      el
+        .querySelector('.quiz-result')!
+        .textContent.replace(/\s+/g, ' ')
+        .trim()
+        .replace(/ Try again$/, ''),
+    );
+    expect(spokenQuiz[0]).toContain('Not quite.');
     expect(store.lesson(withQuiz.id)?.quizzes[quiz.id]).toMatchObject({
       correct: false,
       firstTry: false,
@@ -619,6 +644,10 @@ describe('Drill', () => {
       await tick();
       const res = el.querySelector('[data-testid="drill-result"]')!;
       expect(res.getAttribute('data-tier')).toBe('best');
+      // Spoken in full: the verdict, the better play and by how much (I036).
+      const spokenGrade = heard();
+      expect(spokenGrade).toHaveLength(1);
+      expect(spokenGrade[0]).toContain('Perfect play says Bet 2x here, by 0.300 antes');
       expect(res.querySelector('[data-testid="drill-headline"]')!.textContent).toMatch(
         /^Correct! Check is the card's play\. Perfect play says Bet 2x here, by 0\.300 antes \(\$[\d.,]+ per hand\)\. The card's rule is still the one to remember\.$/,
       );

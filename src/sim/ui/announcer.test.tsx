@@ -81,3 +81,37 @@ describe('announcer (I036)', () => {
     ).toHaveLength(0);
   });
 });
+
+describe('announcer region (I036)', () => {
+  it('a repeated message changes the region again, so it is spoken again', async () => {
+    vi.useRealTimers();
+    const { Announcer } = await import('../../app/announcer');
+    const { act, render: r } = await import('@testing-library/preact');
+    r(<Announcer />);
+    const region = document.querySelector('[aria-live=polite]')!;
+    const seen: string[] = [];
+    const mo = new MutationObserver(() => seen.push(region.textContent ?? ''));
+    mo.observe(region, { childList: true, characterData: true, subtree: true });
+    const say = async () => {
+      announce('Correct.');
+      await act(async () => {
+        flushAnnouncements();
+        await new Promise((res) => setTimeout(res, 60));
+      });
+    };
+    await say();
+    await say();
+    mo.disconnect();
+    // Each repeat clears the region and writes it again: two separate writes of the text.
+    expect(seen.filter((t) => t === 'Correct.')).toHaveLength(2);
+    expect(seen.filter((t) => t === '')).toHaveLength(2);
+  });
+  it('keeps what was said before anyone listened, and delivers it to the first listener', () => {
+    off();
+    announce('Early.');
+    flushAnnouncements();
+    const got: string[] = [];
+    off = subscribeAnnouncements((_p, t) => got.push(t));
+    expect(got).toEqual(['Early.']);
+  });
+});

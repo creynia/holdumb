@@ -355,12 +355,7 @@ export function EvSheet({
       )}
 
       {needsSecondTap && armed ? (
-        <p class="sim-warn" data-testid="blunder-warning">
-          <Say
-            text={`This is a big mistake${best ? `: ${best.label} is the better play` : ''}. Tap again to do it anyway.`}
-            politeness="assertive"
-            dedupeKey="blunder"
-          />
+        <p class="sim-warn" role="alert" data-testid="blunder-warning">
           This is a big mistake{best ? `: ${best.label} is the better play` : ''}. Tap again to do
           it anyway.
         </p>

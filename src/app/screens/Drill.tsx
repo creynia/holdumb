@@ -1,4 +1,4 @@
-import { Say } from '../../sim';
+import { Say, useAnnounceFrom } from '../../sim';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   EvSheet,
@@ -137,6 +137,9 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const [spot, setSpot] = useState<DrillSpot | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
+  const gradeRef = useRef<HTMLParagraphElement>(null);
+  // The grade is spoken exactly as shown: the headline, the better play and by how much.
+  useAnnounceFrom(gradeRef, answer, { dedupeKey: 'drill' });
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -299,8 +302,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
 
       {spot && answer && chosenOpt && perfectBest && (
         <section class="card drill-result" data-testid="drill-result" data-tier={answer.tier}>
-          <p data-testid="drill-headline">
-            <Say text={HEADLINE[answer.tier]} dedupeKey="drill" />
+          <p data-testid="drill-headline" ref={gradeRef}>
             <strong>{HEADLINE[answer.tier]}</strong>{' '}
             {answer.tier === 'best'
               ? answer.grade.lens === 'perfect'

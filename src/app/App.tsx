@@ -1,3 +1,4 @@
+import { Say } from '../sim';
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
 import { Shell } from './components/Shell';
@@ -95,6 +96,10 @@ export function App() {
       banner={
         store.persistent ? undefined : (
           <p class="banner">
+            <Say
+              text="Progress will not be saved in this copy. Use Settings, then Export, to keep it."
+              dedupeKey="banner"
+            />
             Progress will not be saved in this copy. Use Settings, then Export, to keep it.
           </p>
         )

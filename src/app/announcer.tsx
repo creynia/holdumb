@@ -11,7 +11,14 @@ export function Announcer() {
   const [polite, setPolite] = useState('');
   const [assertive, setAssertive] = useState('');
   useEffect(
-    () => subscribeAnnouncements((p, text) => (p === 'assertive' ? setAssertive : setPolite)(text)),
+    () =>
+      subscribeAnnouncements((p, text) => {
+        const set = p === 'assertive' ? setAssertive : setPolite;
+        // Clear first, then write on the next frame: an identical repeat ("Correct." twice) is then
+        // a real DOM change, which screen readers need to speak it again.
+        set('');
+        requestAnimationFrame(() => set(text));
+      }),
     [],
   );
   useEffect(() => {
@@ -23,7 +30,7 @@ export function Announcer() {
     return () => window.removeEventListener(ANNOUNCE_EVENT, on);
   }, []);
   return (
-    <div class="sr" data-testid="announcer">
+    <div class="announcer" data-testid="announcer">
       <div role="status" aria-live="polite" aria-atomic="true">
         {polite}
       </div>

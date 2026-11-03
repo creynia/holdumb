@@ -15,6 +15,28 @@ test.describe('one live region (I036)', () => {
     });
   }
 
+  test('speaks the dealt hand, the result and a repeat of the same message', async ({ page }) => {
+    await page.goto('/#/play?seed=7&speed=instant');
+    const polite = page.locator('[aria-live=polite]');
+    await page.locator('button[data-action="deal"]').click();
+    await expect(polite).toContainText(/Your cards/);
+    await page.locator('button[data-option="play-4"]').click();
+    await page.getByTestId('confirm').click();
+    await expect(polite).toContainText(/Net \+?[-\u2212]?\$/);
+    // The same text twice in a row still mutates the region.
+    const writes = await page.evaluate(async () => {
+      const r = document.querySelector('[aria-live=polite]')!;
+      let n = 0;
+      const mo = new MutationObserver(() => n++);
+      mo.observe(r, { childList: true, characterData: true, subtree: true });
+      const w = window as unknown as { __holdumb: { announceTwice(): Promise<void> } };
+      await w.__holdumb.announceTwice();
+      mo.disconnect();
+      return n;
+    });
+    expect(writes).toBeGreaterThanOrEqual(4);
+  });
+
   test('the update notice and a dealt hand are spoken by the same region, still two in total', async ({
     page,
   }) => {

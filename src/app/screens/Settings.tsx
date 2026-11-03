@@ -254,7 +254,14 @@ export function Settings() {
       <section class="card form" aria-label="Your progress">
         <h2>Your progress</h2>
         {!store.persistent && (
-          <p class="warn">Progress will not be saved in this copy. Use Export to keep it.</p>
+          <p class="warn">
+            <Say
+              text="Progress will not be saved in this copy. Use Export to keep it."
+              politeness="assertive"
+              dedupeKey="unsaved"
+            />
+            Progress will not be saved in this copy. Use Export to keep it.
+          </p>
         )}
         <div class="row">
           <button
