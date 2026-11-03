@@ -50,5 +50,5 @@ because you'll always use 4x or check. It's just a friendly way to start a conve
 - q: What should you check on the felt before you bet Trips?
   options: ["The dealer's name", "The Trips paytable", "The shuffle machine", "Nothing, Trips is always the same"]
   answer: 1
-  explain: "Trips edges range from 0.90% to 6.52% depending on the table."
+  explain: "Trips edges range from {{num:trips-9-7-4-edge}} to {{num:trips-8-6-4-edge}} depending on the table."
 ```
