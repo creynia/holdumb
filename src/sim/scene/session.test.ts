@@ -126,4 +126,26 @@ describe('session ledger (curriculum 8.5): exact expectations, rounded once', ()
     expect(s.wageredCents).toBe(w.ante + w.blind + w.play + w.trips);
     addsUp(s);
   });
+
+  it('a hand whose later preview fails adds 0 to the mistake count and to mistakeCents', async () => {
+    const d = river(preview, 0);
+    await d.currentPreview();
+    await d.act({ type: 'play', multiple: 1 });
+    const before = d.view.session;
+    expect((await d.act({ type: 'deal' })).ok).toBe(true);
+    const pv = await d.currentPreview();
+    expect(pv?.street).toBe('preflop');
+    // A worse-than-close preflop check: a mistake only if the hand ends scored.
+    const worse = pv!.options.find(
+      (o) => o.action.type === 'check' && (o.tier === 'costly' || o.tier === 'blunder'),
+    );
+    expect(worse, 'a worse-than-close preflop check').toBeDefined();
+    expect((await d.act({ type: 'check' })).ok).toBe(true);
+    // The flop has no preview in this test, so the decision there leaves the hand unscored.
+    await d.act({ type: 'check' });
+    const after = d.view.session;
+    expect(after.scored).toBe(before.scored);
+    expect(after.mistakes).toBe(before.mistakes);
+    expect(eq(after.mistakeCents, before.mistakeCents)).toBe(true);
+  });
 });
