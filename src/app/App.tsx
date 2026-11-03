@@ -47,6 +47,9 @@ export function App() {
       firstRoute.current = false;
       return;
     }
+    // A strategy view target focuses its own section heading (Strategy.tsx); keep that focus.
+    const view = route.query.get('view');
+    if (route.path === '/strategy' && (view === 'flop' || view === 'river')) return;
     document.getElementById('main')?.focus({ preventScroll: true });
   }, [route.path]);
 
