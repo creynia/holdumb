@@ -1,7 +1,10 @@
 // Presentational text helpers: money/EV formatting, button labels, hand and settlement prose.
-import { formatMoney, formatPct } from '../engine';
+import { formatMoney, formatPct, nearMisses } from '../engine';
+import { BLIND_PAYTABLES, DEFAULT_PAYTABLE_PRESET, TRIPS_PAYTABLES } from '../engine/paytables';
+import type { GameState, Paytable, TripsPaytableId } from '../engine/types';
 import { RIVER_UNSEEN, classWeight, groupOuts } from '../math';
 import type {
+  Deal,
   Action,
   Card,
   Cents,
@@ -271,7 +274,18 @@ export function basicRiverLine(f: RiverFacts): string {
 
 const WAGER_NAME = { ante: 'Ante', blind: 'Blind', play: 'Play', trips: 'Trips' } as const;
 
-function describeSettlement(s: WagerSettlement): string {
+/** The paytables a settlement's odds come from: the blind table and the active Trips preset. */
+export interface SettlementTables {
+  blind: Paytable;
+  trips: Paytable;
+}
+export const tablesFor = (tripsId: TripsPaytableId): SettlementTables => ({
+  blind: BLIND_PAYTABLES['blind-standard'],
+  trips: TRIPS_PAYTABLES[tripsId],
+});
+const DEFAULT_TABLES = tablesFor(DEFAULT_PAYTABLE_PRESET);
+
+function describeSettlement(s: WagerSettlement, hand: EvaluatedHand, t: SettlementTables): string {
   const name = WAGER_NAME[s.wager];
   if (s.result === 'push') {
     const why =
@@ -282,7 +296,20 @@ function describeSettlement(s: WagerSettlement): string {
           : '';
     return `${name} push${why}`;
   }
-  return `${name} ${formatMoney(s.profit, { sign: true })}`;
+  const money = formatMoney(s.profit, { sign: true });
+  if (s.result !== 'win') return `${name} ${money}`;
+  const hn = CATEGORY_NAME[hand.category];
+  if (s.wager === 'blind') {
+    const odds = t.blind.pays[hand.category];
+    return odds ? `${name} ${money} (${hn} pays ${odds[0]} to ${odds[1]})` : `${name} ${money}`;
+  }
+  if (s.wager === 'trips') {
+    const odds = t.trips.pays[hand.category];
+    return odds
+      ? `${name} ${money} (${hn} pays ${odds[0]} to ${odds[1]} on ${t.trips.label})`
+      : `${name} ${money}`;
+  }
+  return `${name} ${money}`;
 }
 
 /** "a pair of kings", "two pair", "three queens", "ace high": the right article for a hand name. */
@@ -391,19 +418,46 @@ function tieLead(p: EvaluatedHand, d: EvaluatedHand): string {
   return 'Tie: same five-card hand.';
 }
 
+/** The player's near-miss suffix, "(four clubs, one short of a flush)", or '' (settled hands only). */
+function nearSuffix(r: HandResult, deal?: Deal): string {
+  const note = playerNearMiss(r, deal);
+  return note ? ` (${note})` : '';
+}
+
+/** The one near-miss note for the player's seven cards, or null. Never for folds or the dealer. */
+export function playerNearMiss(r: HandResult, deal?: Deal): string | null {
+  if (!deal || r.outcome === 'fold') return null;
+  return nearMisses([...deal.player, ...deal.board], r.player.category)[0] ?? null;
+}
+
+/** A hand's felt label: its name, plus the player's near-miss note when there is one. */
+export function handLabel(h: EvaluatedHand, note?: string | null): string {
+  return `${handName(h)}${note ? ` (${note})` : ''}`;
+}
+
 /** The result toast: "Your pair of kings beats the dealer's pair of nines. Ante +$10, ... Net +$50." */
-export function describeResult(r: HandResult): string {
+export function describeResult(
+  r: HandResult,
+  t: SettlementTables = DEFAULT_TABLES,
+  deal?: Deal,
+): string {
+  const near = nearSuffix(r, deal);
   let lead: string;
   if (r.outcome === 'win') {
-    const p = handNameVs(r.player, r.dealer);
+    const p = `${handNameVs(r.player, r.dealer)}${near}`;
     lead = `Your ${p} ${plural(r.player) ? 'beat' : 'beats'} the dealer's ${handNameVs(r.dealer, r.player)}.`;
   } else if (r.outcome === 'lose') {
     const d = handNameVs(r.dealer, r.player);
-    lead = `The dealer's ${d} ${plural(r.dealer) ? 'beat' : 'beats'} your ${handNameVs(r.player, r.dealer)}.`;
+    lead = `The dealer's ${d} ${plural(r.dealer) ? 'beat' : 'beats'} your ${handNameVs(r.player, r.dealer)}${near}.`;
   } else if (r.outcome === 'tie') lead = tieLead(r.player, r.dealer);
   else lead = 'Folded.';
-  const parts = r.wagers.map(describeSettlement).join(', ');
+  const parts = r.wagers.map((w) => describeSettlement(w, r.player, t)).join(', ');
   return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
+}
+
+/** The settled toast, with the Trips preset the hand actually settled at (the event's own rules). */
+export function settledToastText(e: { result: HandResult; state: GameState }): string {
+  return describeResult(e.result, tablesFor(e.state.rules.tripsPaytable), e.state.hand?.deal);
 }
 
 /** The one spoken fold announcement: the real net, then the reveal's dealer and would-have lines. */

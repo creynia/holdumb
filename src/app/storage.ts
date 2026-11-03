@@ -181,6 +181,7 @@ export function sanitizeSettings(raw: unknown): Settings {
       1_000_000,
       d.defaultBankrollCents,
     ),
+    persistAsked: oneOf(o.persistAsked, ['no', 'granted', 'denied'], d.persistAsked),
   };
 }
 
