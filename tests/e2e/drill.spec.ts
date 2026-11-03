@@ -13,3 +13,16 @@ test('a drill answer is graded and recorded', async ({ page }) => {
   const answered = await page.getByTestId('drill-stats').textContent();
   expect(answered).toMatch(/river\s*\d+%/);
 });
+
+test('the grading lens toggle persists across a reload', async ({ page }) => {
+  await page.goto('/#/drill?street=river');
+  const basic = page.getByTestId('drill-lens').getByRole('button', { name: 'Basic card' });
+  await expect(basic).toHaveAttribute('aria-pressed', 'false');
+  await basic.click();
+  await expect(basic).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(800);
+  await page.reload();
+  await expect(basic).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.choice-row button').first().click();
+  await expect(page.getByTestId('drill-result')).toBeVisible();
+});

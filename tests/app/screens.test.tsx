@@ -9,6 +9,7 @@ import { parseCards } from '../../src/sim/engine';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
 import { AppProviders } from '../../src/app/context';
+import { gradeSpot as realGradeSpot } from '../../src/sim';
 import { Drill, type DrillDeps } from '../../src/app/screens/Drill';
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
@@ -409,6 +410,7 @@ describe('Drill', () => {
   function setup(bestIdx: 0 | 1, deps?: Partial<DrillDeps>) {
     const d: DrillDeps = {
       nextSpot: (rng) => [spot('flop', 'f:x'), rng],
+      gradeSpot: realGradeSpot,
       preview: () => Promise.resolve(preview(bestIdx)),
       ...deps,
     };
@@ -494,7 +496,7 @@ describe('Drill', () => {
     });
     const el = await mountDrill(store, d);
     expect(el.querySelector('[data-testid="drill-unavailable"]')).toBeTruthy();
-    expect(el.querySelectorAll('.segmented .seg').length).toBe(4);
+    expect(el.querySelectorAll('[aria-label="Street"] .seg').length).toBe(4);
     expect(el.querySelector('[data-testid="drill-stats"]')).toBeTruthy();
   });
   it('street filter is read from the query', async () => {
@@ -502,6 +504,52 @@ describe('Drill', () => {
     const { store, d } = setup(0, { nextSpot });
     await mountDrill(store, d, 'street=river&focus=a,b');
     expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'river', focus: ['a', 'b'] });
+  });
+  describe('grading lens', () => {
+    // Bet 2x is perfect-best by 0.300 antes over Check, which is what the basic card plays here.
+    const differing = (): DecisionPreview => {
+      const p = preview(0);
+      p.options[1]!.regret = frac(30);
+      p.options[1]!.tier = 'costly';
+      return p;
+    };
+    const btnIn = (el: HTMLElement, group: string, name: string) =>
+      [...el.querySelectorAll<HTMLButtonElement>(`[aria-label="${group}"] button`)].find(
+        (b) => b.textContent === name,
+      )!;
+
+    it('defaults to perfect: the basic card play is a Mistake', async () => {
+      const { store, d } = setup(0, { preview: () => Promise.resolve(differing()) });
+      const el = await mountDrill(store, d);
+      expect(store.drill.lens).toBe('perfect');
+      await act(() => btn(el, 'Check').click());
+      await tick();
+      expect(el.querySelector('[data-testid="drill-result"]')!.getAttribute('data-tier')).toBe(
+        'costly',
+      );
+    });
+    it('practical: the basic card play is Correct! and names perfect play and its regret', async () => {
+      const { store, d } = setup(0, { preview: () => Promise.resolve(differing()) });
+      const el = await mountDrill(store, d);
+      await act(() => btnIn(el, 'Grade by', 'Basic card').click());
+      expect(store.drill.lens).toBe('practical');
+      await act(() => btn(el, 'Check').click());
+      await tick();
+      const res = el.querySelector('[data-testid="drill-result"]')!;
+      expect(res.getAttribute('data-tier')).toBe('best');
+      expect(res.querySelector('[role="status"]')!.textContent).toMatch(
+        /^Correct! Check is the card's play\. Perfect play says Bet 2x here, by 0\.300 antes \(\$[\d.,]+ per hand\)\. The card's rule is still the one to remember\.$/,
+      );
+      expect(store.drill.practical.flop).toEqual({ answered: 1, correct: 1 });
+      expect(store.drill.byStreet.flop).toEqual({ answered: 0, correct: 0 });
+    });
+    it('the lens persists in the store and survives a reload', () => {
+      const mem = new MemoryStorage();
+      const a = new Store(mem);
+      a.setDrillLens('practical');
+      a.flush();
+      expect(new Store(mem).drill.lens).toBe('practical');
+    });
   });
   it('a failed preview offers a retry without recording an answer', async () => {
     const { store, d } = setup(0, { preview: () => Promise.reject(new Error('x')) });

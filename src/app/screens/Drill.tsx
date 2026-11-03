@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EvSheet, cardCode, formatMoney, nextSpot, optionKeyOf } from '../../sim';
+import {
+  EvSheet,
+  cardCode,
+  decisionTier,
+  formatMoney,
+  gradeSpot,
+  nextSpot,
+  optionKeyOf,
+} from '../../sim';
 import type {
   DecisionAction,
   DecisionPreview,
   DecisionStreet,
+  DecisionTier,
   DrillFilter,
+  DrillGrade,
   DrillSpot,
   PreviewRequest,
   RngState,
@@ -19,11 +29,18 @@ import { DRILL_STREETS } from '../storage';
 /** What the screen needs from the strategy and math modules; tests pass fakes. */
 export interface DrillDeps {
   nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngState];
+  gradeSpot(
+    spot: DrillSpot,
+    chosen: DecisionAction,
+    preview: DecisionPreview,
+    lens: 'perfect' | 'practical',
+  ): DrillGrade;
   preview(req: PreviewRequest): Promise<DecisionPreview>;
 }
 
 export const defaultDrillDeps: DrillDeps = {
   nextSpot,
+  gradeSpot,
   preview: (req) => getEvClient().run('preview', req),
 };
 
@@ -80,7 +97,12 @@ const antes = (f: { num: bigint; den: bigint }) => (Number(f.num) / Number(f.den
 interface Answer {
   chosen: number;
   preview: DecisionPreview;
+  grade: DrillGrade;
+  tier: DecisionTier;
 }
+
+const labelOf = (street: DecisionStreet, a: DecisionAction) =>
+  CHOICES[street].find((c) => sameAction(c.action, a))?.label ?? '';
 
 export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const deps = props.deps ?? defaultDrillDeps;
@@ -127,24 +149,38 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
       })
       .then((preview) => {
         const picked = CHOICES[spot.street][i]!;
-        const opt = preview.options.find((o) => sameAction(o.action, picked.action));
-        const correct = opt !== undefined && (opt.tier === 'best' || opt.tier === 'close'); // D33
-        store.recordDrill(spot.street, correct, spot.code);
-        setAnswer({ chosen: i, preview });
+        const grade = deps.gradeSpot(spot, picked.action, preview, store.drill.lens); // D33
+        const opt = preview.options.find((o) => sameAction(o.action, picked.action))!;
+        const tier = grade.lens === 'perfect' ? opt.tier : decisionTier(grade.regret);
+        store.recordDrill(spot.street, grade.correct, spot.code);
+        setAnswer({ chosen: i, preview, grade, tier });
       })
       .catch(() => setFailed(true))
       .finally(() => setBusy(false));
   };
 
   const d = store.drill;
-  const total = DRILL_STREETS.reduce((n, s) => n + d.byStreet[s].answered, 0);
+  const counts = d.lens === 'practical' ? d.practical : d.byStreet;
+  const total = DRILL_STREETS.reduce(
+    (n, s) => n + d.byStreet[s].answered + d.practical[s].answered,
+    0,
+  );
   const chosenOpt =
     spot && answer
       ? answer.preview.options.find((o) =>
           sameAction(o.action, CHOICES[spot.street][answer.chosen]!.action),
         )
       : undefined;
-  const best = answer?.preview.options[answer.preview.bestIndex];
+  const perfectBest = answer?.preview.options[answer.preview.bestIndex];
+  const gradeBest = spot && answer ? labelOf(spot.street, answer.grade.best) : '';
+  const perfectDiffers =
+    answer !== null &&
+    perfectBest !== undefined &&
+    !sameAction(perfectBest.action, answer.grade.best);
+  const money = (f: { num: bigint; den: bigint }) =>
+    `${antes(f)} antes (${formatMoney(
+      Math.round((Number(f.num) * store.settings.anteUnitCents) / Number(f.den)),
+    )}`;
   const hole = spot ? spot.hole.map(cardCode).join('') : '';
   const board = spot ? spot.board.map(cardCode).join('') : '';
 
@@ -165,6 +201,21 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         ))}
       </div>
 
+      <div class="segmented" role="group" aria-label="Grade by" data-testid="drill-lens">
+        <span class="seg-label">Grade by</span>
+        {(['perfect', 'practical'] as const).map((l) => (
+          <button
+            key={l}
+            type="button"
+            class="seg"
+            aria-pressed={d.lens === l}
+            onClick={() => store.setDrillLens(l)}
+          >
+            {l === 'perfect' ? 'Perfect play' : 'Basic card'}
+          </button>
+        ))}
+      </div>
+
       <section class="card drill-stats" aria-label="Your drill stats" data-testid="drill-stats">
         <span>
           Streak <strong data-testid="streak">{store.drillStreak}</strong>
@@ -173,7 +224,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
           Best <strong data-testid="best-streak">{d.bestStreak}</strong>
         </span>
         {DRILL_STREETS.map((s) => {
-          const v = d.byStreet[s];
+          const v = counts[s];
           return (
             <span key={s}>
               {s}{' '}
@@ -224,18 +275,22 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         </section>
       )}
 
-      {spot && answer && chosenOpt && best && (
-        <section class="card drill-result" data-testid="drill-result" data-tier={chosenOpt.tier}>
+      {spot && answer && chosenOpt && perfectBest && (
+        <section class="card drill-result" data-testid="drill-result" data-tier={answer.tier}>
           <p role="status">
-            <strong>{HEADLINE[chosenOpt.tier]}</strong>{' '}
-            {chosenOpt.tier === 'best'
-              ? `${chosenOpt.label} is the best play.`
-              : `${best.label} is better by ${antes(chosenOpt.regret)} antes (${formatMoney(
-                  Math.round(
-                    (Number(chosenOpt.regret.num) * store.settings.anteUnitCents) /
-                      Number(chosenOpt.regret.den),
-                  ),
-                )} per hand).`}
+            <strong>{HEADLINE[answer.tier]}</strong>{' '}
+            {answer.tier === 'best'
+              ? `${chosenOpt.label} is the ${answer.grade.lens === 'practical' ? "card's play" : 'best play'}.`
+              : `${gradeBest} is better by ${money(answer.grade.regret)} per hand).`}
+            {answer.grade.lens === 'practical' && perfectDiffers && (
+              <>
+                {' '}
+                {`Perfect play says ${perfectBest.label} here, by ${money(
+                  answer.preview.options.find((o) => sameAction(o.action, answer.grade.best))
+                    ?.regret ?? chosenOpt.regret,
+                )} per hand). The card's rule is still the one to remember.`}
+              </>
+            )}
           </p>
           <EvSheet
             preview={answer.preview}

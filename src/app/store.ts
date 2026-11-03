@@ -7,6 +7,7 @@ import {
   encodeExport,
   loadDetailed,
   save,
+  type DrillLens,
   type DrillStats,
   type DrillStreet,
   type LessonProgress,
@@ -174,7 +175,8 @@ export class Store {
   recordDrill(street: DrillStreet, correct: boolean, spotCode?: string) {
     this.streak = correct ? this.streak + 1 : 0;
     const d = this.data.drill;
-    const cur = d.byStreet[street];
+    const key = d.lens === 'practical' ? 'practical' : 'byStreet';
+    const cur = d[key][street];
     const misses = spotCode
       ? correct
         ? d.recentMisses.filter((c) => c !== spotCode)
@@ -183,14 +185,21 @@ export class Store {
     this.commit({
       ...this.data,
       drill: {
+        ...d,
         bestStreak: Math.max(d.bestStreak, this.streak),
-        byStreet: {
-          ...d.byStreet,
+        [key]: {
+          ...d[key],
           [street]: { answered: cur.answered + 1, correct: cur.correct + (correct ? 1 : 0) },
         },
         recentMisses: misses,
       },
     });
+  }
+
+  /** Drill: choose the grading lens (kept across visits; accuracy is tracked per lens). */
+  setDrillLens(lens: DrillLens) {
+    if (lens === this.data.drill.lens) return;
+    this.commit({ ...this.data, drill: { ...this.data.drill, lens } });
   }
 
   resetDrill() {

@@ -62,9 +62,17 @@ export type DrillStreet = 'preflop' | 'flop' | 'river';
 export const DRILL_STREETS: readonly DrillStreet[] = ['preflop', 'flop', 'river'];
 export const MAX_RECENT_MISSES = 50;
 
+export type DrillLens = 'perfect' | 'practical';
+type StreetCounts = Record<DrillStreet, { answered: number; correct: number }>;
+
 export interface DrillStats {
   bestStreak: number;
-  byStreet: Record<DrillStreet, { answered: number; correct: number }>;
+  /** grading lens (I017); accuracy is kept per lens so switching never mixes them */
+  lens: DrillLens;
+  /** accuracy under the perfect lens (the only one before I017) */
+  byStreet: StreetCounts;
+  /** accuracy under the basic-card lens */
+  practical: StreetCounts;
   /** spot codes (strategy/drill.ts), newest first */
   recentMisses: string[];
 }
@@ -78,14 +86,18 @@ export interface PersistedV1 {
   sandbox?: unknown;
 }
 
+const emptyStreets = (): StreetCounts => ({
+  preflop: { answered: 0, correct: 0 },
+  flop: { answered: 0, correct: 0 },
+  river: { answered: 0, correct: 0 },
+});
+
 export function emptyDrill(): DrillStats {
   return {
     bestStreak: 0,
-    byStreet: {
-      preflop: { answered: 0, correct: 0 },
-      flop: { answered: 0, correct: 0 },
-      river: { answered: 0, correct: 0 },
-    },
+    lens: 'perfect',
+    byStreet: emptyStreets(),
+    practical: emptyStreets(),
     recentMisses: [],
   };
 }
@@ -156,20 +168,25 @@ export function sanitizeSettings(raw: unknown): Settings {
   };
 }
 
+function sanitizeStreets(raw: unknown): StreetCounts {
+  const out = emptyStreets();
+  if (!isObj(raw)) return out;
+  for (const s of DRILL_STREETS) {
+    const v = raw[s];
+    if (!isObj(v)) continue;
+    const answered = clampInt(v.answered, 0, 10_000_000, 0);
+    out[s] = { answered, correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered) };
+  }
+  return out;
+}
+
 function sanitizeDrill(raw: unknown): DrillStats {
   const d = emptyDrill();
   if (!isObj(raw)) return d;
   d.bestStreak = clampInt(raw.bestStreak, 0, 1_000_000, 0);
-  if (isObj(raw.byStreet))
-    for (const s of DRILL_STREETS) {
-      const v = raw.byStreet[s];
-      if (!isObj(v)) continue;
-      const answered = clampInt(v.answered, 0, 10_000_000, 0);
-      d.byStreet[s] = {
-        answered,
-        correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered),
-      };
-    }
+  d.lens = raw.lens === 'practical' ? 'practical' : 'perfect';
+  d.byStreet = sanitizeStreets(raw.byStreet);
+  d.practical = sanitizeStreets(raw.practical);
   if (Array.isArray(raw.recentMisses))
     d.recentMisses = raw.recentMisses
       .filter((x): x is string => typeof x === 'string' && x.length <= 64)
