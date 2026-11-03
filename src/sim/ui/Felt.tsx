@@ -27,6 +27,8 @@ export interface FeltProps {
   /** When set, the circles are buttons. */
   onCircle?: (id: CircleId) => void;
   labels?: { dealer?: string; player?: string };
+  /** A fold's settlement is announced by the toast, so the summary stays silent. */
+  quiet?: boolean;
   timeline?: Timeline;
   /** Visuals flushed (tap to skip). */
   /** D38: after a hand settles the chips are the next hand's intent: drawn ghosted with a caption. */
@@ -88,6 +90,7 @@ export function Felt({
   highlight = [],
   onCircle,
   labels,
+  quiet,
   timeline,
   nextHand,
   skipped,
@@ -240,7 +243,7 @@ export function Felt({
           />
         ) : null}
       </svg>
-      <p class="sim-sr" aria-live="polite">
+      <p class="sim-sr" aria-live={quiet ? 'off' : 'polite'}>
         {summary}
       </p>
     </div>
