@@ -16,7 +16,7 @@ import {
   PROGRESSIVE_METER_MAX,
   PROGRESSIVE_METER_MIN,
   PROGRESSIVE_METER_STEP,
-} from '../../content/compile';
+} from '../../content/progressive';
 import type { ProgressiveBlockData } from '../../content/types';
 import { wagerTierOf } from '../bets';
 import { TierBadge } from './TierBadge';

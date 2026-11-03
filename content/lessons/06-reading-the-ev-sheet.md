@@ -68,6 +68,7 @@ steps:
     allowedOptions: [play-4, play-3, check]
     hint: "Not yet: this step is for reading. Tap Bet 3x and Check to see their lines; you confirm on the next step."
     expect: [ { type: fold } ] # nothing can be confirmed here (no fold exists preflop), previewing is the point
+    confirmOn: all # each tap opens the confirm sheet: that is how you read an option's line (D39)
     completeWhen: { any: [ { all: [ { previewed: { option: play-3 } }, { previewed: { option: check } } ] }, { street: settled } ] }
   - id: decide
     text: "4x is +$36.01, 3x +$28.97, check +$21.93. Confirm the **Best play**."
@@ -103,6 +104,7 @@ steps:
     allowedOptions: [play-4, check]
     expect: [ { type: check } ]
     hint: "Look at the badge first, then choose **Check**."
+    confirmOn: all
     completeWhen: { any: [ { previewed: { option: play-4 } }, { street: flop } ] }
   - id: decide
     text: "Now tap **Check**, the better option."

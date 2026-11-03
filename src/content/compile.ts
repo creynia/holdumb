@@ -10,6 +10,11 @@ import type {
   ChartBlockData,
   Lesson,
   ProgressiveBlockData, LessonSource, Quiz, QuizHand, SourceItem } from './types';
+import {
+  PROGRESSIVE_METER_MAX,
+  PROGRESSIVE_METER_MIN,
+  PROGRESSIVE_METER_STEP,
+} from './progressive';
 
 export interface CompileOptions {
   /** known glossary slugs, for `[[term]]` links; omit to skip link checking */
@@ -253,11 +258,6 @@ export function parseChart(yamlText: string): ChartBlockData {
   }
   return chart;
 }
-
-/** The slider's range (whole dollars); the block's start meter must sit inside it. */
-export const PROGRESSIVE_METER_MIN = 10_000;
-export const PROGRESSIVE_METER_MAX = 300_000;
-export const PROGRESSIVE_METER_STEP = 1_000;
 
 /** ```progressive YAML `{ meter? }`: the start meter in whole dollars (default 50,000). */
 export function parseProgressive(yamlText: string): ProgressiveBlockData {
