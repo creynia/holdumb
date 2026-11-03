@@ -187,7 +187,7 @@
   min-width: 0;
 }
 
-/* The landscape rail scrolls as a whole; its sections keep their height. */
+/* The landscape rail's sections keep their height; only the body (EV sheet, rack) scrolls inside it. */
 .sim-rail > * {
   flex: none;
 }
@@ -282,6 +282,9 @@
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+}
+.sim-rail > .sim-rail-body {
+  flex: 1 1 auto;
 }
 /* "Review N mistakes": a link to Drill with the table mistakes (I056). */
 .sim-session-review {
