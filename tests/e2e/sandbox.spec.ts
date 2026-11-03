@@ -238,6 +238,7 @@ test.describe('sandbox', () => {
 
   test('a blunder needs a second tap with "Only bad bets"', async ({ page }) => {
     await page.goto('/#/settings');
+    await page.getByRole('checkbox', { name: 'Confirm my bets' }).check();
     await page.getByRole('radio', { name: /Only bad bets/ }).check();
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);
