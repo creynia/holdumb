@@ -64,7 +64,8 @@ export function Table({
         <aside class="sim-rail" aria-label="Controls">
           <div class="sim-rail-actions">{actions}</div>
           {status}
-          <div class="sim-rail-body">
+          {/* It scrolls when the rail is short, so keyboard users can reach it (axe). */}
+          <div class="sim-rail-body" tabIndex={0} role="group" aria-label="Table details">
             {chips}
             {toasts}
             {rail}
