@@ -60,9 +60,8 @@ export function Simulator(props: SimulatorViewProps) {
   const settled = street === 'settled';
   const decision = isDecisionStreet(street);
   const evShown = resolveEvShown(settings, scene, sandbox, step);
-  // The app's settings are the source of truth for practice mode; the table follows them at once.
-  const practice =
-    sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
+  // EV after the move (D11): the settings decide in the sandbox and the table follows at once.
+  const practice = sandbox ? resolvePractice(settings, baseScene) : view.practice;
 
   const ev = useEvSheet(sim, practice, orientation, evShown, decision);
   // I092: Details is the way into the EV sheet that does not act (EV shown before the move).
@@ -148,6 +147,7 @@ export function Simulator(props: SimulatorViewProps) {
   const table = (
     <Table
       orientation={orientation}
+      options={sandbox && scene.ui?.showSettings ? props.options : null}
       toasts={watching ? null : tableToasts}
       status={
         scene.ui?.showBankroll === false ? null : (
@@ -240,8 +240,6 @@ export function Simulator(props: SimulatorViewProps) {
       {sandbox && scene.ui?.showSettings ? (
         <SimTools
           d={d}
-          practice={practice}
-          onPracticeChange={props.onPracticeChange}
           bankroll={scene.bankroll ?? 50_000}
           onBankrollChange={props.onBankrollChange}
           short={

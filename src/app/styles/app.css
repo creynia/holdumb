@@ -200,16 +200,19 @@ main:has(> .page-wide) {
   }
 }
 .page-play {
-  /* topbar 66.2 + 8 + status 44 + gap 8 + felt + gap 8 + action bar (67 with a wrapped sub-label)
-     + 8 + tab bar 58 */
-  --play-chrome: calc(268px + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+  /* topbar 66.2 + 8 + table options 44 + gap 8 (I090) + status 44 + gap 8 + felt + gap 8 + action
+     bar (67 with a wrapped sub-label) + 8 + tab bar 58 */
+  --play-chrome: calc(320px + env(safe-area-inset-top) + env(safe-area-inset-bottom));
 }
 .page-play .sim-table-portrait .sim-felt {
-  max-height: calc(100dvh - var(--play-chrome));
+  /* The table options row (44 + gap 8, I090) comes out of the felt, never out of the action bar's
+     place: where the felt was width-bound (390x844) it gives up those 52px, so the bar stays where
+     it was without the row. The felt is drawn 390:600 inside the page's 24px side padding. */
+  max-height: min(calc(100dvh - var(--play-chrome)), calc((100vw - 48px) * 600 / 390 - 52px));
 }
 @media (min-width: 768px) {
   .page-play {
-    --play-chrome: calc(210px + env(safe-area-inset-top)); /* no tab bar */
+    --play-chrome: calc(262px + env(safe-area-inset-top)); /* no tab bar */
   }
 }
 .card {
@@ -648,6 +651,13 @@ textarea {
 .form label.radio small {
   display: block;
   font-size: 0.85em;
+}
+/* Which bets is greyed out (still readable) while Confirm my bets is unticked (D40, I091). */
+.form fieldset.radios:disabled {
+  opacity: 0.6;
+}
+.form fieldset.radios:disabled label.radio {
+  cursor: default;
 }
 
 [data-motion='reduce'] *,

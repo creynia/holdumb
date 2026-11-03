@@ -21,6 +21,31 @@ function mount(scene?: SceneConfig, extra: Partial<Parameters<typeof Simulator>[
 }
 
 describe('Simulator container', () => {
+  it('renders the table options row only in the sandbox with settings shown (I090)', () => {
+    const opts = <p data-testid="opts">options</p>;
+    const a = mount(
+      { id: 'sandbox', version: 1, ui: { showSettings: true } },
+      { options: opts, mode: 'sandbox' },
+    );
+    expect(screen.getByTestId('opts')).toBeTruthy();
+    a.evClient.dispose();
+    cleanup();
+    const b = mount(
+      {
+        id: 'l',
+        version: 1,
+        ui: { showSettings: true },
+        steps: [{ id: 's', text: 'Tap Deal.', completeWhen: { action: { type: 'deal' } } }],
+      },
+      { options: opts, mode: 'scene' },
+    );
+    expect(screen.queryByTestId('opts')).toBeNull();
+    b.evClient.dispose();
+    cleanup();
+    const c = mount({ id: 'sandbox', version: 1 }, { options: opts, mode: 'sandbox' });
+    expect(screen.queryByTestId('opts')).toBeNull();
+    c.evClient.dispose();
+  });
   it('sandbox: bets are preset, Deal shows the preflop decision with EV before confirming', async () => {
     const { evClient } = mount({ id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 });
     expect(screen.getByTestId('bankroll').textContent).toBe('$480');

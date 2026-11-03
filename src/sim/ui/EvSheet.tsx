@@ -46,7 +46,7 @@ export interface EvSheetProps {
    * Mistakes and Big mistakes, `blunder` Big mistakes only (the default), `never` none.
    */
   confirmOn?: ConfirmOn;
-  /** Practice mode (D11): hide EVs until the move is confirmed. */
+  /** EV after the move (D11): hide EVs until the move is confirmed. */
   hideEv?: boolean;
   /** Set once confirmed in practice mode: shows the result card and the full sheet. */
   chosen?: OptionKey | null;
@@ -267,7 +267,7 @@ export function EvSheet({
         <>
           {hidden ? (
             <p class="sim-muted" data-testid="practice-hidden">
-              Practice mode: the EV is hidden until you confirm.
+              The EV is hidden until you confirm.
             </p>
           ) : (
             <p class="sim-evsheet-sub">

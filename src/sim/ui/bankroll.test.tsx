@@ -104,15 +104,7 @@ describe('SimTools', () => {
   it('starts a session at the chosen bankroll and reports it as the new default', () => {
     const d = sandbox();
     const saved = vi.fn();
-    render(
-      <SimTools
-        d={d}
-        practice={false}
-        onPracticeChange={undefined}
-        bankroll={50_000}
-        onBankrollChange={saved}
-      />,
-    );
+    render(<SimTools d={d} bankroll={50_000} onBankrollChange={saved} />);
     fireEvent.click(screen.getByTestId('new-session'));
     fireEvent.click(document.querySelector('[data-preset="1000"]')!);
     fireEvent.click(screen.getByTestId('bankroll-confirm'));
@@ -122,13 +114,9 @@ describe('SimTools', () => {
   });
   it('shows Top up only when the rack is short', () => {
     const d = sandbox();
-    const { rerender } = render(
-      <SimTools d={d} practice={false} onPracticeChange={undefined} bankroll={50_000} />,
-    );
+    const { rerender } = render(<SimTools d={d} bankroll={50_000} />);
     expect(screen.queryByTestId('top-up')).toBeNull();
-    rerender(
-      <SimTools d={d} practice={false} onPracticeChange={undefined} bankroll={50_000} short />,
-    );
+    rerender(<SimTools d={d} bankroll={50_000} short />);
     fireEvent.click(screen.getByTestId('top-up'));
     fireEvent.click(document.querySelector('[data-preset="100"]')!);
     fireEvent.click(screen.getByTestId('bankroll-confirm'));

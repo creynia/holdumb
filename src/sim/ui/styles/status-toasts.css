@@ -59,6 +59,91 @@
   display: grid;
   place-items: center;
 }
+
+/* ---------- table options (I090): EV segments and the Confirm box ---------- */
+.sim-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.9rem;
+  flex: none;
+}
+.sim-rail .sim-options {
+  font-size: 0.8rem;
+}
+.sim-seg {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.sim-seg legend {
+  float: left;
+  padding: 0 6px 0 0;
+  font-weight: 700;
+  color: var(--muted);
+}
+.sim-seg-opt {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--sim-border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.sim-seg-opt + .sim-seg-opt {
+  border-left-width: 0;
+}
+.sim-seg-opt:first-of-type {
+  border-radius: 10px 0 0 10px;
+}
+.sim-seg-opt:last-of-type {
+  border-radius: 0 10px 10px 0;
+}
+/* The native radio stays in the tab order and the accessibility tree; the label is the segment. */
+.sim-seg-opt input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.sim-seg-opt:has(input:checked) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--sim-on-accent);
+  font-weight: 700;
+}
+.sim-seg-opt:has(input:focus-visible),
+.sim-options-confirm:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 1;
+}
+.sim-options-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sim-options-confirm input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
 /* A text button that reads as a link: the status bar's EV Details (I092). */
 .sim-btn-link {
   min-height: 44px;

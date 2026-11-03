@@ -20,11 +20,11 @@ export interface ActionBarProps {
   street: Street;
   /** `rail`: stacked buttons (landscape). */
   layout?: 'bar' | 'rail';
-  /** When set, each decision button shows its EV and a tier word. Practice mode: leave unset. */
+  /** When set, each decision button shows its EV and a tier word. EV after the move: leave unset. */
   preview?: DecisionPreview | null;
   /** `pending` shows "Calculating…" and `error` "EV not available" under each decision button, no badges. */
   evStatus?: EvStatus;
-  /** Practice mode (D11): no EV or tier on the buttons. */
+  /** EV after the move (D11): no EV or tier on the buttons. */
   hideEv?: boolean;
   /** No EV can ever reach the buttons here (EV off for the scene or step): no reserved EV line. */
   evOff?: boolean;
