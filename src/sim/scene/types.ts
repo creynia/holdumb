@@ -38,6 +38,7 @@ export interface SceneConfig {
     orientation?: 'auto' | 'portrait' | 'landscape';
     chips?: Cents[]; defaultChip?: Cents;
     showChipRack?: boolean; showBankroll?: boolean; showHistory?: boolean;
+    verdict?: boolean;                  // show the skill-vs-luck line after each hand (I059); default off in lessons
     showSettings?: boolean;           // default false in scenes
     showSession?: boolean;            // D26: show the session panel
     speed?: 'normal' | 'fast' | 'instant';

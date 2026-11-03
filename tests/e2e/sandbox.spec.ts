@@ -313,6 +313,23 @@ test.describe('sandbox', () => {
       .forEach((v, i) => expect(Math.abs(v - without.flat()[i]!)).toBeLessThanOrEqual(1));
   });
 
+  test('a finished hand ends with one skill-versus-luck sentence in the same toast (I059)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river&speed=instant');
+    await ready(page);
+    await opt(page, 'play-1').click(); // one tap acts (D40)
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
+    const toast = page.locator('.sim-toast');
+    await expect(toast).toHaveCount(1);
+    // the I080 narration, the result, then the verdict, in that order, in one toast
+    await expect(toast).toHaveText(
+      /Bet 1x: a mistake, costs \$3\.59 against Fold\..*Net.*Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\./s,
+    );
+    // the cost is said once
+    await expect(toast).not.toContainText('on average');
+  });
+
   test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {
     await page.goto('/#/settings');
     await page.getByRole('radio', { name: 'Off' }).first().check();
