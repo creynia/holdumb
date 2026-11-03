@@ -8,7 +8,13 @@ export function InstallButton() {
   if (!offered) return null;
   return (
     <p>
-      <button type="button" class="btn btn-ghost" onClick={() => void promptInstall()}>
+      <button
+        type="button"
+        class="btn btn-ghost"
+        onClick={() => {
+          promptInstall().catch(() => {});
+        }}
+      >
         Install app
       </button>
     </p>

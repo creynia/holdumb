@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InstallButton } from '../../src/app/components/InstallButton';
+import { About } from '../../src/app/screens/About';
 
 function offerInstall(): ReturnType<typeof vi.fn> {
   const prompt = vi.fn(() => Promise.resolve({ outcome: 'accepted' }));
@@ -67,5 +68,28 @@ describe('Install app button (I054)', () => {
       window.dispatchEvent(new Event('appinstalled'));
     });
     expect(el.querySelector('button')).toBeNull();
+  });
+});
+
+describe('Install app placement on About (I054)', () => {
+  it('sits after the license text, so an install offer never moves the text above it', async () => {
+    setStandalone(false);
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    await act(() => {
+      render(<About check={vi.fn(() => Promise.resolve('up-to-date' as const))} />, el);
+    });
+    const license = [...el.querySelectorAll('p')].find((p) =>
+      p.textContent?.includes('MIT licensed'),
+    );
+    expect(license).toBeTruthy();
+    offerInstall();
+    await act(() => {});
+    const button = el.querySelector('button.btn-ghost');
+    expect(button?.textContent).toBe('Install app');
+    // Node.DOCUMENT_POSITION_PRECEDING: the license paragraph comes before the button.
+    expect(
+      license!.compareDocumentPosition(button!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
