@@ -1,0 +1,29 @@
+# Weekly npm and GitHub Actions updates (I045). Playwright is pinned on purpose: a bump changes
+# the package, the overrides, the CI container image and the visual baselines together, so it is
+# never automatic. See CONTRIBUTING.md, "Playwright version".
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+    groups:
+      dev-tooling:
+        patterns:
+          - 'eslint*'
+          - '@typescript-eslint/*'
+          - 'prettier'
+          - 'typescript'
+          - 'vitest'
+    ignore:
+      - dependency-name: '@playwright/test'
+      - dependency-name: 'playwright-core'
+      - dependency-name: '@axe-core/playwright'
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - '*'
