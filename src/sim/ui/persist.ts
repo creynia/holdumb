@@ -6,6 +6,8 @@ import { frac } from '../math/fraction';
 import type { Fraction } from '../math';
 import { EMPTY_TOTALS } from '../scene';
 import type { SessionTotals, SimDriver } from '../scene';
+import { EV_MODES, evModeOfPractice } from './settings';
+import type { EvMode } from './types';
 
 /** An exact Fraction as JSON (bigint does not stringify). */
 export interface FractionJson {
@@ -22,7 +24,8 @@ export interface SandboxSnapshot {
   state: GameState;
   startEquity: Cents;
   totals: SessionTotalsJson;
-  practice: boolean;
+  /** The table's EV visibility (D39). Older snapshots carry a boolean `practice` instead. */
+  evMode: EvMode;
 }
 
 const isFraction = (v: unknown): v is Fraction =>
@@ -36,14 +39,15 @@ export function encodeTotals(t: SessionTotals): SessionTotalsJson {
   return out as SessionTotalsJson;
 }
 
-export function encodeSnapshot(d: SimDriver): SandboxSnapshot {
+/** `evMode` defaults to the driver's practice flag ('after' when on, else 'before'). */
+export function encodeSnapshot(d: SimDriver, evMode?: EvMode): SandboxSnapshot {
   const s = d.snapshotData();
   return {
     v: 1,
     state: s.state,
     startEquity: s.startEquity,
     totals: encodeTotals(s.totals),
-    practice: s.practice,
+    evMode: evMode ?? evModeOfPractice(s.practice),
   };
 }
 
@@ -83,7 +87,7 @@ export function decodeSnapshot(
   paytable: TripsPaytableId,
 ): {
   restore: { state: GameState; startEquity: Cents; totals: SessionTotals };
-  practice: boolean;
+  evMode: EvMode;
 } | null {
   try {
     if (!isObj(raw) || raw.v !== 1 || !isObj(raw.state) || !isObj(raw.totals)) return null;
@@ -114,7 +118,10 @@ export function decodeSnapshot(
     }
     return {
       restore: { state, startEquity: raw.startEquity, totals: decodeTotals(raw.totals) },
-      practice: raw.practice === true,
+      // A valid evMode wins; a legacy snapshot's `practice: true` maps to 'after' (D39).
+      evMode: (EV_MODES as readonly unknown[]).includes(raw.evMode)
+        ? (raw.evMode as EvMode)
+        : evModeOfPractice(raw.practice === true),
     };
   } catch {
     return null;
