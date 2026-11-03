@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildContent } from '../../src/content/load';
 import { stepEvMode, validateScene } from '../../src/sim/scene';
+import { expandNumbers } from '../../src/content/compile';
 
 const root = process.cwd();
 const bundle = buildContent(root);
@@ -16,7 +17,7 @@ const IDS = [
 ];
 const FILES = IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.md`);
 const text = (id: string) =>
-  readFileSync(join(root, 'content/lessons', FILES[IDS.indexOf(id)]!), 'utf8');
+  expandNumbers(readFileSync(join(root, 'content/lessons', FILES[IDS.indexOf(id)]!), 'utf8'));
 
 describe('lessons 1-6', () => {
   it('exist in order, with the right chapters', () => {

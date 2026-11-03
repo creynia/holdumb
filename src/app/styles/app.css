@@ -948,6 +948,18 @@ textarea {
   font-size: 0.75rem;
   padding: 0 0.15rem;
   min-width: 1ch;
+  position: relative;
+}
+/* Invisible hit area around the citation number; the visual size and line height are unchanged. */
+.cite-btn::before {
+  content: '';
+  position: absolute;
+  /* The button box is 0 tall (.cite has line-height 0), so centre a fixed height on it. The height
+     is capped at the line pitch (about 1.55rem), so a tap on one line never reaches the next. */
+  top: 50%;
+  height: 1.5rem;
+  margin-top: -0.75rem;
+  inset-inline: -17px;
 }
 .cite-btn:focus-visible {
   outline: 2px solid var(--focus);
@@ -1074,7 +1086,7 @@ textarea {
     order: 0;
     margin-bottom: 0.5rem;
   }
-  .drill-result > [role='status'] {
+  .drill-result > [data-testid='drill-headline'] {
     order: -1;
     margin: 0 0 0.4rem;
     font-size: 0.85rem;

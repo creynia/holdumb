@@ -6,7 +6,7 @@ summary: "What a normal hour looks like, and how much to bring."
 minutes: 9
 ---
 
-A 2.18% edge is tiny next to the swings. In one hand you can win 6 antes or lose 6, and rarely win
+A {{num:perfect-edge-2}} edge is tiny next to the swings. In one hand you can win 6 antes or lose 6, and rarely win
 hundreds (a royal flush pays 500 to 1 on the Blind). The **standard deviation** of one hand is about
 **4.94 antes**. Over an hour of 30 hands it's about **27 antes**, while the expected loss is only 0.66
 antes. In the short run, **luck is about 40 times bigger than the edge**.
@@ -105,9 +105,9 @@ steps:
   answer: 2
   explain: "About 4.94 antes per hand; about 27 per 30-hand hour."
 - q: You play an hour at $10 with the basic card. Which result is most typical?
-  options: ["Exactly −$6.55", "Somewhere between about −$300 and +$280", "Always a small loss", "Always a small win"]
+  options: ["Exactly −{{num:perfect-per-hour}}", "Somewhere between about −$300 and +$280", "Always a small loss", "Always a small win"]
   answer: 1
-  explain: "The expected loss is $6.55, but 80% of hours land between about −30 and +28 antes."
+  explain: "The expected loss is {{num:perfect-per-hour}}, but 80% of hours land between about −30 and +28 antes."
 - q: Which bankroll gives about a 1-in-100 chance of busting within an hour at a $10 Ante?
   options: ["$200", "$400", "$600", "$100"]
   answer: 2
