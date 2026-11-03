@@ -31,3 +31,12 @@
   background: var(--tier-best);
   pointer-events: none;
 }
+.progressive-line {
+  display: block;
+}
+/* On narrow phones these two lines wrap for some meters: always reserve two lines there. */
+@media (max-width: 440px) {
+  .progressive-var {
+    min-height: 2lh;
+  }
+}

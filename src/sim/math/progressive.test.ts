@@ -88,3 +88,16 @@ describe('progressive jackpot maths (I063)', () => {
     );
   });
 });
+
+describe('progressive meter for a given edge', () => {
+  it('a third of every bet lost at 884,280/19 ≈ $46,541.05 (lesson 21: "below ≈$46,500")', async () => {
+    const { progressiveMeterForEdge } = await import('./progressive');
+    expect(progressiveMeterForEdge(frac(1n, 3n))).toEqual(frac(884_280n, 19n));
+    expect(progressiveMeterForEdge(frac(0n))).toEqual(progressiveBreakEven());
+    // Round trip: at that meter the edge is exactly one third.
+    const m = progressiveMeterForEdge(frac(1n, 3n));
+    expect(Number(m.num) / Number(m.den)).toBeCloseTo(46_541.0526, 3);
+    expect(progressiveEdge(46_541).num * 3n > progressiveEdge(46_541).den).toBe(true);
+    expect(progressiveEdge(46_542).num * 3n < progressiveEdge(46_542).den).toBe(true);
+  });
+});

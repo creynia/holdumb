@@ -263,6 +263,8 @@ export function parseChart(yamlText: string): ChartBlockData {
 export function parseProgressive(yamlText: string): ProgressiveBlockData {
   const raw: unknown = yamlText.trim() ? parseYaml(yamlText) : {};
   if (!isObj(raw)) throw new Error('progressive block must be a YAML mapping { meter? }');
+  const unknown = Object.keys(raw).filter((k) => k !== 'meter');
+  if (unknown.length) throw new Error(`progressive: unknown key(s) ${unknown.join(', ')} (only meter)`);
   const meter = raw.meter ?? 50_000;
   if (
     typeof meter !== 'number' ||

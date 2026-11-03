@@ -10,6 +10,7 @@ import {
   fraction,
   progressiveBreakEven,
   progressiveEdge,
+  progressiveMeterForEdge,
 } from '../../sim';
 import type { Fraction } from '../../sim';
 import {
@@ -28,6 +29,8 @@ const toCents = (f: Fraction): number => fraction.round(fraction.scale(f, 100));
 
 export const BREAK_EVEN = progressiveBreakEven();
 export const BREAK_EVEN_CENTS = toCents(BREAK_EVEN);
+/** Below this meter the bet loses a third or more of every $1 (lesson 21): 884,280/19 dollars. */
+export const ONE_THIRD_CENTS = toCents(progressiveMeterForEdge({ num: 1n, den: 3n }));
 
 /** The line under the slider for a meter (whole dollars). */
 export function progressiveLine(meter: number): { edge: string; hour: string; vs: string } {
@@ -43,7 +46,7 @@ export function progressiveLine(meter: number): { edge: string; hour: string; vs
       perHour > 0
         ? `$1 a hand costs about ${formatMoney(perHour)} an hour`
         : perHour < 0
-          ? `$1 a hand earns about ${formatMoney(-perHour)} an hour on average`
+          ? `$1 a hand earns about ${formatMoney(-perHour)} an hour`
           : '$1 a hand costs nothing on average',
     vs:
       gapCents > 0
@@ -80,12 +83,23 @@ export function ProgressiveBlock({ block }: { block: ProgressiveBlockData }) {
         />
         <span class="progressive-be" style={`left: ${bePct}%`} aria-hidden="true" />
       </div>
-      <p data-testid="progressive-edge">
-        {line.edge} <TierBadge tier={wagerTierOf(edge)} /> · {minus(line.hour)}.
+      {/* One short line per changing figure (plus a reserved height), so dragging never reflows. */}
+      <p class="progressive-lines" data-testid="progressive-edge">
+        <span class="progressive-line">
+          {line.edge} <TierBadge tier={wagerTierOf(edge)} />
+        </span>
+        <span class="progressive-line progressive-var">{minus(line.hour)}.</span>
       </p>
-      <p class="muted" data-testid="progressive-vs">
-        Break-even meter: <strong>{formatMoney(BREAK_EVEN_CENTS)}</strong> (exactly $3,050,080 ÷
-        19). This meter is {line.vs}.
+      <p class="progressive-lines muted" data-testid="progressive-vs">
+        <span class="progressive-line progressive-var">This meter is {line.vs}.</span>
+        <span class="progressive-line">
+          Break-even meter: <strong>{formatMoney(BREAK_EVEN_CENTS)}</strong> (exactly $3,050,080 ÷
+          19).
+        </span>
+      </p>
+      <p class="muted" data-testid="progressive-third">
+        Below {formatMoney(ONE_THIRD_CENTS)} (exactly $884,280 ÷ 19) it loses a third or more of
+        every bet.
       </p>
     </figure>
   );

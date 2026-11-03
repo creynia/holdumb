@@ -27,22 +27,25 @@ describe('progressive calculator (I063)', () => {
       edge: 'Player edge 0.14%',
       vs: '$469.47 above break-even',
     });
-    expect(progressiveLine(200_000).hour).toBe('$1 a hand earns about $3.46 an hour on average');
+    expect(progressiveLine(200_000).hour).toBe('$1 a hand earns about $3.46 an hour');
   });
 
   it('the slider moves the meter and every line with it', () => {
     render(<ProgressiveBlock block={{ meter: 50_000 }} />);
     expect(screen.getByTestId('progressive-meter').textContent).toBe('$50,000');
-    expect(screen.getByTestId('progressive-edge').textContent).toMatch(
-      /^House edge 32\.3% Avoid · \$1 a hand costs about \$9\.70 an hour\.$/,
-    );
+    const lines = () =>
+      [...screen.getByTestId('progressive-edge').querySelectorAll('.progressive-line')].map(
+        (l) => l.textContent,
+      );
+    expect(lines()).toEqual(['House edge 32.3% Avoid', '$1 a hand costs about $9.70 an hour.']);
     expect(screen.getByTestId('progressive-vs').textContent).toMatch(/\$160,530\.53/);
     const slider = screen.getByTestId<HTMLInputElement>('progressive-slider');
     expect(slider.getAttribute('aria-valuetext')).toBe('$50,000: House edge 32.3%');
     fireEvent.input(slider, { target: { value: '200000' } });
     expect(screen.getByTestId('progressive-meter').textContent).toBe('$200,000');
-    expect(screen.getByTestId('progressive-edge').textContent).toMatch(
-      /^Player edge 11\.5% Free bet/,
+    expect(lines()).toEqual(['Player edge 11.5% Free bet', '$1 a hand earns about $3.46 an hour.']);
+    expect(screen.getByTestId('progressive-third').textContent).toMatch(
+      /^Below \$46,541\.05 \(exactly \$884,280 ÷ 19\) it loses a third or more/,
     );
     expect(screen.getByTestId('progressive-vs').textContent).toMatch(
       /\$39,469\.47 above break-even/,

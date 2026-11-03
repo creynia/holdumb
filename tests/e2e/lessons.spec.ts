@@ -140,3 +140,37 @@ test('lesson 20: the progressive meter slider prices the bet and finds break-eve
   const sw = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(sw).toBeLessThanOrEqual(page.viewportSize()!.width);
 });
+
+test('lesson 20: dragging the meter from $10k to $300k never changes the block height (I063)', async ({
+  page,
+}) => {
+  for (const vp of [
+    { width: 360, height: 740 },
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 667, height: 375 },
+  ]) {
+    await page.setViewportSize(vp);
+    await page.goto('/#/learn/other-side-bets');
+    const block = page.getByTestId('progressive');
+    await block.scrollIntoViewIfNeeded();
+    const slider = page.getByTestId('progressive-slider');
+    await slider.focus();
+    await page.keyboard.press('Home');
+    const heights = new Set<number>();
+    const docHeights = new Set<number>();
+    // Every $1,000 step across the whole range, by keyboard (one ArrowRight = one step).
+    for (let m = 10_000; m <= 300_000; m += 1_000) {
+      if (m > 10_000) await page.keyboard.press('ArrowRight');
+      const h = await block.evaluate((el) => [
+        Math.round(el.getBoundingClientRect().height),
+        document.documentElement.scrollHeight,
+      ]);
+      heights.add(h[0]!);
+      docHeights.add(h[1]!);
+    }
+    await expect(page.getByTestId('progressive-meter')).toHaveText('$300,000');
+    expect([...heights], `block heights at ${vp.width}x${vp.height}`).toHaveLength(1);
+    expect([...docHeights], `page heights at ${vp.width}x${vp.height}`).toHaveLength(1);
+  }
+});

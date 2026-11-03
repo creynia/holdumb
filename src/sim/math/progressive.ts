@@ -68,3 +68,21 @@ export function progressiveBreakEven(t: ProgressiveTable = PROGRESSIVE_EXAMPLE):
   const s = sums(t);
   return frac(10n * FIVE_CARD_TOTAL - 10n * s.fixed, s.meterTenths);
 }
+
+/**
+ * The meter (dollars, exact) at which the house edge equals `edge` (a fraction of the $1 bet):
+ * (1 − edge − fixed return) / (meter return per $). Break-even is edge 0; lesson 21's "loses a third
+ * or more" line is edge 1/3 (884,280/19 ≈ $46,541.05).
+ */
+export function progressiveMeterForEdge(
+  edge: Fraction,
+  t: ProgressiveTable = PROGRESSIVE_EXAMPLE,
+): Fraction {
+  const s = sums(t);
+  // 1 − edge = (10·fixed + tenths·M) / (10·N)  ⇒  M = (10·N·(1 − edge) − 10·fixed) / tenths
+  const keep = sub(frac(1n), edge);
+  return frac(
+    10n * FIVE_CARD_TOTAL * keep.num - 10n * s.fixed * keep.den,
+    s.meterTenths * keep.den,
+  );
+}

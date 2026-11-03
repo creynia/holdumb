@@ -33,6 +33,7 @@ export {
   progressiveEv,
   progressiveEdge,
   progressiveBreakEven,
+  progressiveMeterForEdge,
   PROGRESSIVE_EXAMPLE,
   FIVE_CARD_COUNTS,
   FIVE_CARD_TOTAL,
