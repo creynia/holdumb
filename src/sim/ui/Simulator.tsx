@@ -21,15 +21,14 @@ import { Table, useOrientation } from './Table';
 import { Toasts } from './Toasts';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { decodeSnapshot, encodeSnapshot } from './persist';
-import { randomSeed, resolvePractice, resolveSpeed } from './settings';
 import {
-  actionOfKey,
-  describeResult,
-  foldAnnouncement,
-  handName,
-  headline,
-  optionKeyOf,
-} from './text';
+  needsConfirm,
+  randomSeed,
+  resolveEvShown,
+  resolvePractice,
+  resolveSpeed,
+} from './settings';
+import { actionOfKey, describeResult, foldAnnouncement, handName, optionKeyOf } from './text';
 import type { SimulatorProps } from './types';
 import { betterAlternative } from '../math';
 import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../math';
@@ -128,7 +127,7 @@ export function Simulator(props: SimulatorProps) {
   const street = state.street;
   const decision = isDecisionStreet(street);
   const settled = street === 'settled';
-  const evShown = (step?.showEV ?? scene.showEV) !== false;
+  const evShown = resolveEvShown(settings, scene, sandbox, step?.showEV);
   // The app's settings are the source of truth for practice mode; the table follows them at once.
   const practice =
     sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
@@ -153,13 +152,13 @@ export function Simulator(props: SimulatorProps) {
   // Sandbox persistence (PersistedV1.sandbox, owned by the app store).
   const persistable = sandbox && !baseScene.startAt && !!props.onSnapshot;
   useEffect(() => {
-    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d));
+    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode));
   }, [view.eventSeq, persistable, d]);
 
   // Settings are the source of truth for practice mode: the table follows them live.
   useEffect(() => {
     if (sandbox) d.setPractice(resolvePractice(settings, baseScene));
-  }, [settings.practice, sandbox, d]);
+  }, [settings.evMode, sandbox, d]);
 
   const timeline = buildTimeline(view.lastEvents, speed);
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
@@ -210,15 +209,7 @@ export function Simulator(props: SimulatorProps) {
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
   };
   const onOption = (k: OptionKey) => {
-    if (!evShown || (sandbox && settings.skipPreview && !practice)) {
-      const v = d.view.preview.value;
-      const o = v?.options.find((x) => optionKeyOf(x.action) === k);
-      if (o?.tier === 'blunder' && settings.confirmCostlyMoves && evShown) {
-        setOpen(k);
-        d.previewed(k, false);
-        return;
-      }
-      if (v && o && evShown) pushToast(headline(v, v.options.indexOf(o)));
+    if (!evShown) {
       void act(actionOfKey(k));
       return;
     }
@@ -300,7 +291,7 @@ export function Simulator(props: SimulatorProps) {
             0,
           );
         }}
-        confirmCostlyMoves={settings.confirmCostlyMoves}
+        confirmBlunder={needsConfirm(settings.confirmOn, 'blunder')}
         hideEv={practice}
         alternative={alternative}
         chosen={reveal?.chosen ?? null}

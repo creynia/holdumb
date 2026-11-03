@@ -3,5 +3,4 @@
 - Blind paytable presets beyond `blind-standard` (D12), if a sourced table turns up.
 - Sound effects.
 - Port the service-worker precache fix (`new Request(u, { cache: 'reload' })`) to crappy's `src/pwa/sw.ts:35`.
-- Curriculum §9.1: say where KJo goes (code: pre-king).
 - Money values should never wrap at the minus sign (content review of #7; integration applies nowrap).

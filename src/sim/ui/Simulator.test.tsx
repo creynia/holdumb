@@ -1,6 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEvClient } from '../worker/client';
+import { SimDriver } from '../scene';
+import { encodeSnapshot } from './persist';
 import { Simulator } from './Simulator';
 import { DEFAULT_SIM_SETTINGS } from './types';
 import type { SceneConfig } from '../scene';
@@ -104,6 +106,76 @@ describe('Simulator container', () => {
     await waitFor(() =>
       expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
     );
+    evClient.dispose();
+  });
+  it('restores a legacy snapshot (practice flag) with the default settings (D39)', () => {
+    const src = new SimDriver({
+      mode: 'sandbox',
+      seed: 5,
+      scene: {
+        id: 'sandbox',
+        version: 1,
+        startAt: {
+          street: 'river',
+          deal: {
+            player: ['3c', '4d'],
+            flop: ['Ah', 'Ks', 'Qd'],
+            turn: '9c',
+            river: '7h',
+            dealer: ['Td', 'Ts'],
+          },
+        },
+      },
+      preview: () => Promise.reject(new Error('no ev')),
+    });
+    const snap = JSON.parse(JSON.stringify(encodeSnapshot(src))) as Record<string, unknown>;
+    delete snap.evMode;
+    const { evClient } = mount(
+      { id: 'sandbox', version: 1 },
+      { snapshot: { ...snap, practice: true }, settings: DEFAULT_SIM_SETTINGS },
+    );
+    expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river');
+    evClient.dispose();
+  });
+  it('stores the table evMode in the sandbox snapshot', async () => {
+    const snaps: unknown[] = [];
+    const { evClient } = mount(
+      { id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 },
+      { settings: { ...settings, evMode: 'after' }, onSnapshot: (x) => snaps.push(x) },
+    );
+    fireEvent.click(screen.getByText('Deal'));
+    await waitFor(() => expect(snaps.length).toBeGreaterThan(0));
+    expect((snaps.at(-1) as { evMode: string }).evMode).toBe('after');
+    evClient.dispose();
+  });
+  it('evMode never: no EV on the table and one tap acts', async () => {
+    const { evClient } = mount(
+      {
+        id: 'sandbox',
+        version: 1,
+        startAt: {
+          street: 'river',
+          deal: {
+            player: ['3c', '4d'],
+            flop: ['Ah', 'Ks', 'Qd'],
+            turn: '9c',
+            river: '7h',
+            dealer: ['Td', 'Ts'],
+          },
+        },
+      },
+      { settings: { ...settings, evMode: 'never' } },
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
+    );
+    expect(document.querySelectorAll('.is-best').length).toBe(0);
+    expect(document.querySelector('[data-option="play-1"]')!.textContent).not.toMatch(/\$/);
+    fireEvent.click(document.querySelector('[data-option="play-1"]')!);
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
+    );
+    expect(screen.queryByTestId('ev-sheet')).toBeNull();
     evClient.dispose();
   });
 });
