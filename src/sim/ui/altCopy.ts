@@ -2,16 +2,7 @@
 import { formatMoney } from '../engine';
 import type { BasicFlopRule, BetterAlternative, MadeHand } from '../math';
 import type { DecisionPreview } from '../math';
-import {
-  OPTION_LABELS,
-  roundFraction,
-  anteOf,
-  bestOf,
-  costCents,
-  fmtCentsFraction,
-  fmtCostC,
-  optionKeyOf,
-} from './text';
+import { roundFraction, anteOf, bestOf, costCents, fmtCentsFraction, fmtCostC } from './text';
 
 const FLOP_REASON: Record<string, string> = {
   'board-pair': 'The only pair is on the board.',
@@ -103,10 +94,9 @@ export function alternativeCopy(
       };
   }
   if (alt.basicException) {
-    const rule = OPTION_LABELS[optionKeyOf(alt.basicException.ruleAction)];
     out = {
       ...out,
-      text: `${out.text} (The basic card says ${rule} here, a rare exception worth ${cost}.)`,
+      text: `${out.text} (This is a rare exception, worth ${cost}.)`,
     };
   }
   return out;
@@ -149,17 +139,19 @@ const MADE_NAME: Record<MadeHand, string> = {
 export function flopRuleLine(rule: BasicFlopRule, preview: DecisionPreview): string {
   const best = bestOf(preview);
   const ruleLabel = rule.raise ? 'Bet 2x' : 'Check';
-  let head: string;
-  if (rule.rule === 'a')
-    head = `rule (a), ${rule.made ? MADE_NAME[rule.made] : 'two pair or better'}`;
-  else if (rule.rule === 'b') {
-    const ranks = RANK_PLURAL[rule.pairRank ?? ''] ?? 'cards';
-    head = `rule (b), ${rule.pocketPair ? 'a pocket pair' : 'a hidden pair'} of ${ranks}`;
-  } else if (rule.rule === 'c') head = 'rule (c), four to a flush with a ten or better';
-  else head = '';
   // No rule fits: the line says so and that the basic card checks.
-  const noRule = rule.rule === null;
-  const first = noRule ? 'Basic card: no rule fits; Check.' : `Basic card: ${head}: ${ruleLabel}.`;
+  let first: string;
+  if (rule.rule === null) first = 'Basic card: no rule fits; Check.';
+  else {
+    let head: string;
+    if (rule.rule === 'a')
+      head = `rule (a), ${rule.made ? MADE_NAME[rule.made] : 'two pair or better'}`;
+    else if (rule.rule === 'b') {
+      const ranks = RANK_PLURAL[rule.pairRank ?? ''] ?? 'cards';
+      head = `rule (b), ${rule.pocketPair ? 'a pocket pair' : 'a hidden pair'} of ${ranks}`;
+    } else head = 'rule (c), four to a flush with a ten or better';
+    first = `Basic card: ${head}: ${ruleLabel}.`;
+  }
   if (rule.raise === (best.action.type === 'play')) return `${first} Perfect play agrees.`;
   const ruleOpt = preview.options.find(
     (o) => (o.action.type === 'play') === rule.raise && o.action.type !== 'fold',
