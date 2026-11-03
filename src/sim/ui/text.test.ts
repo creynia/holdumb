@@ -145,4 +145,42 @@ describe('result text names the deciding card', () => {
     const r = real('Td Ts Ac 7h 4s', 'Tc Th Ad 7d 4c', 'tie');
     expect(describeResult(r)).toMatch(/^Tie: same five-card hand\. /);
   });
+  it('a second or third kicker decides a pair: every kicker down to the first difference', () => {
+    const third = real('Td Ts Ac 8h 4s', 'Tc Th Ad 8s 3c', 'win');
+    expect(describeResult(third)).toMatch(
+      /^Your pair of tens, ace-eight-four kickers beats the dealer's pair of tens, ace-eight-three kickers\. /,
+    );
+    const second = real('Td Ts Ac 8h 4s', 'Tc Th Ad 7s 3c', 'win');
+    expect(describeResult(second)).toMatch(
+      /^Your pair of tens, ace-eight kickers beats the dealer's pair of tens, ace-seven kickers\. /,
+    );
+  });
+  it('a second kicker decides trips', () => {
+    // board 9c 9d 9s Ah 7c: three nines with ace-king against ace-queen
+    const r = real('9c 9d 9s Ah 7c Kd 2h', '9c 9d 9s Ah 7c Qd 3h', 'win');
+    expect(describeResult(r)).toMatch(
+      /^Your three nines, ace-king kickers beat the dealer's three nines, ace-queen kickers\. /,
+    );
+  });
+  it('a full house where the pair decides names both ranks', () => {
+    // board 9c 9d 9s Kh 5c: nines full of kings against nines full of fives
+    const r = real('9c 9d 9s Kh 5c Kd 2h', '9c 9d 9s Kh 5c 5d 2d', 'win');
+    expect(describeResult(r)).toMatch(
+      /^Your nines full of kings beats the dealer's nines full of fives\. /,
+    );
+  });
+  it('straight against straight names the top card', () => {
+    // board 6c 7d 8h 9s 2c: nine-high against ten-high
+    const r = real('5h 3d 6c 7d 8h 9s 2c', 'Th Kd 6c 7d 8h 9s 2c', 'lose');
+    expect(describeResult(r)).toMatch(
+      /^The dealer's ten-high straight beats your nine-high straight\. /,
+    );
+  });
+  it('a fifth card decides high card', () => {
+    // board Kh Qd 9c 4d 2s: king-queen-jack-nine-six against king-queen-jack-nine-five
+    const r = real('Js 6c Kh Qd 9c 4d 2s', 'Jc 5h Kh Qd 9c 4d 2s', 'win');
+    expect(describeResult(r)).toMatch(
+      /^Your king-queen-jack-nine-six high beats the dealer's king-queen-jack-nine-five high\. /,
+    );
+  });
 });

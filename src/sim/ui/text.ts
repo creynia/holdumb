@@ -252,6 +252,12 @@ export function handNameVs(h: EvaluatedHand, other: EvaluatedHand): string {
   const v = h.value;
   const rank = (k: number) => slot(v, k);
   const kick = (k: number) => `${RANK_SINGULAR[rank(k)]} kicker`;
+  // Kickers from the first down to the first difference: "ace kicker", "ace-eight kickers",
+  // "ace-eight-four kickers". A first-kicker decider keeps the single-kicker wording.
+  const kickersTo = (last: number) =>
+    last === 1
+      ? kick(1)
+      : `${Array.from({ length: last }, (_, i) => RANK_SINGULAR[rank(i + 1)]).join('-')} kickers`;
   switch (h.category) {
     case 'high-card':
       return `${[0, 1, 2, 3, 4]
@@ -268,11 +274,11 @@ export function handNameVs(h: EvaluatedHand, other: EvaluatedHand): string {
     case 'straight-flush':
       return `${RANK_SINGULAR[rank(0)]}-high straight flush`;
     case 'pair':
-      return `pair of ${RANK_PLURAL[rank(0)]}${d >= 1 ? `, ${kick(d)}` : ''}`;
+      return `pair of ${RANK_PLURAL[rank(0)]}${d >= 1 ? `, ${kickersTo(d)}` : ''}`;
     case 'two-pair':
       return `${RANK_PLURAL[rank(0)]} and ${RANK_PLURAL[rank(1)]}${d >= 2 ? `, ${kick(d)}` : ''}`;
     case 'trips':
-      return `three ${RANK_PLURAL[rank(0)]}${d >= 1 ? `, ${kick(d)}` : ''}`;
+      return `three ${RANK_PLURAL[rank(0)]}${d >= 1 ? `, ${kickersTo(d)}` : ''}`;
     case 'quads':
       return `four ${RANK_PLURAL[rank(0)]}${d >= 1 ? `, ${kick(d)}` : ''}`;
     case 'full-house':
