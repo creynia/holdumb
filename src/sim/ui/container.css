@@ -191,10 +191,9 @@
 .sim-rail > * {
   flex: none;
 }
-<<<<<<< HEAD
 .sim-rail > .sim-rail-body {
   flex: 1 1 auto;
-=======
+}
 .sim-bankroll-short {
   display: flex;
   flex-wrap: wrap;
@@ -240,5 +239,4 @@
 }
 .sim-bankroll-bad {
   color: var(--bad, #b00020);
->>>>>>> origin/main
 }
