@@ -308,6 +308,15 @@ describe('practise blocks (I066)', () => {
     bad(p(link('x', '#/play?hole=Qc7d&board=KdJh')), /invalid table preset/);
     bad(p(link('x', '#/play?hole=Qc7d&seed=3')), /unknown table preset key "seed"/);
     bad(p(link('x', '#/sources')), /must start with \/play\? or \/drill\?/);
+    bad(p(link('x', '#/play?hole=Qc7d&hole=Qc7d')), /repeated table preset key "hole"/);
+    bad(p(link('x', '#/play?hole=Qc7d&board=KdJh9s&street=turn')), /street must be preflop, flop or river/);
+    bad(p(link('x', '#/play?hole=Qc7d&board=KdJh9s5c2d&street=flop')), /street "flop" does not match a 5-card board/);
+    bad(p(link('x', '#/play?hole=Qc7d&board=KdJh9s&street=preflop')), /street "preflop" does not match a 3-card board/);
+    bad(p(link('x', '#/play?hole=Qc7d&street=river')), /invalid table preset|does not match/);
+  });
+  it('a full deal may start preflop (lesson 19), any other street must match the board', () => {
+    const l = ok(p(link('Full', '#/play?hole=Qc7d&board=KdJh9s5c2d&street=preflop')));
+    expect(l.blocks.at(-1)).toMatchObject({ kind: 'practise' });
   });
   it('a preset must be one of the lesson\'s scene deals', () => {
     bad(p(link('x', '#/play?hole=AsAd')), /not one of this lesson's scene deals/);

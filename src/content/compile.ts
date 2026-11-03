@@ -302,8 +302,23 @@ export function parsePractise(text: string): PractiseLink[] {
       const allowed = ['hole', 'board', 'dealer', 'street'];
       const bad = [...query.keys()].find((k) => !allowed.includes(k));
       if (bad) throw new Error(`${what}: unknown table preset key "${bad}"`);
+      const keys = [...query.keys()];
+      const dup = keys.find((k, i) => keys.indexOf(k) !== i);
+      if (dup) throw new Error(`${what}: repeated table preset key "${dup}"`);
       // parsePlayParams ignores anything malformed; here that is an error (bad or repeated cards).
-      if (!parsePlayParams(query).startAt) throw new Error(`${what}: invalid table preset "${to}"`);
+      const startAt = parsePlayParams(query).startAt;
+      if (!startAt) throw new Error(`${what}: invalid table preset "${to}"`);
+      const street = query.get('street');
+      if (street !== null) {
+        if (!['preflop', 'flop', 'river'].includes(street))
+          throw new Error(`${what}: street must be preflop, flop or river, not "${street}"`);
+        // The street must match the board, except a full deal (5 board cards) started preflop,
+        // which replays a forced hand from the first decision (lesson 19).
+        const n = (query.get('board') ?? '').length / 2;
+        const natural = n === 0 ? 'preflop' : n === 3 ? 'flop' : 'river';
+        if (street !== natural && !(street === 'preflop' && n === 5))
+          throw new Error(`${what}: street "${street}" does not match a ${n}-card board`);
+      }
     }
     return { label, to };
   });
