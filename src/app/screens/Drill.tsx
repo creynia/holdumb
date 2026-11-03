@@ -399,12 +399,11 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             onChange={(e) => store.setDrillCloseCalls(e.currentTarget.checked)}
           />
           <span>
-            Close calls
+            <strong>Close calls</strong>
             <span class="muted">
               {' '}
-              about 6 in 10 spots are close calls (flop: the close-call categories, flush draws,
-              straight draws and pocket deuces), and Mixed follows how often each street comes up in
-              real play. Off: spots are uniform.
+              About 6 in 10 spots are close (flop: the close-call categories, flush draws, straight
+              draws and pocket deuces). Mixed follows real-play street frequencies.
             </span>
           </span>
         </label>
