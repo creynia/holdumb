@@ -125,9 +125,11 @@ test('lesson scene mid-step', async ({ page }) => {
 });
 
 test('drill result', async ({ page }) => {
-  // The spot comes from rngFromSeed(Date.now()), which the frozen clock makes fixed.
-  await open(page, '/drill?street=flop');
+  // A single focus code pins the spot outright (nextSpot returns it without sampling), so a
+  // change to the sampler cannot churn this baseline: 2dJd on a 4h6d9d flop (a flush draw).
+  await open(page, '/drill?street=flop&focus=f:2dJd.4h6d9d');
   await expect(page.getByTestId('drill-spot')).toBeVisible();
+  await expect(page.getByTestId('drill-spot')).toHaveAttribute('data-street', 'flop');
   await page.locator('.choice-row button').first().click();
   await expect(page.getByTestId('drill-result')).toBeVisible();
   await shoot(page, 'drill-result', true);

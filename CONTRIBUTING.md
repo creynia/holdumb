@@ -54,11 +54,13 @@ Baselines are only valid when they come from the container that CI uses, `mcr.mi
 
 When a PR changes the UI on purpose, regenerate the baselines in one of these ways:
 
-1. **In CI (no Docker needed).** On a PR from this repository, add the label `update-visual`. The `Visual baselines` workflow regenerates the baselines in the CI container, uploads them as the artifact `visual-baselines`, commits only `tests/visual/__screenshots__/` as `chore(visual): update baselines`, and re-runs CI. You can also start it from Actions > Visual baselines > Run workflow on your branch, and either tick `push` or download the `visual-baselines` artifact and commit its PNGs yourself (unzip it over `tests/visual/__screenshots__/`).
+1. **In CI (no Docker needed).** On a PR from this repository, add the label `update-visual`. The `Visual baselines` workflow regenerates the baselines in the CI container from the labelled commit, with a read-only token, and uploads them as the artifact `visual-baselines`. A second job, which runs none of the PR's code, accepts only `.png` files under `tests/visual/__screenshots__/`, commits them as `chore(visual): update baselines`, pushes (fast-forward only, never to `main`) and re-runs CI. You can also start it from Actions > Visual baselines > Run workflow on your branch, and either tick `push` or download the `visual-baselines` artifact and commit its PNGs yourself (unzip it over `tests/visual/__screenshots__/`).
 2. **With Docker:** `npm run test:visual:update`.
-3. **Without Docker, as root on Linux:** extract the image into a directory and `chroot` into it. Download the amd64 manifest and layers for `playwright:v1.56.1-noble` from `https://mcr.microsoft.com/v2/playwright/` and untar each layer in order into `rootfs/`. Add `127.0.0.1 localhost` to `rootfs/etc/hosts`. Then, from a shell started with `unshare -m`, bind-mount your checkout at `rootfs/w`, mount `proc`, `/dev` and `/sys`, and run `chroot rootfs env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright CI=1 bash -c 'cd /w && npx playwright test -c playwright.visual.config.ts --update-snapshots'`.
+3. **Without Docker:** use the chroot recipe in the [appendix](#appendix-visual-baselines-without-docker).
 
-A PR that changes baselines must say why in its description, and reviewers look at the changed images. When the job fails, it uploads the artifact `visual-diff` (open `playwright-report/index.html` in it for the expected, actual and diff images), lists each failed snapshot and its diff pixel count in the job summary, and posts one sticky comment on the PR that links the artifact.
+**Regenerate only what changed.** Every route above runs `--update-snapshots` in its default mode, which rewrites only the snapshots that differ beyond the threshold. Do not delete the folder and regenerate everything: a full set is about 6 MB, and every full regeneration adds that much to the history for no reason. Commit only the PNGs your change was meant to alter. If others changed too, find out why before you commit them.
+
+A PR that changes baselines must say why in its description, and reviewers look at the changed images. When the job fails, it uploads the artifact `visual-diff` (open `playwright-report/index.html` in it for the expected, actual and diff images), lists each failed snapshot and its diff pixel count in the job summary, and keeps one sticky comment on the PR that links the artifact. A later green run updates that comment to "All snapshots match".
 
 ## Ideas to pick up
 
@@ -74,3 +76,12 @@ Deferred, self-contained ideas are collected in [`docs/chips.md`](docs/chips.md)
 
 - A GitHub Pages deploy can time out in "updating_pages", and the next one then fails with "deployment in progress". This is a GitHub-side flake: re-run the failed job from the Actions tab.
 - The offline file must stay under 800 kB (target 600 kB); `npm run build:single` fails above that and on any external reference.
+
+## Appendix: visual baselines without Docker
+
+As root on Linux, you can run the CI image without a Docker daemon by extracting it and using `chroot`:
+
+1. Download the amd64 manifest for `playwright:v1.56.1-noble` from `https://mcr.microsoft.com/v2/playwright/manifests/v1.56.1-noble`. Download its layers from `.../blobs/<digest>`, check each one's sha256, and untar them in order into `rootfs/`. For each `.wh.<name>` whiteout file, delete `<name>` and the whiteout.
+2. Add `127.0.0.1 localhost` to `rootfs/etc/hosts`.
+3. From a shell started with `unshare -m --propagation private`, bind-mount your checkout at `rootfs/w`. Mount `proc` at `rootfs/proc`, rbind `/dev` and `/sys`, and mount a tmpfs at `rootfs/tmp`.
+4. Run `chroot rootfs env -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/ms-playwright HOME=/root CI=1 bash -c 'cd /w && npx playwright test -c playwright.visual.config.ts --update-snapshots'`.
