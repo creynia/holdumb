@@ -9,6 +9,8 @@ import { PICKER_GROUPS } from '../strategy/presets';
 import { STRATEGY_CONSTANTS } from '../strategy/constants';
 import { costVsPerfectPerHour, strategyMetrics } from '../strategy/metrics';
 import { fracToNumber } from '../strategy/fraction';
+import { formatPct } from '../engine/money';
+import type { TableRules } from '../engine/types';
 import type { SimulateResult, StrategyId, StrategySpec } from '../strategy/types';
 import { BankrollChart } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
@@ -46,6 +48,21 @@ export interface AutoPlayPanelProps {
   bankroll?: number;
   seed?: number;
   onEvent?: (e: SimulatorEvent) => void;
+}
+
+/**
+ * The note under the strategy select. Always bet 4x has the same exact loss per hand as Never
+ * fold but twice the money in action, so half the element of risk. Figures come from
+ * strategyMetrics, so they stay right if the tables change.
+ */
+export function alwaysMaxNote(
+  spec: StrategySpec,
+  rules: Partial<TableRules> | undefined,
+  handsPerHour: number,
+): string {
+  const never = strategyMetrics({ ...spec, id: 'never-fold' }, rules, handsPerHour);
+  const always = strategyMetrics({ ...spec, id: 'always-max' }, rules, handsPerHour);
+  return `Same expected loss per hand as Never fold (${formatPct(never.edgePerAnte, 2)} of the Ante), but twice the money in action, so a lower element of risk (${formatPct(always.elementOfRisk, 2)} vs ${formatPct(never.elementOfRisk, 2)}).`;
 }
 
 export function AutoPlayPanel({
@@ -183,6 +200,15 @@ export function AutoPlayPanel({
               </optgroup>
             ))}
           </select>
+          {id === 'always-max' ? (
+            <small data-testid="strategy-note" style={{ display: 'block', marginTop: '4px' }}>
+              {alwaysMaxNote(
+                { ...spec, trips: 0 },
+                { tripsPaytable: settings.paytable },
+                settings.handsPerHour,
+              )}
+            </small>
+          ) : null}
         </label>
         <label style={field}>
           Ante ($)
