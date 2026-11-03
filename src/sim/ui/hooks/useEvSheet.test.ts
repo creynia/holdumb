@@ -188,6 +188,20 @@ describe('useEvSheet', () => {
     });
   });
 
+  it('Details opens the sheet on the best option without acting, not as a confirm step (I092, D40)', async () => {
+    const { result } = mount('before', 'never');
+    await ready(result);
+    await act(() => result.current.ev.openDetails());
+    const sheet = result.current.ev.sheet!;
+    expect(sheet.confirming).toBe(false);
+    expect(sheet.focusOnOpen).toBe(true);
+    expect(result.current.sim.d.view.state.street).toBe('preflop');
+    await act(() => sheet.onSelect!('check'));
+    expect(result.current.ev.sheet!.confirming).toBe(false);
+    await act(() => result.current.ev.sheet!.onConfirm!('check'));
+    await waitFor(() => expect(result.current.sim.d.view.state.street).toBe('flop'));
+  });
+
   it('select switches the open option', async () => {
     const { result } = mount('before', 'all');
     await ready(result);
