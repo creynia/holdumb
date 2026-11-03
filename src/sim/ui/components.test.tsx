@@ -510,7 +510,7 @@ describe('Felt', () => {
       />,
     );
   describe('showdown: the five cards that play (I007)', () => {
-    const cards = (t: string) => parseCards(t) as PlayingCard[];
+    const cards = (t: string) => parseCards(t);
     const showdown = (hole: string, board: string, dealer: string, fold = false) => {
       const h = cards(hole);
       const b = cards(board);
