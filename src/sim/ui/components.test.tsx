@@ -692,6 +692,23 @@ describe('small pieces', () => {
     fireEvent.click(screen.getByRole('radio', { name: '$25' }));
     expect(onSelect).toHaveBeenCalledWith(2500);
   });
+  it('StatusBar keeps a signed result for win, lose, push and fold (I051)', () => {
+    const cases = [
+      { hand: { outcome: 'win' as const, net: 2000 }, want: 'Won' },
+      { hand: { outcome: 'lose' as const, net: -3500 }, want: 'Lost' },
+      { hand: { outcome: 'tie' as const, net: 0 }, want: 'Push' },
+      { hand: { outcome: 'fold' as const, net: -2000 }, want: 'Folded' },
+    ];
+    for (const { hand, want } of cases) {
+      const { unmount } = render(<StatusBar bankroll={49_000} onFelt={0} hand={hand} />);
+      const col = screen.getByTestId('hand-result');
+      expect(col.textContent).toContain(want);
+      expect(col.textContent).not.toContain('-');
+      unmount();
+    }
+    render(<StatusBar bankroll={49_000} onFelt={0} hand={{ outcome: 'lose', net: -3500 }} />);
+    expect(screen.getByTestId('hand-result').textContent).toContain('\u2212$35');
+  });
   it('StatusBar shows EV / Details in the third column until a result is showing (I092)', () => {
     const onDetails = vi.fn();
     const { rerender } = render(
