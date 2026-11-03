@@ -32,7 +32,11 @@ for (const [width, height] of [
       await expect(heading).toBeFocused();
       const box = await heading.boundingBox();
       expect(box, 'section heading has a box').not.toBeNull();
-      expect(box!.y, 'heading top is inside the viewport').toBeGreaterThanOrEqual(0);
+      const bar = await page.locator('.topbar').boundingBox();
+      expect(bar, 'top bar has a box').not.toBeNull();
+      expect(box!.y, 'heading top is at or below the top bar bottom edge').toBeGreaterThanOrEqual(
+        bar!.y + bar!.height,
+      );
       expect(box!.y, 'heading top is inside the viewport').toBeLessThan(height);
     });
   }
