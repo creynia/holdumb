@@ -123,7 +123,10 @@ export function LessonView({ id }: { id: string }) {
           onClick={() => {
             if (!done) trackEvent(`lesson-complete/${lesson.id}`);
             store.completeLesson(lesson.id, !done);
-            if (!done) void requestPersistOnce();
+            if (!done)
+              void requestPersistOnce(navigator, store.settings.persistAsked, (o) =>
+                store.updateSettings({ persistAsked: o }),
+              );
           }}
         >
           {done ? '✓ Completed (tap to undo)' : 'Mark complete'}

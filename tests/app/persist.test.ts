@@ -1,23 +1,42 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { requestPersistOnce, resetPersistAskForTests, storageState } from '../../src/app/persist';
+import { describe, expect, it, vi } from 'vitest';
+import { requestPersistOnce, storageState } from '../../src/app/persist';
 
 describe('persistent storage request (I076)', () => {
-  beforeEach(() => resetPersistAskForTests());
-
-  it('calls persist once, and not again on later completions', async () => {
-    const persist = vi.fn(() => Promise.resolve(true));
-    const nav = { storage: { persist } };
-    expect(await requestPersistOnce(nav)).toBe(true);
-    expect(await requestPersistOnce(nav)).toBeNull();
+  it('asks once, stores the answer, and never asks again once answered', async () => {
+    const persist = vi.fn(() => Promise.resolve(false));
+    const save = vi.fn();
+    const nav = { storage: { persist, persisted: () => Promise.resolve(false) } };
+    expect(await requestPersistOnce(nav, 'no', save)).toBe(false);
+    expect(save).toHaveBeenLastCalledWith('denied');
+    expect(persist).toHaveBeenCalledTimes(1);
+    // A refusal is remembered: the next visit (asked = 'denied') never prompts again.
+    expect(await requestPersistOnce(nav, 'denied', save)).toBeNull();
     expect(persist).toHaveBeenCalledTimes(1);
   });
-  it('does nothing when the API is missing', async () => {
-    expect(await requestPersistOnce({})).toBeNull();
-    expect(await requestPersistOnce(undefined)).toBeNull();
+  it('a stored grant also stops the request', async () => {
+    const persist = vi.fn(() => Promise.resolve(true));
+    expect(await requestPersistOnce({ storage: { persist } }, 'granted', vi.fn())).toBeNull();
+    expect(persist).not.toHaveBeenCalled();
   });
-  it('a rejected call is swallowed', async () => {
+  it('skips the request when persisted() is already true, and records the grant', async () => {
+    const persist = vi.fn(() => Promise.resolve(true));
+    const save = vi.fn();
+    const nav = { storage: { persist, persisted: () => Promise.resolve(true) } };
+    expect(await requestPersistOnce(nav, 'no', save)).toBe(true);
+    expect(persist).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledWith('granted');
+  });
+  it('does nothing when the API is missing (nothing to record)', async () => {
+    const save = vi.fn();
+    expect(await requestPersistOnce({}, 'no', save)).toBeNull();
+    expect(await requestPersistOnce(undefined, 'no', save)).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+  });
+  it('a rejected call is recorded as a refusal and swallowed', async () => {
+    const save = vi.fn();
     const nav = { storage: { persist: () => Promise.reject(new Error('denied')) } };
-    expect(await requestPersistOnce(nav)).toBeNull();
+    expect(await requestPersistOnce(nav, 'no', save)).toBeNull();
+    expect(save).toHaveBeenCalledWith('denied');
   });
 });
 

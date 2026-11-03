@@ -1,6 +1,6 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -728,4 +728,48 @@ describe('Drill', () => {
       expect(text, `case ${i}`).toContain(`(${formatMoney(cost)} per hand)`);
     }
   }, 120_000);
+});
+
+describe('persistent storage in the app (I076)', () => {
+  const stubStorage = (api: Record<string, unknown> | undefined) => {
+    Object.defineProperty(navigator, 'storage', { value: api, configurable: true });
+  };
+  afterEach(() => stubStorage(undefined));
+  it('asks once ever: not on render, once after the first completion, never again', async () => {
+    const persist = vi.fn(() => Promise.resolve(true));
+    stubStorage({ persist, persisted: () => Promise.resolve(false) });
+    const [first, second] = content.lessons.filter((l) => l.blocks.length > 0);
+    const { el, store } = await mount(`#/learn/${first!.id}`);
+    expect(persist).toHaveBeenCalledTimes(0);
+    await act(() => btn(el, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(1);
+    const { el: el2 } = await mount(`#/learn/${second!.id}`, store);
+    await act(() => btn(el2, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+  it('a stored answer is not asked again after a reload', async () => {
+    const persist = vi.fn(() => Promise.resolve(false));
+    stubStorage({ persist, persisted: () => Promise.resolve(false) });
+    const store = new Store(new MemoryStorage());
+    store.updateSettings({ persistAsked: 'denied' });
+    const lesson = content.lessons.find((l) => l.blocks.length > 0)!;
+    const { el } = await mount(`#/learn/${lesson.id}`, store);
+    await act(() => btn(el, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(0);
+  });
+  it.each([
+    ['persistent', true, 'Storage: persistent'],
+    ['may be cleared', false, 'Storage: may be cleared by the browser'],
+  ])('Settings shows the %s state', async (_label, persisted, text) => {
+    stubStorage({ persisted: () => Promise.resolve(persisted) });
+    const { el } = await mount('#/settings');
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(el.querySelector('[data-testid="storage-state"]')!.textContent).toContain(text);
+  });
+  it('Settings shows no storage text when the API is missing', async () => {
+    stubStorage(undefined);
+    const { el } = await mount('#/settings');
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(el.querySelector('[data-testid="storage-state"]')!.textContent?.trim()).toBe('');
+  });
 });

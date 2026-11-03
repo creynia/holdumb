@@ -1,27 +1,30 @@
-// Ask the browser to keep this site's storage (lesson progress) once, at the first lesson
-// completion. Never at boot; no-op where the API is missing or the call fails (I076).
-let asked = false;
+// Ask the browser to keep this site's storage (lesson progress). Asked once ever: the answer is
+// stored in settings, so a refusal is not asked again on later visits (I076).
+export type PersistAsked = 'no' | 'granted' | 'denied';
+type PersistNav = {
+  storage?: { persist?: () => Promise<boolean>; persisted?: () => Promise<boolean> };
+};
 
 export async function requestPersistOnce(
-  nav: { storage?: { persist?: () => Promise<boolean> } } | undefined = typeof navigator !==
-  'undefined'
-    ? navigator
-    : undefined,
+  nav: PersistNav | undefined,
+  asked: PersistAsked,
+  save: (outcome: 'granted' | 'denied') => void,
 ): Promise<boolean | null> {
-  if (asked) return null;
-  asked = true;
+  if (asked !== 'no') return null;
   try {
     const storage = nav?.storage;
     if (!storage?.persist) return null;
-    return await storage.persist();
+    if (storage.persisted && (await storage.persisted())) {
+      save('granted');
+      return true;
+    }
+    const ok = await storage.persist();
+    save(ok ? 'granted' : 'denied');
+    return ok;
   } catch {
+    save('denied');
     return null;
   }
-}
-
-/** Test-only: reset the once-per-page guard. */
-export function resetPersistAskForTests(): void {
-  asked = false;
 }
 
 export type StorageState = 'persistent' | 'best-effort' | null;

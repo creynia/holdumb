@@ -931,3 +931,9 @@ textarea {
 [data-view] {
   scroll-margin-top: 16px;
 }
+
+/* Reserves the storage line's height so the content below does not shift (I076). */
+.storage-line {
+  min-height: 1.5em;
+  margin: 0.25rem 0 0;
+}

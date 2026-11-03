@@ -147,7 +147,8 @@ export function Settings() {
   const [confirmImport, setConfirmImport] = useState(false);
   const forcedInstant = effectiveSpeed(s) === 'instant' && s.animationSpeed !== 'instant';
   const set = (p: Partial<SettingsData>) => store.updateSettings(p);
-  const [storage, setStorage] = useState<StorageState>(null);
+  // 'pending' keeps the line's height reserved until the check resolves (no layout shift).
+  const [storage, setStorage] = useState<StorageState | 'pending'>('pending');
   useEffect(() => {
     void storageState().then(setStorage);
   }, []);
@@ -257,13 +258,11 @@ export function Settings() {
 
       <section class="card form" aria-label="Your progress">
         <h2>Your progress</h2>
-        {storage && (
-          <p class="muted" data-testid="storage-state">
-            {storage === 'persistent'
-              ? 'Storage: persistent'
-              : 'Storage: may be cleared by the browser. Install the app to keep progress.'}
-          </p>
-        )}
+        <p class="muted storage-line" data-testid="storage-state">
+          {storage === 'persistent' && 'Storage: persistent'}
+          {storage === 'best-effort' &&
+            'Storage: may be cleared by the browser. Install the app to keep progress.'}
+        </p>
         {!store.persistent && (
           <p role="alert" class="warn">
             Progress will not be saved in this copy. Use Export to keep it.
