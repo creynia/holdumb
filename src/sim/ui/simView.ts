@@ -1,8 +1,8 @@
 // Pure helpers for the Simulator: decision streets, auto-play-only scenes, felt
 // labels and highlights.
-import type { HandResult } from '../engine';
+import type { Deal, HandResult } from '../engine';
 import type { CircleId, OptionKey, SceneConfig } from '../scene';
-import { handName } from './text';
+import { handLabel, handName, playerNearMiss } from './text';
 
 export const isDecisionStreet = (s: string): boolean =>
   s === 'preflop' || s === 'flop' || s === 'river';
@@ -12,9 +12,12 @@ export const autoOnlyOf = (scene: SceneConfig): boolean =>
   !!scene.autoPlay?.enabled && scene.allowedActions?.length === 0 && !scene.deals && !scene.startAt;
 
 /** The hand names printed on the felt once the hand is settled. */
-export function resultLabels(result: HandResult | null): { player?: string; dealer?: string } {
+export function resultLabels(
+  result: HandResult | null,
+  deal?: Deal,
+): { player?: string; dealer?: string } {
   return {
-    player: result ? handName(result.player) : undefined,
+    player: result ? handLabel(result.player, playerNearMiss(result, deal)) : undefined,
     dealer: result
       ? `${handName(result.dealer)}${result.dealerQualifies ? ', qualifies' : ''}`
       : undefined,

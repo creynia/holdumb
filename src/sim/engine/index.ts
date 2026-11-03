@@ -47,3 +47,4 @@ export {
   compareHands,
 } from './evaluator';
 export { seedRng, nextU32, randBelow, shuffle } from './rng';
+export { nearMisses, SUIT_PLURAL } from './nearmiss';
