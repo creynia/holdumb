@@ -36,7 +36,7 @@ export function Play({ query }: { query: URLSearchParams }) {
   };
   const preset = p.startAt !== undefined || p.seed !== undefined;
   return (
-    <div class="page page-wide">
+    <div class="page page-wide page-play">
       <h1 class="sr">Practice table</h1>
       <Simulator
         key={query.toString()}
