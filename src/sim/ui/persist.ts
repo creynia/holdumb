@@ -1,7 +1,7 @@
 // Sandbox snapshot: JSON-safe, opaque to the app. The app keeps it in PersistedV1.sandbox
 // (decisions: not a separate storage key). Anything that does not validate is dropped.
-import { PAYTABLE_PRESET_IDS } from '../engine';
-import type { Cents, GameState, TripsPaytableId } from '../engine';
+import { HISTORY_LIMIT, HISTORY_RECORD_BYTES, PAYTABLE_PRESET_IDS, parseCards } from '../engine';
+import type { Cents, GameState, HandRecord, TripsPaytableId } from '../engine';
 import { frac } from '../math/fraction';
 import type { Fraction } from '../math';
 import { EMPTY_TOTALS, MAX_MISTAKE_SPOTS } from '../scene';
@@ -32,7 +32,11 @@ export interface SandboxSnapshot {
   evMode: EvMode;
   /** The move log (I081), newest hand first; read back with decodeMoveLog. Optional. */
   log?: LoggedHand[];
+  /** The hand history (I055), newest first. Its own version: an unknown one restores as none. */
+  history: { v: 1; items: HandRecord[] };
 }
+
+const HISTORY_VERSION = 1;
 
 const isFraction = (v: unknown): v is Fraction =>
   typeof v === 'object' && v !== null && typeof (v as Fraction).num === 'bigint';
@@ -59,6 +63,7 @@ export function encodeSnapshot(
     totals: encodeTotals(s.totals),
     mistakeSpots: s.mistakeSpots,
     evMode: evMode ?? s.evMode,
+    history: { v: HISTORY_VERSION, items: s.history.slice(0, HISTORY_LIMIT) },
     ...(log && log.length ? { log: log.slice() } : {}),
   };
 }
@@ -66,6 +71,61 @@ export function encodeSnapshot(
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const cents = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
+
+const CHOICES = new Set(['4x', '3x', '2x', '1x', 'check', 'fold']);
+const TIERS = new Set(['b', 'c', 's', 'm', 'x']);
+const cardsOf = (v: unknown, n: number): boolean => {
+  if (typeof v !== 'string' || v.length !== 2 * n) return false;
+  try {
+    return parseCards(v).length === n;
+  } catch {
+    return false;
+  }
+};
+/** A well-formed HandRecord (engine/log.ts); anything else is dropped from the history. */
+export function isHandRecord(v: unknown): v is HandRecord {
+  if (!isObj(v)) return false;
+  if (!(typeof v.n === 'number' && Number.isInteger(v.n) && v.n >= 1)) return false;
+  const { p, d, b } = v;
+  if (!cardsOf(p, 2) || !cardsOf(d, 2) || !cardsOf(b, 5)) return false;
+  try {
+    parseCards(`${p as string}${d as string}${b as string}`); // disjoint
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(v.w) || v.w.length !== 2 || !cents(v.w[0]) || !cents(v.w[1])) return false;
+  if (!(typeof v.net === 'number' && Number.isInteger(v.net))) return false;
+  if (!Array.isArray(v.a) || v.a.length > 3) return false;
+  for (const dec of v.a as unknown[]) {
+    if (!Array.isArray(dec) || (dec.length !== 2 && dec.length !== 4)) return false;
+    if (!['p', 'f', 'r'].includes(dec[0] as string) || !CHOICES.has(dec[1] as string)) return false;
+    if (dec.length === 4) {
+      if (!TIERS.has(dec[2] as string)) return false;
+      // An exact ratio: at most 15 digits each side, and a denominator of at least 1.
+      if (typeof dec[3] !== 'string' || !/^-?\d{1,15}(\/[1-9]\d{0,14})?$/.test(dec[3]))
+        return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * The saved history, or none when the block is missing, malformed or of another version. Rows that
+ * do not validate, repeat a hand number or exceed HISTORY_RECORD_BYTES are dropped.
+ */
+export function decodeHistory(raw: unknown): HandRecord[] {
+  if (!isObj(raw) || raw.v !== HISTORY_VERSION || !Array.isArray(raw.items)) return [];
+  const seen = new Set<number>();
+  const out: HandRecord[] = [];
+  for (const item of raw.items as unknown[]) {
+    if (!isHandRecord(item) || seen.has(item.n)) continue;
+    if (new TextEncoder().encode(JSON.stringify(item)).length > HISTORY_RECORD_BYTES) continue;
+    seen.add(item.n);
+    out.push(item);
+    if (out.length === HISTORY_LIMIT) break;
+  }
+  return out;
+}
 
 /**
  * A saved Fraction, or a legacy float of cents (snapshots before the exact ledger) rounded to the
@@ -121,6 +181,7 @@ export function decodeSnapshot(
     state: GameState;
     startEquity: Cents;
     totals: SessionTotals;
+    history: HandRecord[];
     mistakeSpots: string[];
   };
   evMode: EvMode;
@@ -157,6 +218,7 @@ export function decodeSnapshot(
         state,
         startEquity: raw.startEquity,
         totals: decodeTotals(raw.totals),
+        history: decodeHistory(raw.history),
         mistakeSpots: decodeSpots(raw.mistakeSpots),
       },
       // A valid evMode wins; a legacy snapshot's `practice: true` maps to 'after' (D39).
