@@ -1,5 +1,7 @@
 // Presentational text helpers: money/EV formatting, button labels, hand and settlement prose.
 import { formatMoney, formatPct } from '../engine';
+import { BLIND_PAYTABLES, DEFAULT_PAYTABLE_PRESET, TRIPS_PAYTABLES } from '../engine/paytables';
+import type { Paytable, TripsPaytableId } from '../engine/types';
 import { classWeight } from '../math';
 import type {
   Action,
@@ -205,7 +207,23 @@ export const capitalize = (s: string): string => s.charAt(0).toUpperCase() + s.s
 
 const WAGER_NAME = { ante: 'Ante', blind: 'Blind', play: 'Play', trips: 'Trips' } as const;
 
-function describeSettlement(s: WagerSettlement): string {
+/** The paytables a settlement's odds come from: the blind table and the active Trips preset. */
+export interface SettlementTables {
+  blind: Paytable;
+  trips: Paytable;
+  tripsId: TripsPaytableId;
+}
+export const tablesFor = (tripsId: TripsPaytableId): SettlementTables => ({
+  blind: BLIND_PAYTABLES['blind-standard'],
+  trips: TRIPS_PAYTABLES[tripsId],
+  tripsId,
+});
+const DEFAULT_TABLES = tablesFor(DEFAULT_PAYTABLE_PRESET);
+
+/** 'trips-8-6-5' -> '8/6/5' (the name a learner sees in the paytable). */
+const presetName = (id: TripsPaytableId): string => id.replace('trips-', '').replace(/-/g, '/');
+
+function describeSettlement(s: WagerSettlement, hand: EvaluatedHand, t: SettlementTables): string {
   const name = WAGER_NAME[s.wager];
   if (s.result === 'push') {
     const why =
@@ -216,7 +234,20 @@ function describeSettlement(s: WagerSettlement): string {
           : '';
     return `${name} push${why}`;
   }
-  return `${name} ${formatMoney(s.profit, { sign: true })}`;
+  const money = formatMoney(s.profit, { sign: true });
+  if (s.result !== 'win') return `${name} ${money}`;
+  const hn = CATEGORY_NAME[hand.category];
+  if (s.wager === 'blind') {
+    const odds = t.blind.pays[hand.category];
+    return odds ? `${name} ${money} (${hn} pays ${odds[0]} to ${odds[1]})` : `${name} ${money}`;
+  }
+  if (s.wager === 'trips') {
+    const odds = t.trips.pays[hand.category];
+    return odds
+      ? `${name} ${money} (${hn} pays ${odds[0]} to ${odds[1]} on Trips ${presetName(t.tripsId)})`
+      : `${name} ${money}`;
+  }
+  return `${name} ${money}`;
 }
 
 /** "a pair of kings", "two pair", "three queens", "ace high": the right article for a hand name. */
@@ -326,7 +357,7 @@ function tieLead(p: EvaluatedHand, d: EvaluatedHand): string {
 }
 
 /** The result toast: "Your pair of kings beats the dealer's pair of nines. Ante +$10, ... Net +$50." */
-export function describeResult(r: HandResult): string {
+export function describeResult(r: HandResult, t: SettlementTables = DEFAULT_TABLES): string {
   let lead: string;
   if (r.outcome === 'win') {
     const p = handNameVs(r.player, r.dealer);
@@ -336,7 +367,7 @@ export function describeResult(r: HandResult): string {
     lead = `The dealer's ${d} ${plural(r.dealer) ? 'beat' : 'beats'} your ${handNameVs(r.player, r.dealer)}.`;
   } else if (r.outcome === 'tie') lead = tieLead(r.player, r.dealer);
   else lead = 'Folded.';
-  const parts = r.wagers.map(describeSettlement).join(', ');
+  const parts = r.wagers.map((w) => describeSettlement(w, r.player, t)).join(', ');
   return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
 }
 

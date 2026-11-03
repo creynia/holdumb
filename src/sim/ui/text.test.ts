@@ -16,6 +16,7 @@ import {
   actionOfKey,
   ariaForOption,
   describeResult,
+  tablesFor,
   fmtAnteUnits,
   fmtCentsFraction,
   fmtCost,
@@ -79,6 +80,49 @@ describe('prose', () => {
   it('describes a settled hand', () => {
     expect(describeResult(WON_RESULT)).toBe(
       "Your pair of kings beats the dealer's pair of nines. Ante +$10, Blind push (needs a straight), Play +$40. Net +$50.",
+    );
+  });
+  it('names the paying hand and its odds on blind and trips wins (I011)', () => {
+    const withWager = (
+      category: HandResult['player']['category'],
+      wager: 'blind' | 'trips',
+      result: 'win' | 'lose',
+      profit: number,
+    ): HandResult => ({
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category },
+      wagers: [
+        {
+          wager,
+          amount: 1000,
+          result,
+          profit,
+          reason: wager === 'blind' ? 'blind-bonus' : 'trips-pays',
+        },
+      ],
+      net: profit,
+    });
+    expect(describeResult(withWager('royal-flush', 'blind', 'win', 500000))).toContain(
+      'Blind +$5,000 (royal flush pays 500 to 1)',
+    );
+    expect(describeResult(withWager('straight', 'blind', 'win', 1000))).toContain(
+      'Blind +$10 (straight pays 1 to 1)',
+    );
+    expect(describeResult(withWager('trips', 'trips', 'win', 3000))).toContain(
+      'Trips +$30 (three of a kind pays 3 to 1 on Trips 8/6/5)',
+    );
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).toContain('Trips -$5');
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).not.toContain('pays');
+  });
+  it('reads the odds from the active Trips preset, not a fixed string (I011)', () => {
+    const fullHouseTrips: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'full-house' },
+      wagers: [{ wager: 'trips', amount: 1000, result: 'win', profit: 9000, reason: 'trips-pays' }],
+      net: 9000,
+    };
+    expect(describeResult(fullHouseTrips, tablesFor('trips-9-7-4'))).toContain(
+      'full house pays 9 to 1 on Trips 9/7/4',
     );
   });
   it('makes a fold toast carry only the money (the reveal has the rest)', () => {
