@@ -48,6 +48,7 @@ test('every lesson with a quiz has 44px option rows that toggle from the text', 
   page,
 }) => {
   await page.goto('/#/learn');
+  await expect(page.locator('a[href^="#/learn/"]').first()).toBeVisible();
   const hrefs = await page
     .locator('a[href^="#/learn/"]')
     .evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute('href')!))]);
