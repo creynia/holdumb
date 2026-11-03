@@ -1,13 +1,13 @@
 import type { VNode } from 'preact';
 import { matchPath } from './router';
 import type { ParsedHash } from './router';
-import { Drill } from './screens/Drill';
 import { NotFound } from './screens/NotFound';
 import { Play } from './screens/Play';
 import {
   About,
   BetDetail,
   BetsList,
+  Drill,
   Glossary,
   Hands,
   Home,
