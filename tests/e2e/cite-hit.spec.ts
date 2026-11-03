@@ -41,14 +41,15 @@ for (const id of lessons) {
           while (d < 60 && own(cx + dx * (d + 1), cy + dy * (d + 1))) d++;
           return d;
         };
+        // Each reach counts the 1px steps beyond the centre pixel, so add 1 for the centre itself.
         return {
           glyphHits,
-          width: reach(-1, 0) + reach(1, 0),
-          height: reach(0, -1) + reach(0, 1),
+          width: reach(-1, 0) + reach(1, 0) + 1,
+          height: reach(0, -1) + reach(0, 1) + 1,
         };
       });
       expect(r.glyphHits, `cite ${i} glyph taps`).toBe(9);
-      expect(r.width, `cite ${i} width`).toBeGreaterThanOrEqual(43);
+      expect(r.width, `cite ${i} width`).toBeGreaterThanOrEqual(44);
       expect(r.height, `cite ${i} height`).toBeGreaterThanOrEqual(24);
     }
   });
