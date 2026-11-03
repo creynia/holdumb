@@ -18,6 +18,17 @@ export {
   blindPay,
   tripsPay,
 } from './paytables';
+export {
+  SIX_CARD_PAYTABLES,
+  SIX_CARD_PAYTABLE_IDS,
+  DEFAULT_SIX_CARD_PAYTABLE,
+  SIX_CARD_MIN,
+  SIX_CARD_MAX,
+  bonusCards,
+  settleSixCard,
+  sixCardPay,
+} from './sixcard';
+export type { SixCardPaytable, SixCardPaytableId, SixCardResult } from './sixcard';
 export { DEFAULT_RULES, resolveRules } from './rules';
 export { WAGER_IDS, WAGERS, settleHand } from './wagers';
 export type { SettleBets } from './wagers';

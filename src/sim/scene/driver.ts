@@ -28,6 +28,8 @@ import {
   observe,
 } from './runner';
 import type { SceneContext } from './runner';
+import { addSixCard, applySixCard, validSixCardBet } from './sixcard';
+import type { SixCardOutcome, SixCardSetting } from './sixcard';
 import type {
   CircleId,
   OptionKey,
@@ -85,6 +87,10 @@ export interface SessionTotals {
   tripsWageredCents: number;
   /** Expected Trips result, −edge × wager per hand (exact cents). */
   tripsExpectedCents: Fraction;
+  /** I062 Six Card Bonus: result, action and exact expectation (−edge × wager). */
+  sixCardCents: number;
+  sixCardWageredCents: number;
+  sixCardExpectedCents: Fraction;
   decisions: number;
   mistakes: number;
 }
@@ -98,21 +104,25 @@ export const EMPTY_TOTALS: SessionTotals = {
   tripsCents: 0,
   tripsWageredCents: 0,
   tripsExpectedCents: ZERO_CENTS,
+  sixCardCents: 0,
+  sixCardWageredCents: 0,
+  sixCardExpectedCents: ZERO_CENTS,
   decisions: 0,
   mistakes: 0,
 };
 
 export interface SessionView extends SessionTotals {
   net: Cents;
-  /** Ante+Blind+Play+Trips action over the session (the engine's stats). */
+  /** Ante+Blind+Play+Trips (the engine's stats) + Six Card action over the session. */
   wageredCents: Cents;
-  /** round(expected + expected Trips): "Perfect play expects", rounded once. */
+  /** round(expected + expected Trips + expected Six Card): "Perfect play expects", rounded once. */
   perfectCents: Cents;
   /** round(mistakeCents): what the decisions cost against perfect play. */
   mistakesRoundedCents: Cents;
   /** net − perfect + mistakes: the displayed split adds up to the result to the cent. */
   luckCents: Cents;
   tripsExpectedRoundedCents: Cents;
+  sixCardExpectedRoundedCents: Cents;
   /** −(expected − mistakes) / antes of the scored hands; null before the first scored hand. */
   edgePerAnte: Fraction | null;
 }
@@ -156,6 +166,8 @@ export interface DriverView {
   session: SessionView;
   startEquity: Cents;
   result: HandResult | null;
+  /** I062: the Six Card Bonus setting (sandbox) and the last hand's outcome. */
+  sixCard: { setting: SixCardSetting | null; last: SixCardOutcome | null };
 }
 
 export interface DriverOptions {
@@ -226,6 +238,8 @@ export class SimDriver {
   private listeners = new Set<() => void>();
   private cached: DriverView | null = null;
   private busy = false;
+  private sixCard: SixCardSetting | null = null;
+  private sixCardLast: SixCardOutcome | null = null;
   private disposed = false;
 
   constructor(opts: DriverOptions) {
@@ -297,7 +311,9 @@ export class SimDriver {
     const allowedOptions = decision && gate.options ? opts : undefined;
     const t = this.totals;
     const net = equity(this.game) - this.startEq;
-    const perfectCents = round(add(t.expectedCents, t.tripsExpectedCents));
+    const perfectCents = round(
+      add(add(t.expectedCents, t.tripsExpectedCents), t.sixCardExpectedCents),
+    );
     const mistakesRoundedCents = round(t.mistakeCents);
     const w = this.game.stats.wagered;
     this.cached = {
@@ -328,11 +344,12 @@ export class SimDriver {
       session: {
         ...t,
         net,
-        wageredCents: w.ante + w.blind + w.play + w.trips,
+        wageredCents: w.ante + w.blind + w.play + w.trips + t.sixCardWageredCents,
         perfectCents,
         mistakesRoundedCents,
         luckCents: net - perfectCents + mistakesRoundedCents,
         tripsExpectedRoundedCents: round(t.tripsExpectedCents),
+        sixCardExpectedRoundedCents: round(t.sixCardExpectedCents),
         edgePerAnte:
           t.scoredAnteCents > 0
             ? div(neg(sub(t.expectedCents, t.mistakeCents)), frac(t.scoredAnteCents))
@@ -340,6 +357,7 @@ export class SimDriver {
       },
       startEquity: this.startEq,
       result: this.game.hand?.result ?? null,
+      sixCard: { setting: this.sixCard, last: this.sixCardLast },
     };
     return this.cached;
   }
@@ -619,6 +637,13 @@ export class SimDriver {
       if (action.type === 'deal') this.beginHandTrack();
       if (decision) this.trackDecision(pv, action);
       this.game = r.state;
+      if (action.type === 'deal') {
+        // I062: the Six Card Bonus settles with the deal (it does not depend on play).
+        const six = applySixCard(this.game, this.sixCard);
+        this.game = six.state;
+        this.sixCardLast = six.outcome;
+        this.totals = addSixCard(this.totals, six.outcome);
+      }
       this.lastEvents = r.events;
       this.eventSeq++;
       this.emit({
@@ -670,6 +695,17 @@ export class SimDriver {
     this.afterChange();
   }
 
+  /**
+   * I062: the Six Card Bonus side bet for the next deals (sandbox), or null to stop betting it.
+   * Returns false (and changes nothing) for an amount outside whole dollars $1–$25.
+   */
+  setSixCard(setting: SixCardSetting | null): boolean {
+    if (setting && !validSixCardBet(setting.bet)) return false;
+    this.sixCard = setting ? { ...setting } : null;
+    this.notify();
+    return true;
+  }
+
   /** Sandbox: start over with a fresh rack. */
   newSession(bankroll: Cents): void {
     const ante = this.game.bets.ante || this.scene.bets?.ante || 1000;
@@ -683,6 +719,7 @@ export class SimDriver {
     this.startEq = bankroll;
     this.totals = { ...EMPTY_TOTALS };
     this.hand = null;
+    this.sixCardLast = null;
     this.lastEvents = [];
     this.eventSeq++;
     this.pv = { key: null, status: 'idle', value: null, progress: 0 };

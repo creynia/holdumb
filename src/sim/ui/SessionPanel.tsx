@@ -19,7 +19,7 @@ const m = (c: number, sign = false): string => typographic(formatMoney(Math.roun
 /**
  * Session panel (curriculum 8.5): your result, total wagered, what perfect play expects, what your
  * decisions cost (with the mistake count), luck, your edge per Ante against perfect play, and the
- * Trips line. Expected figures are exact and rounded once, so the rows add up to the cent.
+ * Trips and Six Card lines. Expected figures are exact and rounded once, so the rows add up to the cent.
  */
 export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelProps) {
   const [open, setOpen] = useState(!!defaultOpen);
@@ -99,6 +99,16 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
                 wagered <span class="sim-money">{m(s.tripsWageredCents)}</span> · expected{' '}
                 <span class="sim-money">{m(s.tripsExpectedRoundedCents, true)}</span> · actual{' '}
                 <span class="sim-money">{m(s.tripsCents, true)}</span>
+              </dd>
+            </div>
+          ) : null}
+          {s.sixCardWageredCents > 0 ? (
+            <div>
+              <dt>Six Card</dt>
+              <dd data-testid="session-six-card">
+                wagered <span class="sim-money">{m(s.sixCardWageredCents)}</span> · expected{' '}
+                <span class="sim-money">{m(s.sixCardExpectedRoundedCents, true)}</span> · actual{' '}
+                <span class="sim-money">{m(s.sixCardCents, true)}</span>
               </dd>
             </div>
           ) : null}

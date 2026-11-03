@@ -29,7 +29,7 @@ and/or exact rationals in Python. The scratch code is in
 | Engine | Pure, immutable, framework-free TS in `src/sim/engine/`. No DOM, no `Math.random`, no `Date`. |
 | Rules | Standard UTH (D9): Ante = Blind, Play 4x/3x preflop, 2x flop, 1x river, fold only at the river. Dealer qualifies with a pair or better; if not, the Ante pushes. The Trips bet stays in action when you fold. |
 | Paytables | Config in a registry. **Blind**: one preset, `blind-standard` 500/50/10/3/3:2/1 (D12). **Trips**: `trips-8-6-5` (default, D6) plus `trips-9-7-4`, `trips-8-7-4`, `trips-7-6-5`, `trips-8-6-4`. Types and generator are parameterised by the Blind table so presets can be added later. |
-| Side bets | Trips only (D5). The `SideBetDef` interface lets 6-Card Bonus etc. be added later as a contract extension. |
+| Side bets | Trips (D5), plus the optional Six Card Bonus in the sandbox (D5a, I062: `engine/sixcard.ts`, `scene/sixcard.ts`, `ui/SixCardPanel.tsx`; settles at the deal, outside the frozen wager registry). |
 | Cards | `Card = rank*4 + suit` (0..51), rank 0 = deuce .. 12 = ace, suit order `s h d c`. Text codes `As`, `Td` via `parseCards` (shared with content and URLs). |
 | RNG | crappy's `xoshiro128**` seeded through `splitmix32`, plus `randBelow(n)` with rejection sampling. Each hand gets a Fisher-Yates shuffle of the cards not forced. RNG state lives in `GameState`, so play is replayable. |
 | Forced decks | `ForcedDeal` lists any subset of player / dealer / flop / turn / river cards as codes. The rest is shuffled from the seed. A queue is kept per scene and per step. |

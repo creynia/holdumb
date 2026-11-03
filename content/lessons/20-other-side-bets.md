@@ -2,7 +2,7 @@
 id: other-side-bets
 title: "Six Card Bonus, progressives and Bad Beat"
 chapter: perfect-fun
-summary: "The bets the app doesn't deal, and what they cost."
+summary: "Side bets beyond Trips, and what they cost."
 minutes: 7
 sources:
   - onthestrip-uth
@@ -12,7 +12,7 @@ sources:
   - rack-caesars
 ---
 
-Some UTH tables offer more side bets. The app doesn't deal them, but here's what they cost.
+Some UTH tables offer more side bets. Here's what they cost. You can try the Six Card Bonus on the Play table (switch it on under the table); the others are explained here only.
 
 **Six Card Bonus.** It pays on the best five cards out of six: your two hole cards plus four more. The two example tables here are as reported by OnTheStrip[^1] and Vegas Aces[^2]; the second is the minimum table in the New Jersey regulation[^3]. On the
 common 1000/200/100/20/15/10/7 table (royal, straight flush, quads, full house, flush, straight, trips),
