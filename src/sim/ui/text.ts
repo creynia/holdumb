@@ -170,19 +170,22 @@ export function bestOf(preview: DecisionPreview): DecisionOption {
 }
 
 /**
- * The skill-versus-luck line after a hand (I059): every decision fine -> what the line expected
- * against what the cards gave; otherwise only the costliest decision, with its average cost.
+ * The skill-versus-luck line after a hand (I059). Every decision fine -> "Played it right" with
+ * what the line expected against what the cards gave. A mistake is named (the costliest only,
+ * once) unless the last decision was the costliest and was just described in words (the I080
+ * narration, or the After-mode reveal): then the line carries only expected against result, so
+ * the cost is never said twice.
  */
-export function handVerdictText(v: HandVerdict): string {
+export function handVerdictText(v: HandVerdict, lastDescribed = false): string {
   const mistakes = v.decisions.filter((d) => d.tier !== 'best' && d.tier !== 'close');
   const worst = mistakes.reduce<HandVerdict['decisions'][number] | null>(
     (w, d) => (!w || compareFractions(d.costCents, w.costCents) > 0 ? d : w),
     null,
   );
-  if (!worst) {
-    const e = Number(roundFraction(v.expectedCents));
-    return `Played it right. Expected ${typographic(formatMoney(e, { sign: true }))}, result ${typographic(formatMoney(v.netCents, { sign: true }))}.`;
-  }
+  const e = Number(roundFraction(v.expectedCents));
+  const figures = `Expected ${typographic(formatMoney(e, { sign: true }))}, result ${typographic(formatMoney(v.netCents, { sign: true }))}.`;
+  if (!worst) return `Played it right. ${figures}`;
+  if (lastDescribed && worst === v.decisions[v.decisions.length - 1]) return figures;
   const cost = fmtCostC(Number(roundFraction(worst.costCents)));
   return `Your ${worst.street} ${worst.label} cost ${cost} on average (${DECISION_TIER_LABEL[worst.tier]}).`;
 }

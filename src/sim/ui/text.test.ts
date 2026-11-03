@@ -147,6 +147,44 @@ describe('hand verdict line (I059)', () => {
       'Played it right. Expected \u2212$0.12, result $0.',
     );
   });
+  it('never says a cost twice: a last decision already described by the narration or the reveal gets only the figures', () => {
+    const one = {
+      expectedCents: frac(-866),
+      netCents: 4000,
+      decisions: [d('preflop', 'Bet 4x', 'costly', 399)],
+    };
+    // described: expected against result, no cost
+    expect(handVerdictText(one, true)).toBe('Expected \u2212$8.66, result +$40.');
+    // not described (a lesson step, no narration): the costliest decision is named
+    expect(handVerdictText(one, false)).toBe(
+      'Your preflop Bet 4x cost $3.99 on average (Mistake).',
+    );
+    // two mistakes: the costliest one is named, once, even when the last was described
+    const two = {
+      expectedCents: frac(100),
+      netCents: -500,
+      decisions: [d('preflop', 'Bet 3x', 'costly', 704), d('river', 'Fold', 'small', 51)],
+    };
+    const text = handVerdictText(two, true);
+    expect(text).toBe('Your preflop Bet 3x cost $7.04 on average (Mistake).');
+    expect(text.match(/cost/g)).toHaveLength(1);
+    // the costliest is the last one and it was described: figures only, earlier cheaper one unnamed
+    const lastWorst = {
+      expectedCents: frac(100),
+      netCents: -500,
+      decisions: [d('preflop', 'Bet 3x', 'small', 51), d('river', 'Fold', 'costly', 704)],
+    };
+    expect(handVerdictText(lastWorst, true)).toBe('Expected +$1, result \u2212$5.');
+    // a fine last decision after a mistake: the mistake is named (the narration was about the fine one)
+    const earlier = {
+      expectedCents: frac(0),
+      netCents: 0,
+      decisions: [d('preflop', 'Bet 3x', 'costly', 704), d('river', 'Bet 1x', 'best', 0)],
+    };
+    expect(handVerdictText(earlier, true)).toBe(
+      'Your preflop Bet 3x cost $7.04 on average (Mistake).',
+    );
+  });
   it('names only the costliest decision, with its tier word', () => {
     expect(
       handVerdictText({

@@ -91,7 +91,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
         const tail =
           verdict &&
           resolveEvShown(latest.current.settings, scene!, mode === 'sandbox', dd!.view.step)
-            ? ` ${handVerdictText(verdict)}`
+            ? ` ${handVerdictText(verdict, lead !== '' || dd!.view.evMode === 'after')}`
             : '';
         // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
         pushToast(

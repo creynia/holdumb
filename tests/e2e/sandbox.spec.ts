@@ -325,8 +325,10 @@ test.describe('sandbox', () => {
     await expect(toast).toHaveCount(1);
     // the I080 narration, the result, then the verdict, in that order, in one toast
     await expect(toast).toHaveText(
-      /Bet 1x: a mistake, costs \$3\.59 against Fold\..*Net.*Your river Bet 1x cost \$3\.59 on average \(Mistake\)\./s,
+      /Bet 1x: a mistake, costs \$3\.59 against Fold\..*Net.*Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\./s,
     );
+    // the cost is said once
+    await expect(toast).not.toContainText('on average');
   });
 
   test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {

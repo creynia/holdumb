@@ -461,11 +461,15 @@ describe('Simulator container', () => {
       );
       evClient.dispose();
     });
-    it('a mistake names the costliest decision', async () => {
+    it('a single mistake is not described twice: the narration has the cost, the verdict the figures', async () => {
       const { evClient } = await playRiver('fold');
-      expect(document.querySelector('.sim-toast')!.textContent).toMatch(
-        /Your river Fold cost \$[\d.,]+ on average \((Small mistake|Mistake|Big mistake)\)\./,
+      const text = document.querySelector('.sim-toast')!.textContent!;
+      expect(text).toMatch(
+        /^Fold: (a small mistake|a mistake|a big mistake), costs \$[\d.,]+ against /,
       );
+      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
+      expect(text).not.toMatch(/on average/);
+      expect(text.match(/\bcosts?\b/g)).toHaveLength(1);
       evClient.dispose();
     });
     it('hidden when EV is never shown; shown with EV after the move', async () => {
@@ -474,7 +478,10 @@ describe('Simulator container', () => {
       never.evClient.dispose();
       cleanup();
       const after = await playRiver('fold', { settings: { ...settings, evMode: 'after' } });
-      expect(document.querySelector('.sim-toast')!.textContent).toMatch(/Your river Fold cost/);
+      // the reveal card has the cost, so the toast carries only the figures
+      const text = document.querySelector('.sim-toast')!.textContent!;
+      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
+      expect(text).not.toMatch(/cost/);
       after.evClient.dispose();
     });
     it('a lesson scene shows it only with ui.verdict', async () => {
