@@ -11,13 +11,15 @@ updates:
       dev-tooling:
         patterns:
           - 'eslint*'
-          - '@typescript-eslint/*'
+          - 'typescript-eslint'
+          - '@eslint/*'
           - 'prettier'
           - 'typescript'
           - 'vitest'
     ignore:
       - dependency-name: '@playwright/test'
       - dependency-name: 'playwright-core'
+      # Ignored with the other Playwright packages: its version must match the same container.
       - dependency-name: '@axe-core/playwright'
   - package-ecosystem: github-actions
     directory: '/'

@@ -6,6 +6,7 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
   devDependencies: Record<string, string>;
   overrides: Record<string, string>;
+  scripts: Record<string, string>;
 };
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
 const visual = readFileSync(join(root, '.github/workflows/visual-baselines.yml'), 'utf8');
@@ -19,6 +20,7 @@ describe('Playwright is pinned in one version everywhere (I045)', () => {
   it.each([
     ['ci.yml', ci],
     ['visual-baselines.yml', visual],
+    ["package.json script 'test:visual:update'", pkg.scripts['test:visual:update'] ?? ''],
   ])('%s runs the same Playwright container', (_name, text) => {
     const tag = text.match(/mcr\.microsoft\.com\/playwright:v([\d.]+)-noble/)?.[1];
     expect(tag, 'container image tag').toBeDefined();

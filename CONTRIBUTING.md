@@ -91,7 +91,7 @@ As root on Linux, you can run the CI image without a Docker daemon by extracting
 Playwright lives in three places, and a bump must change all of them in one PR:
 
 1. `package.json`: `devDependencies["@playwright/test"]` and `overrides["playwright-core"]`.
-2. `.github/workflows/ci.yml` and `.github/workflows/visual-baselines.yml`: the `container:` image `mcr.microsoft.com/playwright:v<version>-noble`.
+2. `.github/workflows/ci.yml`, `.github/workflows/visual-baselines.yml` and the `test:visual:update` script in `package.json`: the container image `mcr.microsoft.com/playwright:v<version>-noble`.
 3. `tests/visual/__screenshots__`: the baselines. They must be regenerated inside that container.
 
 Dependabot does not bump these automatically (`.github/dependabot.yml` ignores them). A bump PR
