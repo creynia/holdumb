@@ -27,7 +27,7 @@ import { Link } from '../components/Link';
 import { useStore } from '../context';
 import { getEvClient } from '../evClient';
 import { navigate } from '../router';
-import { DRILL_STREETS } from '../storage';
+import { DRILL_STREETS, lensStats } from '../storage';
 import {
   DRILL_CATEGORY_LABELS,
   categoriesOf,
@@ -185,11 +185,9 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
 
   const d = store.drill;
   const weakest = weakestCategory(d);
-  const counts = d.lens === 'practical' ? d.practical : d.byStreet;
-  const total = DRILL_STREETS.reduce(
-    (n, s) => n + d.byStreet[s].answered + d.practical[s].answered,
-    0,
-  );
+  const ls = lensStats(d);
+  const counts = ls.byStreet;
+  const total = DRILL_STREETS.reduce((n, s) => n + counts[s].answered, 0);
   const chosenOpt =
     spot && answer
       ? answer.preview.options.find((o) =>
@@ -230,27 +228,12 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         ))}
       </div>
 
-      <div class="segmented" role="group" aria-label="Grade by" data-testid="drill-lens">
-        <span class="seg-label">Grade by</span>
-        {(['perfect', 'practical'] as const).map((l) => (
-          <button
-            key={l}
-            type="button"
-            class="seg"
-            aria-pressed={d.lens === l}
-            onClick={() => store.setDrillLens(l)}
-          >
-            {l === 'perfect' ? 'Perfect play' : 'Basic card'}
-          </button>
-        ))}
-      </div>
-
       <section class="card drill-stats" aria-label="Your drill stats" data-testid="drill-stats">
         <span>
           Streak <strong data-testid="streak">{store.drillStreak}</strong>
         </span>
         <span>
-          Best <strong data-testid="best-streak">{d.bestStreak}</strong>
+          Best <strong data-testid="best-streak">{ls.bestStreak}</strong>
         </span>
         {DRILL_STREETS.map((s) => {
           const v = counts[s];
@@ -340,15 +323,29 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         </section>
       )}
 
-      {total > 0 && d.recentMisses.length > 0 && (
+      {total > 0 && ls.recentMisses.length > 0 && (
         <p>
-          <Link to={`/drill?focus=${d.recentMisses.join(',')}`} class="btn btn-ghost">
-            Review misses ({d.recentMisses.length})
+          <Link to={`/drill?focus=${ls.recentMisses.join(',')}`} class="btn btn-ghost">
+            Review misses ({ls.recentMisses.length})
           </Link>
         </p>
       )}
 
       <div class="drill-picker">
+        <div class="segmented" role="group" aria-label="Grade by" data-testid="drill-lens">
+          <span class="seg-label">Grade by</span>
+          {(['perfect', 'practical'] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              class="seg"
+              aria-pressed={d.lens === l}
+              onClick={() => store.setDrillLens(l)}
+            >
+              {l === 'perfect' ? 'Perfect play' : 'Basic card'}
+            </button>
+          ))}
+        </div>
         {street !== 'mixed' && (
           <label class="drill-category">
             <span>Category</span>

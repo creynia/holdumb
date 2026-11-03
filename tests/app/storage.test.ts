@@ -66,12 +66,16 @@ describe('storage', () => {
       drill: {
         lens: 'practical',
         byStreet: { flop: { answered: 3, correct: 2 } },
-        practical: { flop: { answered: 5, correct: 9 }, bogus: { answered: 1 } },
+        byCategory: { 'flop-nothing': { answered: 2, correct: 1 } },
+        practical: { byStreet: { flop: { answered: 5, correct: 9 }, bogus: { answered: 1 } } },
       },
     })!;
     expect(p.drill.lens).toBe('practical');
+    // pre-lens category stats migrate into the perfect lens, not the basic-card one
+    expect(p.drill.byCategory['flop-nothing']).toEqual({ answered: 2, correct: 1 });
+    expect(p.drill.practical.byCategory).toEqual({});
     expect(p.drill.byStreet.flop).toEqual({ answered: 3, correct: 2 });
-    expect(p.drill.practical.flop).toEqual({ answered: 5, correct: 5 });
+    expect(p.drill.practical.byStreet.flop).toEqual({ answered: 5, correct: 5 });
     expect(decodeImport(encodeExport(p))).toEqual(p);
     const old = sanitize({
       version: 1,
@@ -80,7 +84,7 @@ describe('storage', () => {
     expect(old.drill.lens).toBe('perfect');
     expect(old.drill.bestStreak).toBe(4);
     expect(old.drill.byStreet.river).toEqual({ answered: 2, correct: 1 });
-    expect(old.drill.practical.river).toEqual({ answered: 0, correct: 0 });
+    expect(old.drill.practical.byStreet.river).toEqual({ answered: 0, correct: 0 });
   });
 
   it('migrates a pre-category drill record keeping streaks and byStreet', () => {

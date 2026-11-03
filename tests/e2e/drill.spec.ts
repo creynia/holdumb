@@ -60,6 +60,9 @@ for (const vp of [
     // the picker sits below the action buttons, so it cannot push them
     const sel = (await page.getByTestId('drill-categories').boundingBox())!;
     expect(sel.y).toBeGreaterThan(plain);
+    // the lens toggle lives in the same picker block, below the buttons
+    const lens = (await page.getByTestId('drill-lens').boundingBox())!;
+    expect(lens.y).toBeGreaterThan(plain);
     // Mixed has the same stack above the spot card as every street (no picker row)
     await page.goto('/#/drill');
     await expect(page.getByTestId('drill-spot')).toBeVisible();

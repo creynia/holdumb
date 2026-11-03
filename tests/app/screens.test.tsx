@@ -15,6 +15,7 @@ import {
   gradeSpot as realGradeSpot,
   nextSpot as realNextSpot,
 } from '../../src/sim';
+import { weakestCategory } from '../../src/app/drillCategories';
 import { Drill, rngFromSeed, type DrillDeps } from '../../src/app/screens/Drill';
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
@@ -545,8 +546,29 @@ describe('Drill', () => {
       expect(res.querySelector('[role="status"]')!.textContent).toMatch(
         /^Correct! Check is the card's play\. Perfect play says Bet 2x here, by 0\.300 antes \(\$[\d.,]+ per hand\)\. The card's rule is still the one to remember\.$/,
       );
-      expect(store.drill.practical.flop).toEqual({ answered: 1, correct: 1 });
+      expect(store.drill.practical.byStreet.flop).toEqual({ answered: 1, correct: 1 });
       expect(store.drill.byStreet.flop).toEqual({ answered: 0, correct: 0 });
+    });
+    it('lenses never mix: categories, misses, streaks and the weakest line are per lens', () => {
+      const store = new Store(new MemoryStorage());
+      store.setDrillLens('practical');
+      for (let i = 0; i < 5; i++) store.recordDrill('flop', false, `f:${i}`, 'flop-flush-draw');
+      expect(store.drill.practical.byCategory['flop-flush-draw']).toEqual({
+        answered: 5,
+        correct: 0,
+      });
+      expect(store.drill.practical.recentMisses).toHaveLength(5);
+      expect(store.drill.byCategory).toEqual({});
+      expect(store.drill.recentMisses).toEqual([]);
+      expect(weakestCategory(store.drill)?.id).toBe('flop-flush-draw');
+      store.setDrillLens('perfect');
+      expect(weakestCategory(store.drill)).toBeNull();
+      store.recordDrill('flop', true, 'f:9', 'flop-flush-draw');
+      expect(store.drillStreak).toBe(1);
+      store.setDrillLens('practical');
+      expect(store.drillStreak).toBe(0);
+      expect(store.drill.bestStreak).toBe(1);
+      expect(store.drill.practical.bestStreak).toBe(0);
     });
     it('the lens persists in the store and survives a reload', () => {
       const mem = new MemoryStorage();
