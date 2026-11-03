@@ -164,27 +164,29 @@ export function Felt({
         />
 
         {/* dealer */}
-        {showDealer
-          ? L.dealer.map((p, i) => {
-              const card = dealer?.[i];
-              const faceUp = !!dealerShown && card !== undefined;
-              return (
-                <Card
-                  key={faceUp ? `up-${card}` : `down-${i}`}
-                  card={card}
-                  faceDown={!faceUp}
-                  x={p.x}
-                  y={p.y}
-                  w={cs.w}
-                  h={cs.h}
-                  fourColor={fourColor}
-                  slotLabel={`Dealer card ${i + 1}, face down`}
-                  delayMs={faceUp ? (d?.reveal[i] ?? 0) : (d?.dealer[i] ?? 0)}
-                  durMs={dur}
-                />
-              );
-            })
-          : null}
+        <g data-testid="felt-dealer">
+          {showDealer
+            ? L.dealer.map((p, i) => {
+                const card = dealer?.[i];
+                const faceUp = !!dealerShown && card !== undefined;
+                return (
+                  <Card
+                    key={faceUp ? `up-${card}` : `down-${i}`}
+                    card={card}
+                    faceDown={!faceUp}
+                    x={p.x}
+                    y={p.y}
+                    w={cs.w}
+                    h={cs.h}
+                    fourColor={fourColor}
+                    slotLabel={`Dealer card ${i + 1}, face down`}
+                    delayMs={faceUp ? (d?.reveal[i] ?? 0) : (d?.dealer[i] ?? 0)}
+                    durMs={dur}
+                  />
+                );
+              })
+            : null}
+        </g>
         <HandLabel
           spot={L.handLabels.dealer}
           text={labels?.dealer ? `Dealer: ${labels.dealer}` : 'Dealer'}
@@ -193,25 +195,27 @@ export function Felt({
         />
 
         {/* board */}
-        {L.board.map((p, i) => {
-          const card = board[i];
-          return card === undefined ? (
-            <CardSlot key={`slot-${i}`} x={p.x} y={p.y} w={bs.w} h={bs.h} />
-          ) : (
-            <Card
-              key={`b-${card}`}
-              card={card}
-              x={p.x}
-              y={p.y}
-              w={bs.w}
-              h={bs.h}
-              fourColor={fourColor}
-              slotLabel={BOARD_NAMES[i]}
-              delayMs={i < 3 ? (d?.flop[i] ?? 0) : i === 3 ? (d?.turn ?? 0) : (d?.river ?? 0)}
-              durMs={dur}
-            />
-          );
-        })}
+        <g data-testid="felt-board">
+          {L.board.map((p, i) => {
+            const card = board[i];
+            return card === undefined ? (
+              <CardSlot key={`slot-${i}`} x={p.x} y={p.y} w={bs.w} h={bs.h} />
+            ) : (
+              <Card
+                key={`b-${card}`}
+                card={card}
+                x={p.x}
+                y={p.y}
+                w={bs.w}
+                h={bs.h}
+                fourColor={fourColor}
+                slotLabel={BOARD_NAMES[i]}
+                delayMs={i < 3 ? (d?.flop[i] ?? 0) : i === 3 ? (d?.turn ?? 0) : (d?.river ?? 0)}
+                durMs={dur}
+              />
+            );
+          })}
+        </g>
 
         {/* circles */}
         {(Object.keys(L.circles) as CircleId[]).map((id) => {
@@ -246,21 +250,23 @@ export function Felt({
         ) : null}
 
         {/* player */}
-        {dealt
-          ? L.player.map((p, i) => (
-              <Card
-                key={`p-${hole[i]}`}
-                card={hole[i]}
-                x={p.x}
-                y={p.y}
-                w={cs.w}
-                h={cs.h}
-                fourColor={fourColor}
-                delayMs={d?.player[i] ?? 0}
-                durMs={dur}
-              />
-            ))
-          : null}
+        <g data-testid="felt-hole">
+          {dealt
+            ? L.player.map((p, i) => (
+                <Card
+                  key={`p-${hole[i]}`}
+                  card={hole[i]}
+                  x={p.x}
+                  y={p.y}
+                  w={cs.w}
+                  h={cs.h}
+                  fourColor={fourColor}
+                  delayMs={d?.player[i] ?? 0}
+                  durMs={dur}
+                />
+              ))
+            : null}
+        </g>
         {labels?.player ? (
           <HandLabel
             spot={L.handLabels.player}

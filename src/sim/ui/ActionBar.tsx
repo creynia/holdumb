@@ -3,6 +3,7 @@ import type { Cents, Street } from '../engine';
 import type { OptionKey } from '../scene';
 import type { DecisionPreview } from '../math';
 import type { EvStatus } from './text';
+import { DEAL_SHORTCUT, OPTION_SHORTCUT } from './shortcuts';
 import {
   DECISION_TIER_SHORT,
   OPTION_LABELS,
@@ -140,6 +141,8 @@ export function ActionBar({
         class="sim-act sim-act-primary"
         disabled={disabled || (betting && !canDeal)}
         onClick={betting ? onDeal : onRebet}
+        aria-keyshortcuts={DEAL_SHORTCUT}
+        title={`${betting ? 'Deal' : 'Rebet & Deal'} (${DEAL_SHORTCUT} or Enter)`}
         data-action={betting ? 'deal' : 'rebet'}
         data-slot="bc"
       >
@@ -167,6 +170,8 @@ export function ActionBar({
             disabled={disabled}
             aria-pressed={selected === k}
             onClick={() => onOption?.(k)}
+            aria-keyshortcuts={OPTION_SHORTCUT[k]}
+            title={`${OPTION_LABELS[k]} (${OPTION_SHORTCUT[k]})`}
             data-option={k}
             data-slot={slotOf(k, keys)}
           >
