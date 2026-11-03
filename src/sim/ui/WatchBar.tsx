@@ -87,9 +87,15 @@ export function WatchStatus({
 }) {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // Watch is started from below the table: scroll the window (never the layout) so the strip sits
-    // at the bottom of the screen, clear of the tab bar, with the felt and ActionBar above it.
-    el.current?.scrollIntoView?.({ block: 'end' });
+    // Watch is started from below the table: scroll the window (never the layout, never the rail's
+    // own scroller) so the strip sits at the bottom of the screen, clear of the tab bar (its scroll
+    // margin), without taking the top of the table off screen.
+    const node = el.current;
+    if (!node || typeof window.scrollBy !== 'function') return;
+    const r = node.getBoundingClientRect();
+    const margin = parseFloat(getComputedStyle(node).scrollMarginBottom) || 0;
+    const top = node.closest('.sim-table')?.getBoundingClientRect().top ?? r.top;
+    window.scrollBy(0, Math.min(r.bottom + margin - window.innerHeight, top));
   }, []);
   return (
     <div class={`sim-watch-status sim-watch-${orientation}`} data-testid="watch-status" ref={el}>
