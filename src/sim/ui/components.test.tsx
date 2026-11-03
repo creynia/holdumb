@@ -29,12 +29,24 @@ import { StrategyChart, chartClasses, preflop4xSet } from './StrategyChart';
 import { Table } from './Table';
 import { TierBadge } from './TierBadge';
 import { Toasts } from './Toasts';
+import { flushAnnouncements, resetAnnouncer, subscribeAnnouncements } from './announcer';
 import { buildTimeline } from './animation';
 import { needsConfirm } from './settings';
 import { OPTION_SLOT, optionKeyOf } from './text';
 import { landscapeLayout, portraitLayout } from './layouts';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  resetAnnouncer();
+});
+/** What the app's single announcer would speak now (each entry is one announcement). */
+function heard(): string[] {
+  const out: string[] = [];
+  const off = subscribeAnnouncements((_p, t) => out.push(t));
+  flushAnnouncements();
+  off();
+  return out;
+}
 
 function sheet(over: Partial<EvSheetProps> = {}) {
   const props: EvSheetProps = {
@@ -521,8 +533,10 @@ describe('Felt', () => {
   it('announces the hands to screen readers', () => {
     felt({ labels: { player: 'ace high', dealer: 'pair of tens, qualifies' } });
     const live = document.querySelector('.sim-sr')!;
-    expect(live.getAttribute('aria-live')).toBe('polite');
+    // Not a live region: it is spoken through the one app announcer (I036).
+    expect(live.hasAttribute('aria-live')).toBe(false);
     expect(live.textContent).toContain('Dealer: pair of tens, qualifies');
+    expect(heard()).toEqual([expect.stringContaining('Dealer: pair of tens, qualifies')]);
   });
   it('puts the multiple on the Play circle', () => {
     felt({ bets: { ante: 1000, blind: 1000, play: 4000 }, playMultiple: 4 });
@@ -680,7 +694,10 @@ describe('small pieces', () => {
   it('Toasts announce politely and dismiss', () => {
     const onDismiss = vi.fn();
     render(<Toasts toasts={[{ id: 3, text: 'Net +$50.' }]} onDismiss={onDismiss} />);
-    expect(screen.getByRole('log').getAttribute('aria-live')).toBe('polite');
+    expect(
+      document.querySelector('[aria-live],[role="log"],[role="status"],[role="alert"]'),
+    ).toBeNull();
+    expect(heard()).toEqual(['Net +$50.']);
     fireEvent.click(screen.getByLabelText('Dismiss'));
     expect(onDismiss).toHaveBeenCalledWith(3);
   });
@@ -709,7 +726,7 @@ describe('small pieces', () => {
       'You folded. Net -$20. The dealer had a pair of tens (qualifies).',
     );
     expect(spoken.className).toContain('sim-sr');
-    expect(screen.getByRole('log').contains(spoken)).toBe(true);
+    expect(heard()).toEqual(['You folded. Net -$20. The dealer had a pair of tens (qualifies).']);
   });
   it('Table lays out portrait and landscape with the actions present in both', () => {
     for (const o of ['portrait', 'landscape'] as const) {
@@ -985,6 +1002,7 @@ describe('SessionPanel (curriculum 8.5)', () => {
     scoredAnteCents: 20_000,
     tripsCents: 2500,
     tripsWageredCents: 21_000,
+    topUpCents: 0,
     tripsExpectedCents: frac(-400),
     decisions: 5,
     mistakes: 3,

@@ -791,7 +791,7 @@ textarea {
   flex-wrap: wrap;
   gap: 0.4rem 1.2rem;
 }
-.drill-result [role='status'] {
+.drill-result [data-testid='drill-headline'] {
   margin-top: 0;
 }
 .rankings {
@@ -948,6 +948,18 @@ textarea {
   font-size: 0.75rem;
   padding: 0 0.15rem;
   min-width: 1ch;
+  position: relative;
+}
+/* Invisible hit area around the citation number; the visual size and line height are unchanged. */
+.cite-btn::before {
+  content: '';
+  position: absolute;
+  /* The button box is 0 tall (.cite has line-height 0), so centre a fixed height on it. The height
+     is capped at the line pitch (about 1.55rem), so a tap on one line never reaches the next. */
+  top: 50%;
+  height: 1.5rem;
+  margin-top: -0.75rem;
+  inset-inline: -17px;
 }
 .cite-btn:focus-visible {
   outline: 2px solid var(--focus);
@@ -1004,6 +1016,95 @@ textarea {
   white-space: nowrap;
 }
 
+/* Short landscape (I031): the spot and its answer buttons stay above the fold. Left column: street
+   picker, then the spot; right column: stats, then the result. The long EV sheet sorts after the
+   verdict and Next. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .drill-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 0.8rem;
+    align-items: start;
+    padding-bottom: 1rem;
+  }
+  .drill-page > * {
+    grid-column: 1 / -1;
+  }
+  .drill-page > h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .drill-page > .segmented:first-of-type {
+    grid-column: 1;
+    grid-row: 1;
+    flex-wrap: nowrap;
+    margin: 0 0 0.4rem;
+    gap: 0.25rem;
+  }
+  .drill-page > .segmented:first-of-type .seg {
+    padding: 0.3rem 0.2rem;
+    min-width: 0;
+  }
+  .drill-page > .drill-stats {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0 0 0.4rem;
+    padding: 0.2rem 0.6rem;
+    gap: 0 0.7rem;
+    font-size: 0.8rem;
+    align-content: center;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .drill-page > .drill-spot {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+    /* top padding clears the absolutely placed category label (I015) */
+    padding: 1rem 0.6rem 0.5rem;
+  }
+  .drill-page > .drill-spot .drill-spot-category {
+    left: 0.6rem;
+    right: 0.6rem;
+  }
+  .drill-page > .drill-result {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    padding: 0.5rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .drill-result > * {
+    order: 1;
+  }
+  .drill-result > .row {
+    order: 0;
+    margin-bottom: 0.5rem;
+  }
+  .drill-result > [data-testid='drill-headline'] {
+    order: -1;
+    margin: 0 0 0.4rem;
+    font-size: 0.85rem;
+  }
+  .drill-page > .drill-spot .drill-cards {
+    margin: 0 0 0.4rem;
+    gap: 0.3rem;
+    font-size: 1rem;
+  }
+  .drill-page .choice-row {
+    gap: 0.4rem;
+  }
+  .drill-page .choice-row .btn {
+    flex: 1 1 5rem;
+    padding: 0.4rem 0.5rem;
+  }
+}
+
 /* Reserves the storage line's height so the content below does not shift (I076). */
 .storage-line {
   /* Three lines: the longest copy (with the install hint) at 360px. Same height in every state. */
@@ -1039,4 +1140,20 @@ html[data-route='play'] body {
 .route-failed .btn {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* The one pair of live regions (I036): out of flow and out of the scroll area, so it never
+   changes page height. */
+.announcer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  pointer-events: none;
 }

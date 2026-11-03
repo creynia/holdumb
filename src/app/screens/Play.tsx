@@ -39,7 +39,7 @@ export function Play({ query }: { query: URLSearchParams }) {
     <div class="page page-wide">
       <h1 class="sr">Practice table</h1>
       <Simulator
-        key={`${scene.bankroll}:${query.toString()}`}
+        key={query.toString()}
         scene={scene}
         mode="sandbox"
         settings={simSettings(s)}
@@ -47,6 +47,7 @@ export function Play({ query }: { query: URLSearchParams }) {
         persistKey="holdumb:sandbox"
         snapshot={preset ? undefined : store.sandbox}
         onSnapshot={preset ? undefined : (snap) => store.setSandbox(snap)}
+        onBankrollChange={(cents) => store.updateSettings({ defaultBankrollCents: cents })}
         onPracticeChange={(on) => store.updateSettings({ evMode: on ? 'after' : 'before' })}
         replayHref={(q) => `#/play?${q}`}
       />

@@ -5,6 +5,7 @@ import { parseCards } from '../sim/engine';
 import { validateScene } from '../sim/scene';
 import { STRATEGY_IDS } from '../sim/strategy';
 import { cardsHtml, checkInline, isHandClass } from './cards';
+import { NUMBERS } from './numbers';
 import type {
   Block,
   ChartBlockData,
@@ -42,12 +43,21 @@ const citeExtension: TokenizerAndRendererExtension = {
     return i < 0 ? undefined : i;
   },
   tokenizer(src: string) {
-    const m = /^\[\^(\d+)\]/.exec(src);
-    return m ? { type: 'cite', raw: m[0], n: Number(m[1]) } : undefined;
+    // A run of directly adjacent markers ([^2][^3][^4]) is one token, so it renders as one button.
+    const m = /^(?:\[\^\d+\])+/.exec(src);
+    if (!m) return undefined;
+    const ns = [...m[0].matchAll(/\[\^(\d+)\]/g)].map((x) => Number(x[1]));
+    return { type: 'cite', raw: m[0], ns };
   },
   renderer(token) {
-    const n = Number((token as unknown as { n: number }).n);
-    return `<sup class="cite"><button type="button" class="cite-btn" data-cite="${n}" aria-label="Source ${n}">${n}</button></sup>`;
+    const ns = (token as unknown as { ns: number[] }).ns;
+    const first = ns[0]!;
+    const consecutive = ns.every((n, i) => n === first + i);
+    const label =
+      ns.length === 1 ? `${first}` : consecutive && ns.length > 2 ? `${first}\u2013${ns[ns.length - 1]}` : ns.join(',');
+    const aria = ns.length === 1 ? `Source ${first}` : `Sources ${label}`; // must contain the visible text
+    // data-cite is the first source (the click target); data-cites lists all of them for validation.
+    return `<sup class="cite"><button type="button" class="cite-btn" data-cite="${first}" data-cites="${ns.join(',')}" aria-label="${aria}">${label}</button></sup>`;
   },
 };
 
@@ -162,8 +172,8 @@ export function renderMarkdown(md: string, opts: CompileOptions = {}): string {
   const html = markedFor(opts.headingShift ?? 0)
     .parse(withLinks, { async: false })
     .trim();
-  for (const m of html.matchAll(/data-cite="(\d+)"/g)) {
-    const n = Number(m[1]);
+  const cited = [...html.matchAll(/data-cites="([\d,]+)"/g)].flatMap((m) => m[1]!.split(',').map(Number));
+  for (const n of cited) {
     const max = opts.sourceCount ?? 0;
     if (n < 1 || n > max)
       throw new Error(
@@ -291,6 +301,21 @@ function checkSceneText(scene: unknown): void {
   }
 }
 
+/**
+ * `{{num:<id>}}` -> the computed figure from the registry (I064), before anything else is parsed, so
+ * it works in prose, tables, quizzes and scenes alike. An unknown id names the lesson line.
+ */
+export function expandNumbers(body: string, offset = 0, source = body): string {
+  return body.replace(/\{\{num:([^}]*)\}\}/g, (m, id: string, at: number) => {
+    const v = NUMBERS[id.trim()];
+    if (v === undefined) {
+      const line = source.slice(0, offset + at).split('\n').length;
+      throw new Error(`line ${line}: unknown number token "${m}"`);
+    }
+    return v;
+  });
+}
+
 type FenceLang = 'scene' | 'quiz' | 'chart' | 'progressive';
 export type Seg =
   | { t: 'md'; text: string }
@@ -374,7 +399,8 @@ export function compileLesson(
   opts: CompileOptions = {},
 ): CompiledLesson {
   try {
-    const { data, body } = splitFrontMatter(source);
+    const { data, body: raw } = splitFrontMatter(source);
+    const body = expandNumbers(raw, source.length - raw.length, source);
     const id = str(data.id, 'front matter id');
     const min = minHeadingDepth(body);
     const sources = parseLessonSources(data.sources, opts.sources);
