@@ -3,6 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
 import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
+import type { LoggedHand } from '../moveLog';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
 import { randomSeed, resolveEvMode } from '../settings';
 import { foldAnnouncement, settledToastText } from '../text';
@@ -116,11 +117,12 @@ export function useSandboxSync(
   sandbox: boolean,
   baseScene: SceneConfig,
   settings: SimulatorProps['settings'],
+  log?: readonly LoggedHand[],
 ): void {
   const { d, latest } = h;
   const persistable = sandbox && !baseScene.startAt && !!latest.current.onSnapshot;
   useEffect(() => {
-    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode));
+    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode, log));
   }, [d.view.eventSeq, persistable, d]);
   useEffect(() => {
     if (sandbox) d.setEvMode(resolveEvMode(settings, baseScene, 'sandbox'));

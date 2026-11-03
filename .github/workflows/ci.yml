@@ -35,6 +35,15 @@ jobs:
         with:
           name: holdumb-html
           path: dist-single/holdumb.html
+      # e2e and visual serve this build instead of rebuilding it (I043).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: |
+            dist
+            dist-single
+          retention-days: 3
+          if-no-files-found: error
 
   e2e:
     needs: check
@@ -47,8 +56,25 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+      # Chromium is cached per @playwright/test version; only a cache miss downloads it.
+      - id: pw-version
+        run: echo "v=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+      - id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-chromium-${{ runner.os }}-${{ steps.pw-version.outputs.v }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      # On a warm cache the browser is there, but the runner still needs its system libraries.
+      - if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - run: npm run test:e2e
+        env:
+          PREBUILT: '1'
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -83,7 +109,12 @@ jobs:
           path: ~/.npm
           key: visual-npm-${{ hashFiles('package-lock.json') }}
       - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
       - run: npx playwright test -c playwright.visual.config.ts
+        env:
+          PREBUILT: '1'
       - if: failure()
         id: upload
         uses: actions/upload-artifact@v4

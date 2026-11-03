@@ -878,6 +878,13 @@ textarea {
 .page .card {
   max-width: 100%;
 }
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 767px) {
+  /* The bottom tab bar hides the last 48px of the landscape table (rail bottom 373 vs tab bar top
+     325 at 667x375), so the rail's EV sheet stops above it (I012; I030 reworks this chrome). */
+  .sim-table-landscape {
+    --sim-table-bottom-cover: calc(48px + env(safe-area-inset-bottom));
+  }
+}
 @media (orientation: landscape) and (max-height: 500px) {
   /* Short landscape: one 44px bar (brand + nav inline) on every route, no bottom tab bar. */
   :root {
@@ -1030,4 +1037,28 @@ textarea {
 html[data-route='play'],
 html[data-route='play'] body {
   overscroll-behavior-y: contain;
+}
+
+/* Placeholders while a lazy screen or the lesson bundle loads (I039): visible, never blank. */
+.route-loading {
+  min-height: 70vh;
+}
+.skel-block {
+  display: block;
+  min-height: 56px;
+  margin: 1rem 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.ring-skel {
+  display: block;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.route-failed .btn {
+  min-height: 44px;
+  min-width: 44px;
 }

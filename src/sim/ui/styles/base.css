@@ -73,6 +73,7 @@
   height: 100%;
 }
 .sim-rail {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -95,6 +96,25 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+/* The open EV sheet in landscape covers the whole rail (not the felt) while it is open, so its
+   Confirm is always on screen. `--sim-table-bottom-cover` is how much of the table the app's
+   bottom tab bar hides (app.css sets it where the tab bar shows in landscape). */
+.sim-rail-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--sim-table-bottom-cover, 0px);
+  z-index: 10;
+  box-sizing: border-box;
+  padding: 8px;
+  overflow-y: auto;
+  background: var(--surface);
+}
+/* The actions and the status bar keep their place; only the body under them scrolls (I012). */
+.sim-rail > .sim-rail-body {
+  flex: 1 1 auto;
 }
 
 /* Quick double taps must not zoom the table (touch-action does not affect scrolling or pinch). */

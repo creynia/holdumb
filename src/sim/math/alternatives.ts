@@ -4,6 +4,7 @@
 import { handValueOf } from '../engine/evaluator';
 import { RANK_CHARS } from '../engine/types';
 import type { Card, DecisionAction } from '../engine/types';
+import { flopMade, flushDrawFlop, hiddenPairFlop } from './flopRules';
 import { isChartHand, preflopClass } from './preflop';
 import type { DecisionPreview, Fraction, PreviewRequest } from './types';
 
@@ -149,19 +150,13 @@ const MADE: Record<number, MadeHand> = {
 export function flopFacts(hole: readonly [Card, Card], flop: readonly Card[]): FlopFacts {
   const five = [...hole, ...flop];
   const v5 = handValueOf(five);
-  const flopCat = catOf(flopOnly(flop));
-  const twoPairPlus = catOf(v5) >= 2 && catOf(v5) > flopCat;
+  const twoPairPlus = flopMade(hole, flop);
   const r0 = hole[0] >> 2;
   const r1 = hole[1] >> 2;
   const flopRanks = flop.map((c) => c >> 2);
   const pocket = r0 === r1;
-  const match = flopRanks.includes(r0) || flopRanks.includes(r1);
-  const hiddenPair = (pocket && r0 !== 0) || match;
-  let flushDraw = false;
-  for (let s = 0; s < 4; s++) {
-    const n = five.filter((c) => (c & 3) === s).length;
-    if (n >= 4 && hole.some((c) => (c & 3) === s && c >> 2 >= 8)) flushDraw = true;
-  }
+  const hiddenPair = hiddenPairFlop(hole, flop, [0]);
+  const flushDraw = flushDrawFlop(hole, flop, 4, 8);
   const pairRank = pocket ? r0 : flopRanks.includes(r0) ? r0 : flopRanks.includes(r1) ? r1 : -1;
   const fourFlush = [0, 1, 2, 3].some((s) => five.filter((c) => (c & 3) === s).length >= 4);
   const paired = new Set(flopRanks).size < 3;
@@ -185,11 +180,38 @@ export function flopFacts(hole: readonly [Card, Card], flop: readonly Card[]): F
   return out;
 }
 
-/** Category of three flop cards alone, as a packed value (pair / trips / high card). */
-function flopOnly(flop: readonly Card[]): number {
-  const ranks = flop.map((c) => c >> 2);
-  const distinct = new Set(ranks).size;
-  return distinct === 1 ? 3 << 20 : distinct === 2 ? 1 << 20 : 0;
+/** Which basic flop rule fires (decisions.md section 3) and why, for the EV sheet's rule line. */
+export interface BasicFlopRule {
+  /** (a) two pair or better using your cards, (b) a hidden pair (not 22), (c) four to a flush with a ten+. */
+  rule: 'a' | 'b' | 'c' | null;
+  /** The card says Bet 2x (a rule fired) or Check. */
+  raise: boolean;
+  /** Rule (b): the pair is in your pocket (not paired with the flop). */
+  pocketPair?: boolean;
+  /** Rank character of the pair for rule (b). */
+  pairRank?: string;
+  /** Rule (a): the made hand. */
+  made?: MadeHand;
+  /** No rule: why. `pocket-deuces` is 22 with no deuce on the flop (the card never raises it). */
+  reason?: NonNullable<AlternativeVars['flopReason']> | 'pocket-deuces';
+}
+
+/** First matching rule in the card's order a, b, c; null means the card says Check. */
+export function basicFlopRule(hole: readonly [Card, Card], flop: readonly Card[]): BasicFlopRule {
+  const f = flopFacts(hole, flop);
+  if (f.twoPairPlus) return { rule: 'a', raise: true, ...(f.made ? { made: f.made } : {}) };
+  if (f.hiddenPair) {
+    const pocket = hole[0] >> 2 === hole[1] >> 2;
+    return {
+      rule: 'b',
+      raise: true,
+      pocketPair: pocket,
+      ...(f.pairRank ? { pairRank: f.pairRank } : {}),
+    };
+  }
+  if (f.flushDraw) return { rule: 'c', raise: true };
+  const deuces = hole[0] >> 2 === 0 && hole[1] >> 2 === 0;
+  return { rule: null, raise: false, reason: deuces ? 'pocket-deuces' : f.reason! };
 }
 
 function hasStraightDraw(cards: readonly Card[]): boolean {
