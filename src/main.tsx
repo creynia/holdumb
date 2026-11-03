@@ -1,5 +1,4 @@
 import { render } from 'preact';
-import content from 'virtual:content';
 import { App } from './app/App';
 import { AppProviders } from './app/context';
 import { Store } from './app/store';
@@ -15,7 +14,7 @@ applyTheme(store.settings);
 registerSW();
 
 render(
-  <AppProviders content={content} store={store}>
+  <AppProviders store={store}>
     <App />
     <UpdateToast />
   </AppProviders>,
