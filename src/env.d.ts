@@ -13,6 +13,8 @@ interface Window {
   /** Test hook (WP0 worker smoke test). */
   __holdumb?: {
     client: import('./sim/worker/protocol').EvClient;
+    /** In-thread fallback client, created on first access (perf specs). */
+    readonly inthread: import('./sim/worker/protocol').EvClient;
     smoke(): Promise<{ mode: 'worker' | 'inthread'; settled: 'resolved' | 'rejected' }>;
   };
 }
