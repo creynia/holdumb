@@ -1,5 +1,5 @@
 import './sim.css';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 
 export type Orientation = 'portrait' | 'landscape';
@@ -40,6 +40,11 @@ export interface TableProps {
   /** The EV sheet: a modal in portrait, a rail panel in landscape (give it the matching `variant`). */
   sheet?: ComponentChildren;
   toasts?: ComponentChildren;
+  /**
+   * Changes with each new hand. When the portrait felt scrolls on its own (large text, I053), a new
+   * hand scrolls it to the bottom so your cards and the circles are in view.
+   */
+  feltScrollKey?: unknown;
 }
 
 /**
@@ -59,7 +64,14 @@ export function Table({
   rail,
   sheet,
   toasts,
+  feltScrollKey,
 }: TableProps) {
+  const feltRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = feltRef.current;
+    // Only the felt region's own scroll: the page and the ActionBar never move.
+    if (el && el.scrollHeight > el.clientHeight + 1) el.scrollTop = el.scrollHeight;
+  }, [feltScrollKey, orientation]);
   if (orientation === 'landscape') {
     return (
       <section class="sim-table sim-table-landscape" aria-label="Table">
@@ -83,7 +95,9 @@ export function Table({
     <section class="sim-table sim-table-portrait" aria-label="Table">
       {options}
       {status}
-      <div class="sim-table-felt">{felt}</div>
+      <div class="sim-table-felt" ref={feltRef}>
+        {felt}
+      </div>
       <div class="sim-table-actions">{actions}</div>
       {toasts}
       {chips}

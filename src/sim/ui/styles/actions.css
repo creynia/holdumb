@@ -233,6 +233,10 @@
 .sim-table-actions {
   container: sim-bar / inline-size;
 }
+/* The Play felt follows the same switch through the table container (app.css, I053 ruling). */
+.sim-table-portrait {
+  container: sim-table / inline-size;
+}
 @container sim-bar (max-width: 13rem) {
   .sim-actions {
     --sim-act-h: calc(21px + 1.955rem + 2.2425rem);
