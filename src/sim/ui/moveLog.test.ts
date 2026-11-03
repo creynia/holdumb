@@ -15,8 +15,8 @@ import {
   decodeMoveLog,
   eventsForHandInProgress,
   formatLine,
-} from './moveLog';
-import type { AppendContext, LoggedHand } from './moveLog';
+} from './moveLogData';
+import type { AppendContext, LoggedHand } from './moveLogData';
 import { DECISION_TIER_LABEL } from './text';
 
 const c = (s: string) => parseCards(s);
