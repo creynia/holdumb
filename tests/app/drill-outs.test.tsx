@@ -152,7 +152,7 @@ describe('Drill ?mode=outs', () => {
   it('a miss names the count and the ranks, and the error is kept', async () => {
     const { el, store } = await mount();
     await typeAndCheck(el, '16');
-    const fb = el.querySelector('[data-testid="outs-feedback"]')!.textContent!;
+    const fb = el.querySelector('[data-testid="outs-feedback"]')!.textContent;
     expect(fb).toContain(
       `19 outs (you said 16): ${outsDetailText(FACTS, SPOT.hole, SPOT.board)} beat you.`,
     );

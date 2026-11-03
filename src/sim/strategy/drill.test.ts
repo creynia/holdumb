@@ -356,7 +356,7 @@ describe('count the outs spots (I060)', () => {
       const out: string[] = [];
       for (let i = 0; i < 4000; i++) {
         let c: string;
-        [c, r] = pickOutsCategory(r) as [string, RngState];
+        [c, r] = pickOutsCategory(r);
         out.push(c);
       }
       return out;
