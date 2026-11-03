@@ -167,6 +167,31 @@ main:has(> .page-wide) {
   padding-left: 8px;
   padding-right: 8px;
 }
+/* I029 Play vertical budget: no dead band above the table, and the felt gets exactly the height the
+   fixed chrome leaves (top bar, status, action bar, tab bar), so the ActionBar sits above the tab
+   bar at scrollY 0 on every street. */
+/* Portrait only: the landscape rail layout keeps its own spacing. */
+@media not ((orientation: landscape) and (max-height: 520px)) {
+  main:has(> .page-play) {
+    padding-top: 0;
+  }
+  .page-play {
+    padding-top: 8px;
+  }
+}
+.page-play {
+  /* topbar 66.2 + 8 + status 44 + gap 8 + felt + gap 8 + action bar (67 with a wrapped sub-label)
+     + 8 + tab bar 58 */
+  --play-chrome: calc(268px + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+}
+.page-play .sim-table-portrait .sim-felt {
+  max-height: calc(100dvh - var(--play-chrome));
+}
+@media (min-width: 768px) {
+  .page-play {
+    --play-chrome: calc(210px + env(safe-area-inset-top)); /* no tab bar */
+  }
+}
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
