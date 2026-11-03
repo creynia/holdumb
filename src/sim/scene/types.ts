@@ -8,6 +8,11 @@ export type CircleId = 'trips' | 'ante' | 'blind' | 'play';
 
 export type OptionKey = 'check' | 'play-4' | 'play-3' | 'play-2' | 'play-1' | 'fold';
 
+/** EV visibility (D11, D39). */
+export type EvMode = 'before' | 'after' | 'never';
+/** Confirm policy (D24, D39): every bet, costly + blunder, blunder only, or no confirm step. */
+export type ConfirmOn = 'all' | 'costly' | 'blunder' | 'never';
+
 export interface SceneConfig {
   id: string;                         // 'lesson-07-flop-pair'
   version: 1;
@@ -22,11 +27,13 @@ export interface SceneConfig {
   allowedActions?: ActionType[];      // default all
   allowedOptions?: OptionKey[];       // finer: e.g. hide 3x
   highlight?: (WagerId | OptionKey)[];
-  showEV?: boolean;                   // default true
+  showEV?: boolean;                   // default true; legacy alias: false == evMode 'never'
+  evMode?: EvMode;                    // D39: default 'before'; in a lesson the scene decides
+  confirmOn?: ConfirmOn;              // D39: default 'never'
   evDetail?: 'basic' | 'full';        // basic = EV + badge; full = + alternative + Why?
   whyOpen?: boolean;
   revealDealer?: boolean;             // teaching: dealer cards face up from the deal (EV still ignores them)
-  practice?: boolean;                 // hide EV until confirm (D11 behaviour)
+  practice?: boolean;                 // legacy alias: true == evMode 'after' (D39)
   ui?: {
     orientation?: 'auto' | 'portrait' | 'landscape';
     chips?: Cents[]; defaultChip?: Cents;
@@ -64,6 +71,8 @@ export interface SceneStep {
   completeWhen: Condition;
   advance?: 'auto' | 'button';        // default 'auto'
   showEV?: boolean;
+  evMode?: EvMode;                    // overrides the scene for this step (D39)
+  confirmOn?: ConfirmOn;              // overrides the scene; `previewed` needs 'all'
   revealDealer?: boolean;
 }
 
