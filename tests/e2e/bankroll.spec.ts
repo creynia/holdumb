@@ -62,4 +62,15 @@ test.describe('bankroll control (I083)', () => {
     await page.goto('/#/settings');
     await expect(page.getByLabel('Default bankroll ($)')).toHaveValue('250');
   });
+
+  test('the chooser opens inside the viewport on a small phone', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto('/#/play?speed=instant');
+    await page.getByTestId('new-session').click();
+    const picker = page.getByTestId('bankroll-picker');
+    await expect(picker).toBeVisible();
+    await expect(page.locator('[data-preset="100"]')).toBeFocused();
+    await expect(page.locator('[data-preset="100"]')).toBeInViewport({ ratio: 1 });
+    await expect(page.getByTestId('bankroll-confirm')).toBeInViewport();
+  });
 });

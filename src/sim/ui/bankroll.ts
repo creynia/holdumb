@@ -2,6 +2,8 @@
 import type { Cents } from '../engine';
 
 export const BANKROLL_PRESETS_DOLLARS = [100, 250, 500, 1_000, 5_000] as const;
+/** What the Top up chooser offers first ($500). */
+export const DEFAULT_TOP_UP_CENTS: Cents = 50_000;
 export const BANKROLL_MIN_DOLLARS = 1;
 export const BANKROLL_MAX_DOLLARS = 1_000_000;
 

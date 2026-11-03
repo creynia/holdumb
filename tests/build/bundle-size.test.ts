@@ -4,10 +4,14 @@ import { join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 
-/** Budgets (bytes). Tighten after code-splitting; loosen only with a reason in the PR. */
+/**
+ * Budgets (bytes). The "entry" is everything the first paint loads eagerly: the module script in
+ * dist/index.html plus its static modulepreloads (route chunks and the lesson bundle are lazy,
+ * I039). Loosen only with a reason in the PR.
+ */
 const BUDGET = {
-  entryRaw: 400_000,
-  entryGzip: 130_000,
+  entryRaw: 200_000,
+  entryGzip: 80_000,
   cssRaw: 40_000,
   workerRaw: 60_000,
 };
@@ -28,14 +32,25 @@ describe('PWA bundle budgets', () => {
       return;
     }
     const files = readdirSync(dir);
-    const entry = files.find((f) => /^index-.*\.js$/.test(f));
+    const html = readFileSync(resolve('dist/index.html'), 'utf8');
+    const entries = [
+      /<script[^>]*type="module"[^>]*src="\.\/assets\/([^"]+\.js)"/.exec(html)?.[1],
+      ...[...html.matchAll(/<link rel="modulepreload"[^>]*href="\.\/assets\/([^"]+)"/g)].map(
+        (m) => m[1],
+      ),
+    ].filter((f): f is string => !!f);
+    const entry = entries[0];
     const css = files.find((f) => /^index-.*\.css$/.test(f));
     const worker = files.find((f) => /^ev\.worker-.*\.js$/.test(f));
     expect(entry, 'entry JS (dist/assets/index-*.js) is missing').toBeDefined();
     expect(css, 'CSS (dist/assets/index-*.css) is missing').toBeDefined();
     expect(worker, 'worker (dist/assets/ev.worker-*.js) is missing').toBeDefined();
 
-    const e = sizes(entry!);
+    const parts = entries.map(sizes);
+    const e = {
+      raw: parts.reduce((n, p) => n + p.raw, 0),
+      gzip: parts.reduce((n, p) => n + p.gzip, 0),
+    };
     const c = sizes(css!);
     const w = sizes(worker!);
     console.log(

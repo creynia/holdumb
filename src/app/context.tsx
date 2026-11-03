@@ -10,7 +10,8 @@ const StoreCtx = createContext<Store | null>(null);
 const VersionCtx = createContext(0);
 
 export function AppProviders(props: {
-  content: ContentBundle;
+  /** Omitted by the app (screens that need it load it lazily, see ./lazy.tsx); tests pass it. */
+  content?: ContentBundle | undefined;
   store: Store;
   children: ComponentChildren;
 }) {
@@ -32,7 +33,7 @@ export function AppProviders(props: {
     };
   }, [props.store]);
   return (
-    <ContentCtx.Provider value={props.content}>
+    <ContentCtx.Provider value={props.content ?? null}>
       <StoreCtx.Provider value={props.store}>
         <VersionCtx.Provider value={version}>{props.children}</VersionCtx.Provider>
       </StoreCtx.Provider>
@@ -52,4 +53,14 @@ export function useStore(): Store {
   useContext(VersionCtx); // subscribe to store changes
   if (!s) throw new Error('useStore outside AppProviders');
   return s;
+}
+
+/** The content bundle if an ancestor already provides it (tests, or a loaded gate), else null. */
+export function useProvidedContent(): ContentBundle | null {
+  return useContext(ContentCtx);
+}
+
+/** Provides a lazily loaded bundle to one subtree. */
+export function ContentProvider(props: { content: ContentBundle; children: ComponentChildren }) {
+  return <ContentCtx.Provider value={props.content}>{props.children}</ContentCtx.Provider>;
 }

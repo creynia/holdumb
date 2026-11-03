@@ -4,6 +4,7 @@ import { formatMoney } from '../engine';
 import type { Cents } from '../engine';
 import type { SimDriver } from '../scene';
 import { BankrollPicker } from './BankrollPicker';
+import { DEFAULT_TOP_UP_CENTS } from './bankroll';
 import type { SimulatorProps } from './types';
 
 export interface SimToolsProps {
@@ -56,8 +57,8 @@ export function SimTools({
         New session ({formatMoney(base)})
       </button>
       {short ? (
-        <div class="sim-bankroll-short" role="status" data-testid="rack-short">
-          <span>Not enough in the rack for the next bet.</span>
+        <div class="sim-bankroll-short" data-testid="rack-short">
+          <p>Not enough in the rack for the next bet.</p>
           <button
             type="button"
             class="sim-btn"
@@ -85,7 +86,7 @@ export function SimTools({
       {panel === 'top-up' ? (
         <BankrollPicker
           kind="top-up"
-          initial={50_000}
+          initial={DEFAULT_TOP_UP_CENTS}
           onCancel={() => setPanel(null)}
           onConfirm={(c) => {
             d.topUp(c);

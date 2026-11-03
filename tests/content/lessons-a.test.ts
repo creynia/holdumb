@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildContent } from '../../src/content/load';
-import { validateScene } from '../../src/sim/scene';
+import { stepEvMode, validateScene } from '../../src/sim/scene';
 
 const root = process.cwd();
 const bundle = buildContent(root);
@@ -48,11 +48,22 @@ describe('lessons 1-6', () => {
       expect(l.blocks.at(-1)?.kind).toBe('quiz');
     });
   });
-  it('practice-off EV scenes: lessons 5 and 6 show EV', () => {
+  it('EV-before scenes: lessons 5 and 6 show EV (D39 evMode before)', () => {
     for (const id of ['expected-value', 'reading-the-ev-sheet']) {
       const l = bundle.lessons.find((x) => x.id === id)!;
-      for (const b of l.blocks) if (b.kind === 'scene') expect(b.scene.showEV).toBe(true);
+      for (const b of l.blocks)
+        if (b.kind === 'scene') {
+          expect(b.scene.showEV).toBe(true);
+          expect(stepEvMode(b.scene)).toBe('before');
+        }
     }
+  });
+  it('lesson 6 previews through the confirm sheet: previewed steps set confirmOn all (D39)', () => {
+    const l = bundle.lessons.find((x) => x.id === 'reading-the-ev-sheet')!;
+    const steps = l.blocks.flatMap((b) => (b.kind === 'scene' ? (b.scene.steps ?? []) : []));
+    const previewing = steps.filter((st) => JSON.stringify(st.completeWhen).includes('previewed'));
+    expect(previewing.map((st) => st.id)).toEqual(['compare', 'look']);
+    for (const st of previewing) expect(st.confirmOn).toBe('all');
   });
   it('uses the D31 labels and never "Raise"', () => {
     for (const id of IDS) expect(text(id)).not.toMatch(/\bRaise\b/);

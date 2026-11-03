@@ -137,6 +137,21 @@ h3 {
   font-size: 1.25rem;
   line-height: 1;
 }
+/* Forced colours (Windows High Contrast): the bar and links use system colours, and the current
+   page is underlined so it still stands out without the accent colour. */
+@media (forced-colors: active) {
+  .tabbar {
+    background: Canvas;
+    border-top-color: CanvasText;
+  }
+  .tabbar a {
+    color: LinkText;
+  }
+  .tabbar a[aria-current='page'] {
+    color: CanvasText;
+    text-decoration: underline;
+  }
+}
 @media (min-width: 768px) {
   .tabbar {
     display: none;
@@ -618,6 +633,20 @@ textarea {
   align-items: center;
   flex-wrap: wrap;
 }
+.error-screen {
+  max-width: 32rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.error-build {
+  color: var(--muted, inherit);
+  font-size: 0.85rem;
+}
 .toast {
   /* Lives inside the top bar's own 44px row: adds no height, so nothing below it ever moves,
      and it can never sit over the table or the ActionBar. */
@@ -844,6 +873,13 @@ textarea {
 .page .card {
   max-width: 100%;
 }
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 767px) {
+  /* The bottom tab bar hides the last 48px of the landscape table (rail bottom 373 vs tab bar top
+     325 at 667x375), so the rail's EV sheet stops above it (I012; I030 reworks this chrome). */
+  .sim-table-landscape {
+    --sim-table-bottom-cover: calc(48px + env(safe-area-inset-bottom));
+  }
+}
 @media (orientation: landscape) and (max-height: 500px) {
   .page {
     padding-top: 0.5rem;
@@ -949,4 +985,58 @@ textarea {
 /* Strategy sections reached from Drill ("See the chart") land below the top edge, with a gap. */
 [data-view] {
   scroll-margin-top: 16px;
+}
+/* The Drill category label sits in the card's top padding, so it adds no row and the cards and the
+   choice row stay where they were (I015). */
+.drill-spot {
+  position: relative;
+}
+.drill-spot-category {
+  position: absolute;
+  top: 3px;
+  left: 1rem;
+  right: 1rem;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Reserves the storage line's height so the content below does not shift (I076). */
+.storage-line {
+  /* Three lines: the longest copy (with the install hint) at 360px. Same height in every state. */
+  min-height: 4.5em;
+  margin: 0.25rem 0 0;
+}
+
+/* Pull-to-refresh on the felt would lose an in-progress scene; Learn keeps normal scrolling. */
+html[data-route='play'],
+html[data-route='play'] body {
+  overscroll-behavior-y: contain;
+}
+
+/* Placeholders while a lazy screen or the lesson bundle loads (I039): visible, never blank. */
+.route-loading {
+  min-height: 70vh;
+}
+.skel-block {
+  display: block;
+  min-height: 56px;
+  margin: 1rem 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.ring-skel {
+  display: block;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.route-failed .btn {
+  min-height: 44px;
+  min-width: 44px;
 }

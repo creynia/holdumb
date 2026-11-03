@@ -1,5 +1,5 @@
 // Inline amount chooser for New session and Top up: presets, a custom whole-dollar field, a confirm button.
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { formatMoney } from '../engine';
 import type { Cents } from '../engine';
 import {
@@ -22,8 +22,16 @@ export function BankrollPicker({ kind, initial, onConfirm, onCancel }: BankrollP
   const [text, setText] = useState(String(Math.round(initial / 100)));
   const value = parseBankrollDollars(text);
   const topUp = kind === 'top-up';
+  const form = useRef<HTMLFormElement>(null);
+  // Opened from a button that may sit near the bottom: bring the chooser into view and focus it.
+  useEffect(() => {
+    const el = form.current;
+    el?.scrollIntoView?.({ block: 'nearest' });
+    el?.querySelector<HTMLButtonElement>('[data-preset]')?.focus({ preventScroll: true });
+  }, []);
   return (
     <form
+      ref={form}
       class="sim-bankroll-picker"
       data-testid="bankroll-picker"
       aria-label={topUp ? 'Top up the rack' : 'New session bankroll'}

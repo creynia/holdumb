@@ -3,8 +3,9 @@
 import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
 import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
+import type { LoggedHand } from '../moveLog';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
-import { randomSeed, resolvePractice } from '../settings';
+import { randomSeed, resolveEvMode } from '../settings';
 import { foldAnnouncement, settledToastText } from '../text';
 import type { SimulatorProps } from '../types';
 
@@ -26,7 +27,8 @@ export function makeDriver(
   const { settings, evClient } = props;
   let scene: SceneConfig = props.scene ?? { id: 'sandbox', version: 1 };
   const sandbox = mode === 'sandbox';
-  const practice = resolvePractice(settings, scene);
+  // D39: in a lesson the scene decides; the driver ignores this outside the sandbox.
+  const evMode = resolveEvMode(settings, scene, mode);
   let restore: ConstructorParameters<typeof SimDriver>[0]['restore'];
   if (sandbox && props.snapshot !== undefined && !scene.startAt) {
     const dec = decodeSnapshot(props.snapshot, settings.paytable);
@@ -44,7 +46,7 @@ export function makeDriver(
     mode,
     seed: sandbox ? randomSeed() : 1,
     paytable: settings.paytable,
-    practice,
+    evMode,
     restore,
     onEvent,
     preview: (req, o) => evClient.run('preview', req, o),
@@ -115,13 +117,14 @@ export function useSandboxSync(
   sandbox: boolean,
   baseScene: SceneConfig,
   settings: SimulatorProps['settings'],
+  log?: readonly LoggedHand[],
 ): void {
   const { d, latest } = h;
   const persistable = sandbox && !baseScene.startAt && !!latest.current.onSnapshot;
   useEffect(() => {
-    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode));
+    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d, settings.evMode, log));
   }, [d.view.eventSeq, d.view.session.topUpCents, persistable, d]);
   useEffect(() => {
-    if (sandbox) d.setPractice(resolvePractice(settings, baseScene));
+    if (sandbox) d.setEvMode(resolveEvMode(settings, baseScene, 'sandbox'));
   }, [settings.evMode, sandbox, d]);
 }

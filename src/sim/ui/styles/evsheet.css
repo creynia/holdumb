@@ -95,6 +95,12 @@
   border: 2px solid var(--tier-blunder);
   font-weight: 600;
 }
+.sim-confirm-again {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--accent);
+  font-weight: 600;
+}
 .sim-result {
   display: flex;
   flex-direction: column;
@@ -141,4 +147,8 @@
   height: 56px;
   border-radius: 12px;
   background: var(--sim-surface-2);
+}
+.sim-flop-rule {
+  font-size: 0.9rem;
+  color: var(--muted);
 }

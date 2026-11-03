@@ -311,7 +311,7 @@ describe('preflop chart (decisions.md §3) and lesson 7', () => {
         highlight: ['33', 'A2o', 'K2s', 'K5o', 'Q6s', 'Q8o', 'J8s', 'JTo'],
       },
     });
-    expect(scenes('preflop-raise')[0]).toMatchObject({ id: 'l07-s1', practice: true });
+    expect(scenes('preflop-raise')[0]).toMatchObject({ id: 'l07-s1', evMode: 'after' });
     for (const q of quizzes('preflop-raise').filter((x) => x.hand)) {
       const best = bet4x(cards(q.hand!.hole)) ? 'Bet 4x' : 'Check';
       expect(q.choices[q.answer], q.id).toBe(best);
@@ -725,7 +725,7 @@ describe('scenes (all lessons 7-14)', () => {
     }
   });
   it('l07-s1 hides EV until confirm (D35 S4)', () => {
-    expect(all.find((x) => x.s.id === 'l07-s1')!.s.practice).toBe(true);
+    expect(all.find((x) => x.s.id === 'l07-s1')!.s.evMode).toBe('after');
   });
   it('the best play at every guided decision is the one the step teaches (exact math)', () => {
     const P4 = 'play-4';
