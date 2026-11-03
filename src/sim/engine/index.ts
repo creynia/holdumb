@@ -18,6 +18,9 @@ export {
   blindPay,
   tripsPay,
 } from './paytables';
+// I062: Six Card values are imported from './sixcard' directly (not re-exported here), so the
+// side bet stays out of the first-paint bundle; only its types are re-exported.
+export type { SixCardPaytable, SixCardPaytableId, SixCardResult } from './sixcard';
 export { DEFAULT_RULES, resolveRules } from './rules';
 export { WAGER_IDS, WAGERS, settleHand } from './wagers';
 export type { SettleBets } from './wagers';

@@ -12,6 +12,11 @@ export interface StatusBarProps {
    * keeps the column reserved before the hand settles, so nothing shifts; omit for no column.
    */
   hand?: Pick<HandResult, 'outcome' | 'net'> | null;
+  /**
+   * Opens the EV sheet without acting (I092). When set, and no settled result is showing, the
+   * third column reads EV / Details instead of Hand.
+   */
+  onDetails?: () => void;
 }
 
 const OUTCOME_WORD: Record<HandResult['outcome'], string> = {
@@ -24,9 +29,9 @@ const OUTCOME_WORD: Record<HandResult['outcome'], string> = {
 const signed = (c: Cents) => formatMoney(c, { sign: true }).replace('-', '\u2212');
 
 /** Bankroll, money on the felt, the last hand's result, session result. */
-export function StatusBar({ bankroll, onFelt, sessionNet, hand }: StatusBarProps) {
+export function StatusBar({ bankroll, onFelt, sessionNet, hand, onDetails }: StatusBarProps) {
   return (
-    <dl class="sim-status" aria-label="Money">
+    <dl class="sim-status" aria-label="Table status">
       <div>
         <dt>Bankroll</dt>
         <dd data-testid="bankroll">{formatMoney(bankroll)}</dd>
@@ -35,7 +40,22 @@ export function StatusBar({ bankroll, onFelt, sessionNet, hand }: StatusBarProps
         <dt>On felt</dt>
         <dd data-testid="on-felt">{formatMoney(onFelt)}</dd>
       </div>
-      {hand !== undefined ? (
+      {!hand && onDetails ? (
+        <div data-testid="ev-details-column">
+          <dt>EV</dt>
+          <dd>
+            <button
+              type="button"
+              class="sim-btn-link"
+              data-testid="ev-details"
+              aria-label="EV details"
+              onClick={onDetails}
+            >
+              Details
+            </button>
+          </dd>
+        </div>
+      ) : hand !== undefined ? (
         <div data-testid="hand-result">
           <dt>{hand ? OUTCOME_WORD[hand.outcome] : 'Hand'}</dt>
           <dd>{hand ? (hand.net === 0 ? formatMoney(0) : signed(hand.net)) : '\u2014'}</dd>

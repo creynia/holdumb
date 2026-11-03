@@ -154,24 +154,27 @@ test('lesson 20: dragging the meter from $10k to $300k never changes the block h
     await page.goto('/#/learn/other-side-bets');
     const block = page.getByTestId('progressive');
     await block.scrollIntoViewIfNeeded();
-    const slider = page.getByTestId('progressive-slider');
-    await slider.focus();
-    await page.keyboard.press('Home');
-    const heights = new Set<number>();
-    const docHeights = new Set<number>();
-    // Every $1,000 step across the whole range, by keyboard (one ArrowRight = one step).
-    for (let m = 10_000; m <= 300_000; m += 1_000) {
-      if (m > 10_000) await page.keyboard.press('ArrowRight');
-      const h = await block.evaluate((el) => [
-        Math.round(el.getBoundingClientRect().height),
-        document.documentElement.scrollHeight,
-      ]);
-      heights.add(h[0]!);
-      docHeights.add(h[1]!);
-    }
+    // Every $1,000 step from $10k to $300k, swept inside the page: set the value, fire `input`,
+    // let Preact re-render (it batches on a microtask), measure. Fast and load-independent.
+    const [heights, docHeights] = await page
+      .getByTestId('progressive-slider')
+      .evaluate(async (input: HTMLInputElement) => {
+        const block = document.querySelector('[data-testid="progressive"]')!;
+        const hs = new Set<number>();
+        const ds = new Set<number>();
+        for (let m = 10_000; m <= 300_000; m += 1_000) {
+          input.value = String(m);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          for (let i = 0; i < 3; i++) await Promise.resolve();
+          await new Promise((r) => setTimeout(r, 0));
+          hs.add(Math.round(block.getBoundingClientRect().height));
+          ds.add(document.documentElement.scrollHeight);
+        }
+        return [[...hs], [...ds]];
+      });
     await expect(page.getByTestId('progressive-meter')).toHaveText('$300,000');
-    expect([...heights], `block heights at ${vp.width}x${vp.height}`).toHaveLength(1);
-    expect([...docHeights], `page heights at ${vp.width}x${vp.height}`).toHaveLength(1);
+    expect(heights, `block heights at ${vp.width}x${vp.height}`).toHaveLength(1);
+    expect(docHeights, `page heights at ${vp.width}x${vp.height}`).toHaveLength(1);
   }
 });
 
