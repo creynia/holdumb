@@ -84,6 +84,10 @@ export function Simulator(props: SimulatorViewProps) {
     () => buildTimeline(d.view.lastEvents, speed).totalMs,
   );
   const watching = watch.running;
+  // No sheet can act while Watch plays the table: starting Watch closes it (D40, I078).
+  useEffect(() => {
+    if (watching) ev.close();
+  }, [watching]);
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
   const bar = usePreviewBar(view.preview, decision, evShown);
 
@@ -156,7 +160,7 @@ export function Simulator(props: SimulatorViewProps) {
             onFelt={onFelt}
             sessionNet={state.stats.hands ? view.session.net : undefined}
             hand={settled && result ? result : null}
-            onDetails={detailsOpen ? ev.openDetails : undefined}
+            onDetails={detailsOpen && !watching ? ev.openDetails : undefined}
           />
         )
       }
@@ -216,7 +220,7 @@ export function Simulator(props: SimulatorViewProps) {
         ) : null
       }
       rail={<>{stepPanel}</>}
-      sheet={ev.sheet ? <EvSheet {...ev.sheet} /> : null}
+      sheet={ev.sheet && !watching ? <EvSheet {...ev.sheet} /> : null}
     />
   );
 
@@ -227,7 +231,8 @@ export function Simulator(props: SimulatorViewProps) {
       data-street={street}
       data-hands={state.stats.hands}
       data-mode={mode}
-      data-ev={view.preview.status}
+      // 'pending' while the double-tap guard ignores taps, so "ready" means a tap will act.
+      data-ev={ev.guarding && view.preview.status === 'ready' ? 'pending' : view.preview.status}
       data-equity={eq}
       style={
         orientation === 'landscape'
