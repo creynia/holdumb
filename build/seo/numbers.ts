@@ -1,18 +1,10 @@
 // Numbers for the answer pages (house-edge/, the strategy intro, Blind/Trips intros), all derived
 // from the engine/math/strategy modules at build time. Nothing here is typed in by hand:
 // tests/build/seo.test.ts pins the key values to the same modules.
-import {
-  DEFAULT_PAYTABLE_PRESET,
-  PAYTABLE_PRESET_IDS,
-  formatMoney,
-  formatPct,
-} from '../../src/sim/engine';
+import { DEFAULT_PAYTABLE_PRESET, PAYTABLE_PRESET_IDS, formatPct } from '../../src/sim/engine';
 import type { HandCategory, PaytablePresetId } from '../../src/sim/engine';
 import {
-  DEALER_QUALIFY_PROBABILITY,
   GAME_EDGE,
-  GAME_ELEMENT_OF_RISK,
-  GAME_EXPECTED_WAGER,
   HANDS_PER_HOUR,
   SEVEN_CARD_COUNTS,
   SEVEN_CARD_TOTAL,
@@ -20,6 +12,7 @@ import {
 } from '../../src/sim/math/edges';
 import type { Fraction } from '../../src/sim/math/types';
 import { STRATEGY_CONSTANTS, strategyChart, strategyMetrics } from '../../src/sim/strategy';
+import { EXAMPLE_ANTE_CENTS, NUMBERS, decimal, perHour } from '../../src/content/numbers';
 import type { StrategyId } from '../../src/sim/strategy';
 
 export const RANKS = 'AKQJT98765432';
@@ -119,7 +112,6 @@ const listText = (xs: string[]) =>
 export const fourXRangeText = (id: StrategyId) => listText(fourXRange(id));
 
 const pct = (f: Fraction, digits = 3) => formatPct(f, digits);
-const neg = (f: Fraction): Fraction => ({ num: -f.num, den: f.den });
 const toNum = (f: Fraction) => Number(f.num) / Number(f.den);
 
 /** Strategies priced on the house-edge page, best first (expert and river-leak are internal). */
@@ -143,7 +135,7 @@ export interface StrategyRow {
   perHour10: string;
 }
 
-export const EXAMPLE_ANTE_CENTS = 1000;
+export { EXAMPLE_ANTE_CENTS };
 
 export function strategyRows(): StrategyRow[] {
   return PRICED.map((id) => {
@@ -153,8 +145,9 @@ export function strategyRows(): StrategyRow[] {
       edge: m.edgePerAnte,
       edgePct: pct(m.edgePerAnte),
       eorPct: pct(m.elementOfRisk),
-      wager: toNum(STRATEGY_CONSTANTS[id].wager).toFixed(2),
-      perHour10: formatMoney(toNum(neg(m.evPerHourCents))),
+      wager: decimal(STRATEGY_CONSTANTS[id].wager, 2),
+      // the lesson registry's formula (I064): exact cents, rounded once
+      perHour10: perHour(m.edgePerAnte),
     };
   });
 }
@@ -191,12 +184,13 @@ export function handOdds(): { category: HandCategory; pct: string; oneIn: string
 /** The headline figures for perfect play (Trips excluded). */
 export function headline() {
   return {
-    edgePct: pct(GAME_EDGE),
+    // One source with the lessons' {{num:…}} tokens (src/content/numbers.ts, I064).
+    edgePct: NUMBERS['perfect-edge-3']!,
     perInitialPct: pct({ num: GAME_EDGE.num, den: GAME_EDGE.den * 2n }),
-    eorPct: pct(GAME_ELEMENT_OF_RISK),
-    wager: toNum(GAME_EXPECTED_WAGER).toFixed(2),
-    qualifyPct: pct(DEALER_QUALIFY_PROBABILITY, 1),
+    eorPct: NUMBERS['perfect-eor-3']!,
+    wager: NUMBERS['perfect-wager']!,
+    qualifyPct: NUMBERS['dealer-qualify']!,
     handsPerHour: HANDS_PER_HOUR,
-    perHour10: formatMoney(toNum(GAME_EDGE) * HANDS_PER_HOUR * EXAMPLE_ANTE_CENTS),
+    perHour10: NUMBERS['perfect-per-hour']!,
   };
 }
