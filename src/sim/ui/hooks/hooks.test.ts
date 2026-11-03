@@ -54,7 +54,8 @@ describe('useSimDriver', () => {
     });
     await waitFor(() => expect(result.current.toast).not.toBeNull());
     expect(result.current.toast!.text.length).toBeGreaterThan(0);
-    expect(result.current.toast!.spoken).toBeUndefined();
+    // The spoken line is the plain sentence: no word joiners (I008).
+    expect(result.current.toast!.spoken).not.toMatch(/\u2060/);
     await act(async () => {
       await result.current.act({ type: 'deal' });
     });

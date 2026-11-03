@@ -190,7 +190,7 @@ export function narrationText(preview: DecisionPreview, index: number): string {
     o.tier === 'best'
       ? `${o.label}: ${TIER_PHRASE.best}.`
       : `${o.label}: ${TIER_PHRASE[o.tier]}, costs ${fmtCostC(costCents(best, o))} against ${best.label}.`;
-  return `${lead} Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents))}.`;
+  return `${lead} Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents)).replace(/^\u2212/, '\u2212\u2060')}.`;
 }
 
 /** Spoken name of an action button: "Bet 4x, EV plus $5.21, best play". */
@@ -302,6 +302,9 @@ export const tablesFor = (tripsId: TripsPaytableId): SettlementTables => ({
   trips: TRIPS_PAYTABLES[tripsId],
 });
 const DEFAULT_TABLES = tablesFor(DEFAULT_PAYTABLE_PRESET);
+
+/** The spoken form: word joiners removed (they are for the visible line only, I008). */
+export const unjoined = (s: string): string => s.replace(/\u2060/g, '');
 
 /** A signed money amount for prose: U+2212 for minus, and a word joiner after the sign so no line
  * can break between the sign and the dollar sign (I008). */

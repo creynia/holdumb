@@ -153,7 +153,7 @@ describe('post-action narration (I080)', () => {
         expect(text.startsWith(`${o.label}: `)).toBe(true);
         expect(text).not.toMatch(/-\$/); // the typographic minus, never an ASCII hyphen
         expect(text).toContain(
-          `Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents))}.`,
+          `Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents)).replace(/^\u2212/, '\u2212\u2060')}.`,
         );
         if (o === best) expect(text).toContain('best play');
         else {

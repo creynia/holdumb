@@ -2,6 +2,7 @@
 // `simulate` job through the EvClient; show exact vs simulated figures and the charts.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { formatMoney } from '../engine/money';
+import { signedMoney } from './text';
 import type { SimulatorEvent } from './types';
 import type { SimSettings } from './types';
 import type { EvClient, Progress } from '../worker/protocol';
@@ -298,8 +299,8 @@ export function AutoPlayPanel({
         </label>
       </div>
       <p style={{ margin: 0, fontSize: '13px' }}>
-        Exact: {formatMoney(Math.round(hourCents), { sign: true })} per hour at {formatMoney(ante)}{' '}
-        Ante ({settings.handsPerHour} hands/hour, house edge{' '}
+        Exact: {signedMoney(Math.round(hourCents))} per hour at {formatMoney(ante)} Ante (
+        {settings.handsPerHour} hands/hour, house edge{' '}
         {(fracToNumber(metrics.edgePerAnte) * 100).toFixed(2)}% of the Ante).
       </p>
       <p style={{ margin: 0, fontSize: '13px' }} data-testid="auto-play-cost">
@@ -332,7 +333,7 @@ export function AutoPlayPanel({
                   {STRATEGY_CONSTANTS[s.id].name}
                 </th>
                 <td>{(fracToNumber(m.edgePerAnte) * 100).toFixed(2)}%</td>
-                <td>{formatMoney(Math.round(fracToNumber(m.evPerHourCents)), { sign: true })}</td>
+                <td>{signedMoney(Math.round(fracToNumber(m.evPerHourCents)))}</td>
                 <td>{cost === 0 ? '--' : `+${formatMoney(cost)}`}</td>
               </tr>
             ))}
@@ -362,13 +363,12 @@ export function AutoPlayPanel({
         <div data-testid="auto-play-result" style={{ display: 'grid', gap: '8px' }}>
           <BankrollChart series={result.series} bankroll={bankroll} hands={hands} />
           <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
-            <li>Expected result (exact): {formatMoney(shown.expected, { sign: true })}</li>
+            <li>Expected result (exact): {signedMoney(shown.expected)}</li>
             <li>
-              Actual (≈ simulated{sessions > 1 ? ' average' : ''}):{' '}
-              {formatMoney(shown.actual, { sign: true })}
+              Actual (≈ simulated{sessions > 1 ? ' average' : ''}): {signedMoney(shown.actual)}
               {sessions > 1 ? ` ± ${formatMoney(Math.round(main.meanFinalCi95))}` : ''}
             </li>
-            <li>Luck: {formatMoney(shown.luck, { sign: true })}</li>
+            <li>Luck: {signedMoney(shown.luck)}</li>
             {sessions >= 10 ? (
               <>
                 <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>
@@ -385,7 +385,7 @@ export function AutoPlayPanel({
               <li data-testid="auto-play-six-card">
                 Six Card{sessions > 1 ? ' (all sessions)' : ''}: {six.taken}{' '}
                 {six.taken === 1 ? 'bet' : 'bets'}, {formatMoney(six.wageredCents)} wagered, net{' '}
-                {formatMoney(six.profitCents, { sign: true })}, {six.hits} paid
+                {signedMoney(six.profitCents)}, {six.hits} paid
                 {six.skipped ? `, ${six.skipped} skipped (kept a 4x bet)` : ''}
               </li>
             ) : null}
