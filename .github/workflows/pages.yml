@@ -1,7 +1,13 @@
 name: Deploy to GitHub Pages
 
+# Deploys only after the CI workflow (check + e2e + any other job) finished
+# green for a push to main, and builds exactly the commit CI tested
+# (workflow_run.head_sha). Manual runs via workflow_dispatch still deploy the
+# dispatched ref.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -16,16 +22,23 @@ concurrency:
 
 jobs:
   build:
+    # workflow_run fires for every completed CI run, pass or fail; only a
+    # successful push-triggered run may deploy.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run check
       - run: npm run build:all
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -49,13 +62,14 @@ jobs:
   # Tell search engines (IndexNow) about the pages in the new sitemap. Best effort only.
   indexnow:
     needs: deploy
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           sparse-checkout: scripts
       - uses: actions/download-artifact@v4
         with:
