@@ -160,11 +160,10 @@ test('lesson 20: dragging the meter from $10k to $300k never changes the block h
       .getByTestId('progressive-slider')
       .evaluate(async (input: HTMLInputElement) => {
         const block = document.querySelector('[data-testid="progressive"]')!;
-        const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
         const hs = new Set<number>();
         const ds = new Set<number>();
         for (let m = 10_000; m <= 300_000; m += 1_000) {
-          setValue.call(input, String(m));
+          input.value = String(m);
           input.dispatchEvent(new Event('input', { bubbles: true }));
           for (let i = 0; i < 3; i++) await Promise.resolve();
           await new Promise((r) => setTimeout(r, 0));
