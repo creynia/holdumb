@@ -3,7 +3,7 @@
 // State lives in hooks/: the driver and toasts, the EV sheet, the bet handlers and the preview bar.
 import './sim.css';
 import './container.css';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { equity } from '../engine';
 import type { SceneConfig } from '../scene';
 import { ActionBar } from './ActionBar';
@@ -20,7 +20,8 @@ import { StatusBar } from './StatusBar';
 import { StepPanel } from './StepPanel';
 import { Table, useOrientation } from './Table';
 import { Toasts } from './Toasts';
-import { WatchControls, WatchStatus } from './WatchBar';
+import { WatchControls } from './WatchBar';
+import type { WatchStatus as WatchStatusT } from './WatchStatus';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
@@ -34,7 +35,7 @@ import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
 import { optionKeyOf } from './text';
-import { watchNarration, watchPace } from './watch';
+import { watchNarration, watchPace } from './watchCore';
 import { isRackRejection, rackShort } from './bankroll';
 import type { Cents } from '../engine';
 
@@ -81,6 +82,12 @@ export function Simulator(props: SimulatorViewProps) {
     () => buildTimeline(d.view.lastEvents, speed).totalMs,
   );
   const watching = watch.running;
+  // The strip is loaded on demand with the Watch loop (first-paint budget).
+  const [StatusStrip, setStatusStrip] = useState<typeof WatchStatusT | null>(null);
+  useEffect(() => {
+    if (watching && !StatusStrip)
+      void import('./WatchStatus').then((m) => setStatusStrip(() => m.WatchStatus));
+  }, [watching]);
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
   const bar = usePreviewBar(view.preview, decision, evShown);
 
@@ -199,7 +206,9 @@ export function Simulator(props: SimulatorViewProps) {
       }
       chips={
         watching ? (
-          <WatchStatus watch={watch} orientation={orientation} toast={tableToasts} />
+          StatusStrip ? (
+            <StatusStrip watch={watch} orientation={orientation} toast={tableToasts} />
+          ) : null
         ) : betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
           <ChipRack
             chips={scene.ui?.chips ?? CHIP_DENOMS}

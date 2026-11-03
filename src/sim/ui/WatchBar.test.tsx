@@ -6,12 +6,16 @@ import { createEvClient } from '../worker/client';
 import { Simulator } from './Simulator';
 import { DEFAULT_SIM_SETTINGS } from './types';
 import { watchSummary } from './WatchBar';
+import { flushAnnouncements, resetAnnouncer, subscribeAnnouncements } from './announcer';
 
 const settings = { ...DEFAULT_SIM_SETTINGS, animationSpeed: 'instant' as const };
 let dispose: (() => void) | null = null;
+const offs: (() => void)[] = [];
 afterEach(() => {
   cleanup();
   dispose?.();
+  offs.splice(0).forEach((f) => f());
+  resetAnnouncer();
 });
 
 describe('Watch (I078)', () => {
@@ -33,6 +37,9 @@ describe('Watch (I078)', () => {
       />,
     );
     const sim = screen.getByTestId('simulator');
+    const said: string[] = [];
+    const off = subscribeAnnouncements((_p, t) => said.push(t));
+    offs.push(off);
     expect(document.querySelector('.sim-rack')).toBeTruthy();
     expect(screen.getByTestId('watch-hands')).toHaveProperty('value', '10');
     fireEvent.click(screen.getByTestId('watch-start'));
@@ -57,8 +64,13 @@ describe('Watch (I078)', () => {
         /^Hand 1 of 10: Bet 4x\. /,
       ),
     );
-    // The felt's card read-out is quiet while Watch runs: one active live region.
-    expect(document.querySelectorAll('[aria-live]:not([aria-live="off"])')).toHaveLength(1);
+    // Spoken once, through the app's single announcer (I036): the hand's line, and no card
+    // read-out from the felt (quiet while Watch runs).
+    flushAnnouncements();
+    const watchLines = said.filter((t) => /Hand \d+ of 10:/.test(t));
+    expect(watchLines).toHaveLength(1);
+    expect(watchLines[0]).toMatch(/^Hand 1 of 10: Bet 4x\. /);
+    expect(said.some((t) => /Your cards:/.test(t))).toBe(false);
     fireEvent.click(screen.getByTestId('watch-stop'));
     await waitFor(() => expect(screen.queryByTestId('watch-status')).toBeNull());
     expect(screen.getByTestId('watch-summary').textContent).toBe('Stopped after 1 hand.');
