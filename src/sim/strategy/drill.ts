@@ -198,13 +198,10 @@ export function pickDueReview(
     }
   }
   if (spots.length === 0) return [null, rng];
-  let r: RngState;
-  let u: number;
-  [u, r] = randBelow(rng, 100);
-  if (u >= REVIEW_PICK_PERCENT) return [null, r];
-  let k: number;
-  [k, r] = randBelow(r, spots.length);
-  return [spots[k]!, r];
+  const [u, r1] = randBelow(rng, 100);
+  if (u >= REVIEW_PICK_PERCENT) return [null, r1];
+  const [k, r2] = randBelow(r1, spots.length);
+  return [spots[k]!, r2];
 }
 /** When a review is allowed and something is due, this share of draws is a review. */
 const REVIEW_PICK_PERCENT = 50;

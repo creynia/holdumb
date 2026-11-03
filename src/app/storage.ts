@@ -238,7 +238,7 @@ function sanitizeLens(raw: unknown): LensStats {
     for (const x of raw.review) {
       if (!isObj(x) || !keep(x.code)) continue;
       d.review.push({
-        code: x.code as string,
+        code: x.code,
         box: clampInt(x.box, 1, REVIEW_BOXES, 1),
         due: clampInt(x.due, 0, 100_000_000, clock),
       });

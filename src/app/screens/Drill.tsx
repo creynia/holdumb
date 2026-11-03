@@ -229,7 +229,6 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const ls = lensStats(d);
   const due = store.dueReview();
   const counts = ls.byStreet;
-  const total = DRILL_STREETS.reduce((n, s) => n + counts[s].answered, 0);
   const chosenOpt =
     spot && answer
       ? answer.preview.options.find((o) =>
