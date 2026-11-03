@@ -463,7 +463,7 @@ describe('Simulator container', () => {
     });
     it('a single mistake is not described twice: the narration has the cost, the verdict the figures', async () => {
       const { evClient } = await playRiver('fold');
-      const text = document.querySelector('.sim-toast')!.textContent!;
+      const text = document.querySelector('.sim-toast')!.textContent;
       expect(text).toMatch(
         /^Fold: (a small mistake|a mistake|a big mistake), costs \$[\d.,]+ against /,
       );
@@ -479,7 +479,7 @@ describe('Simulator container', () => {
       cleanup();
       const after = await playRiver('fold', { settings: { ...settings, evMode: 'after' } });
       // the reveal card has the cost, so the toast carries only the figures
-      const text = document.querySelector('.sim-toast')!.textContent!;
+      const text = document.querySelector('.sim-toast')!.textContent;
       expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
       expect(text).not.toMatch(/cost/);
       after.evClient.dispose();

@@ -318,8 +318,7 @@ test.describe('sandbox', () => {
   }) => {
     await page.goto('/#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river&speed=instant');
     await ready(page);
-    await opt(page, 'play-1').click();
-    await page.getByTestId('confirm').click();
+    await opt(page, 'play-1').click(); // one tap acts (D40)
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
     const toast = page.locator('.sim-toast');
     await expect(toast).toHaveCount(1);
