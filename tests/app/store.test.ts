@@ -107,6 +107,9 @@ describe('Store', () => {
     expect(s.drill.byStreet.preflop).toEqual({ answered: 2, correct: 2 });
     expect(s.drill.byStreet.flop).toEqual({ answered: 1, correct: 0 });
     expect(s.drill.recentMisses).toEqual(['f:x']);
+    s.recordDrill('flop', true, undefined, 'flop-nothing');
+    s.recordDrill('flop', false, undefined, 'flop-nothing');
+    expect(s.drill.byCategory['flop-nothing']).toEqual({ answered: 2, correct: 1 });
     s.recordDrill('flop', true, 'f:x'); // answering a miss correctly clears it
     expect(s.drill.recentMisses).toEqual([]);
     const code = s.exportCode();
