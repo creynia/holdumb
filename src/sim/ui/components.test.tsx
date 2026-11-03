@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame, equity, parseCards } from '../engine';
-import type { DecisionPreview } from '../math';
+import type { Card as PlayingCard } from '../engine';
+import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey } from '../scene';
 import { ActionBar, optionsFor } from './ActionBar';
 import { BetCircle } from './BetCircle';
@@ -17,6 +18,7 @@ import {
   FOLDED_RESULT,
   PREFLOP_AA,
   RIVER_ACE_HIGH,
+  RIVER_PLAY_BOARD,
 } from './fixtures';
 import { StatusBar } from './StatusBar';
 import { statusMoney } from './status';
@@ -179,6 +181,97 @@ describe('EvSheet', () => {
     sheet({ variant: 'rail' });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('region')).toBeTruthy();
+  });
+});
+
+describe('EvSheet river dealer outs (lesson 12)', () => {
+  const request = (f: {
+    hole: [PlayingCard, PlayingCard];
+    board: PlayingCard[];
+  }): PreviewRequest => ({
+    street: 'river',
+    hole: f.hole,
+    board: f.board,
+    blindPaytable: 'blind-standard',
+    ante: 1000,
+  });
+  it('shows the count, the cards, the hidden pair and the basic card before the move', () => {
+    sheet({
+      preview: RIVER_ACE_HIGH.preview,
+      selected: 'play-1',
+      request: request(RIVER_ACE_HIGH),
+    });
+    const outs = screen.getByTestId('dealer-outs');
+    expect(outs.getAttribute('data-mode')).toBe('before');
+    expect(outs.textContent).toContain('Dealer outs: 15 of 45');
+    expect(screen.getByTestId('dealer-outs-list').textContent).toBe(
+      ' (any king (3), any nine (3), any five (3), any three (3), any two (3))',
+    );
+    expect(screen.getByTestId('hidden-pair').textContent).toBe('Hidden pair or better: no');
+    expect(screen.getByTestId('basic-river').textContent).toBe('Basic card: bet 1x (outs < 21)');
+  });
+  it('says fold with 21+ outs and no hidden pair', () => {
+    sheet({
+      preview: RIVER_PLAY_BOARD.preview,
+      selected: 'fold',
+      request: request(RIVER_PLAY_BOARD),
+    });
+    expect(screen.getByTestId('dealer-outs').textContent).toContain('Dealer outs: 27 of 45');
+    expect(screen.getByTestId('basic-river').textContent).toBe(
+      'Basic card: fold (21+ outs, no hidden pair)',
+    );
+  });
+  it('after the move (practice result) the facts, basic card included, sit in the result', () => {
+    sheet({
+      preview: RIVER_ACE_HIGH.preview,
+      selected: 'fold',
+      hideEv: true,
+      request: request(RIVER_ACE_HIGH),
+    });
+    expect(screen.queryByTestId('dealer-outs')).toBeNull(); // practice mode: nothing until confirmed
+    cleanup();
+    sheet({
+      preview: RIVER_ACE_HIGH.preview,
+      selected: 'fold',
+      hideEv: true,
+      chosen: 'fold',
+      request: request(RIVER_ACE_HIGH),
+    });
+    const outs = screen.getByTestId('dealer-outs');
+    expect(outs.getAttribute('data-mode')).toBe('after');
+    expect(screen.getByTestId('practice-result').contains(outs)).toBe(true);
+    expect(outs.textContent).toContain('Dealer outs: 15 of 45');
+    expect(outs.textContent).toContain('Hidden pair or better: no');
+    expect(screen.getByTestId('basic-river').textContent).toBe('Basic card: bet 1x (outs < 21)');
+  });
+  it('a read-only result sheet (drill) is after mode and still shows the basic card', () => {
+    render(
+      <EvSheet
+        preview={RIVER_PLAY_BOARD.preview}
+        selected="play-1"
+        variant="inline"
+        request={request(RIVER_PLAY_BOARD)}
+      />,
+    );
+    expect(screen.getByTestId('dealer-outs').getAttribute('data-mode')).toBe('after');
+    expect(screen.getByTestId('basic-river').textContent).toBe(
+      'Basic card: fold (21+ outs, no hidden pair)',
+    );
+  });
+  it('appears only on a river preview whose request is the same street', () => {
+    sheet({ request: { ...request(RIVER_ACE_HIGH), street: 'preflop', board: [] } });
+    expect(screen.queryByTestId('dealer-outs')).toBeNull();
+    cleanup();
+    sheet({ preview: RIVER_ACE_HIGH.preview, selected: 'play-1' });
+    expect(screen.queryByTestId('dealer-outs')).toBeNull();
+    cleanup();
+    // A stale request from another street never pairs with a river preview.
+    sheet({
+      preview: RIVER_ACE_HIGH.preview,
+      selected: 'play-1',
+      request: { ...request(FLOP_HIDDEN_PAIR), street: 'flop' },
+    });
+    expect(screen.queryByTestId('dealer-outs')).toBeNull();
   });
 });
 

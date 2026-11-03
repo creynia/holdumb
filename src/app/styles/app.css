@@ -399,12 +399,6 @@ main:has(> .page-wide) {
 .scene {
   padding: 0.7rem;
 }
-.scene-placeholder {
-  min-height: 160px;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
 .quiz {
   margin: 1rem 0;
 }
@@ -712,6 +706,10 @@ textarea {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin: 0.6rem 0;
+}
+.seg-label {
+  align-self: center;
+  font-weight: 600;
 }
 .seg {
   flex: 1 1 auto;

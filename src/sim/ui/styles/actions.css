@@ -43,6 +43,14 @@
   font-size: 0.75rem;
   color: var(--muted);
 }
+.sim-act-decision .sim-act-sub {
+  /* Two lines at all times: the EV line wraps on narrow buttons depending on the tier word, so the
+     bar must not change height between "Calculating…" and a result (I038). */
+  min-height: 2.3em;
+  display: flex;
+  align-items: center;
+  text-align: center;
+}
 .sim-act-primary {
   background: var(--accent);
   border-color: var(--accent);
