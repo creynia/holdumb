@@ -65,11 +65,13 @@ describe('content bundle', () => {
 });
 
 describe('drill.json', () => {
-  it('has a reminder for exactly the 18 Drill categories; river-outs ones carry {outs}', () => {
+  it('has a reminder for exactly the 18 Drill categories; river-outs and board-plays ones carry {outs}', () => {
     expect(Object.keys(bundle.drill).sort()).toEqual([...DRILL_CATEGORY_IDS].sort());
     for (const [id, text] of Object.entries(bundle.drill)) {
       expect(text, id).toBeTruthy();
-      expect(text.includes('{outs}'), id).toBe(id.startsWith('river-outs-'));
+      expect(text.includes('{outs}'), id).toBe(
+        id.startsWith('river-outs-') || id === 'river-board-plays',
+      );
     }
   });
 });

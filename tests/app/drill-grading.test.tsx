@@ -153,4 +153,20 @@ describe('Drill grading copy (curriculum 9.2)', () => {
       `Mistake. Fold earns 0.300 antes ($15) more on average. Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: ${outs}.`,
     );
   });
+  it('river-board-plays says the board plays and fills in the outs (pinned: A K Q 8 7, 4c 3s)', async () => {
+    const s = spot('river', 'river-board-plays', '4c 3s As Ks Qs 8d 7h');
+    const outs = riverFacts(s.hole, s.board).outs;
+    const { text } = await answer(s, preview('river', 'costly', 359, 1800), 'Bet 1x');
+    expect(text).toBe(
+      `Mistake. Fold earns 0.359 antes ($18) more on average. Your best five is the board, so you can tie but never win. Count the dealer's outs: the basic card says bet 1x with fewer than 21 and fold with 21 or more; perfect play folds from 19. Here: ${outs}.`,
+    );
+    expect(outs).toBe(27);
+  });
+  it('flop-deuces keeps the shorter reminder (pinned)', async () => {
+    const s = spot('flop', 'flop-deuces', '2c 2d 9s 9h 5c');
+    const { text } = await answer(s, preview('flop', 'costly', 150, 800), 'Bet 2x');
+    expect(text).toBe(
+      "Mistake. Check earns 0.150 antes ($8) more on average. Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board).",
+    );
+  });
 });
