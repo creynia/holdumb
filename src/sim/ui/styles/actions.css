@@ -149,10 +149,14 @@
   }
   .sim-act-decision.tier-blunder {
     border-bottom-style: groove;
+    border-bottom-width: 8px;
   }
   .sim-act.is-selected {
     outline: 3px solid CanvasText;
     outline-offset: 2px;
+  }
+  .sim-act:focus-visible {
+    outline-color: Highlight;
   }
   .sim-felt {
     forced-color-adjust: none;
