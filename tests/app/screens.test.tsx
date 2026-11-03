@@ -383,7 +383,7 @@ describe('Settings', () => {
     });
     expect(store.settings.paytable).toBe('trips-9-7-4');
     const legends = [...el.querySelectorAll('fieldset > legend')].map((l) => l.textContent);
-    expect(legends).toEqual(['Show EV', 'Ask me to confirm']);
+    expect(legends).toEqual(['Show EV', 'Which bets']);
     const radios = (name: string) => [
       ...el.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${name}"]`),
     ];
@@ -391,33 +391,36 @@ describe('Settings', () => {
     expect(radios('ev-mode').map(labelOf)).toEqual([
       expect.stringContaining('Before I choose'),
       expect.stringContaining('After I choose'),
-      expect.stringContaining('Never'),
+      expect.stringContaining('Off'),
     ]);
-    expect(radios('confirm-on').map(labelOf)).toEqual([
+    expect(radios('confirm-tiers').map(labelOf)).toEqual([
       expect.stringContaining('All bets'),
       expect.stringContaining('Medium and bad bets'),
       expect.stringContaining('Only bad bets'),
-      expect.stringContaining('Never'),
     ]);
-    expect(labelOf(radios('confirm-on')[1]!)).toContain('more than 0.10 Ante');
-    expect(el.querySelector('#confirm-on-note')!.textContent).toBe(
-      'Confirm options apply when EV is shown before the move.',
-    );
+    expect(labelOf(radios('confirm-tiers')[1]!)).toContain('more than 0.10 Ante');
     // Defaults: EV before, no confirm step.
     expect(radios('ev-mode').find((r) => r.checked)!.value).toBe('before');
-    expect(radios('confirm-on').find((r) => r.checked)!.value).toBe('never');
+    expect(store.settings.confirmOn).toBe('never');
+    expect(radios('confirm-tiers').find((r) => r.checked)!.value).toBe('all');
     await act(() => {
       radios('ev-mode')[2]!.click();
     });
     expect(store.settings.evMode).toBe('never');
+    // Confirm my bets (D40): tick it, then pick the medium scope.
     await act(() => {
-      radios('confirm-on')[1]!.click();
+      el.querySelector<HTMLInputElement>('input[aria-describedby="confirm-bets-hint"]')!.click();
+    });
+    await act(() => {
+      radios('confirm-tiers')[1]!.click();
     });
     expect(store.settings.confirmOn).toBe('costly');
-    expect(radios('confirm-on').find((r) => r.checked)!.value).toBe('costly');
-    // The three old checkboxes are gone; reduce motion and four-colour remain.
+    expect(store.settings.confirmTiers).toBe('costly');
+    expect(radios('confirm-tiers').find((r) => r.checked)!.value).toBe('costly');
+    // The confirm box, reduce motion and four-colour remain; the old three checkboxes are gone.
     const boxes = [...el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
     expect(boxes.map(labelOf)).toEqual([
+      expect.stringContaining('Confirm my bets'),
       expect.stringContaining('Reduce motion'),
       expect.stringContaining('Four-colour deck'),
     ]);
@@ -1030,5 +1033,54 @@ describe('persistent storage in the app (I076)', () => {
     const { el } = await mount('#/settings');
     await act(() => new Promise((r) => setTimeout(r, 0)));
     expect(el.querySelector('[data-testid="storage-state"]')!.textContent?.trim()).toBe('');
+  });
+});
+
+describe('Settings: Show EV and Confirm bets (D40, I091)', () => {
+  const fieldsetOf = (el: HTMLElement, legend: string) =>
+    [...el.querySelectorAll('fieldset')].find(
+      (f) => f.querySelector('legend')?.textContent === legend,
+    ) as HTMLFieldSetElement;
+  const box = (el: HTMLElement) =>
+    el.querySelector<HTMLInputElement>(
+      'input[type="checkbox"][aria-describedby="confirm-bets-hint"]',
+    )!;
+  const tierRadios = (el: HTMLElement) =>
+    fieldsetOf(el, 'Which bets').querySelectorAll<HTMLInputElement>('input[type="radio"]');
+
+  it('Show EV says Off (not Never); the old confirm radios and note are gone', async () => {
+    const { el } = await mount('#/settings');
+    const ev = fieldsetOf(el, 'Show EV');
+    expect(ev.textContent).toContain('Off');
+    expect(ev.textContent).not.toContain('Never');
+    expect(el.querySelector('#confirm-on-note')).toBeNull();
+    expect(el.textContent).not.toContain('Ask me to confirm');
+    expect(el.textContent).not.toContain('Confirm options apply when EV is shown before the move');
+  });
+  it('defaults: the box is unticked, Which bets is disabled, All bets is selected', async () => {
+    const { el } = await mount('#/settings');
+    expect(box(el).checked).toBe(false);
+    expect(fieldsetOf(el, 'Which bets').disabled).toBe(true);
+    expect([...tierRadios(el)].find((r) => r.checked)?.value).toBe('all');
+  });
+  it('ticking turns Confirm on with the stored scope and enables Which bets', async () => {
+    const { el, store } = await mount('#/settings');
+    await act(() => box(el).click());
+    expect(store.settings.confirmOn).toBe('all');
+    expect(box(el).checked).toBe(true);
+    expect(fieldsetOf(el, 'Which bets').disabled).toBe(false);
+  });
+  it('picking a scope stores it; unticking keeps it and greys Which bets with it still shown', async () => {
+    const { el, store } = await mount('#/settings');
+    await act(() => box(el).click());
+    const only = [...tierRadios(el)].find((r) => r.value === 'blunder')!;
+    await act(() => only.click());
+    expect(store.settings.confirmOn).toBe('blunder');
+    expect(store.settings.confirmTiers).toBe('blunder');
+    await act(() => box(el).click());
+    expect(store.settings.confirmOn).toBe('never');
+    expect(store.settings.confirmTiers).toBe('blunder');
+    expect(fieldsetOf(el, 'Which bets').disabled).toBe(true);
+    expect([...tierRadios(el)].find((r) => r.checked)?.value).toBe('blunder');
   });
 });
