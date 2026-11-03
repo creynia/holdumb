@@ -46,6 +46,13 @@ test('Confirm box is the confirm setting; Settings agrees', async ({ page }) => 
   await expect(page.getByRole('checkbox', { name: 'Confirm bets' })).toHaveAccessibleDescription(
     /Only bad bets\./,
   );
+  // Unticking and ticking again keeps the scope (confirmTiers, D40).
+  const box2 = page.getByRole('checkbox', { name: 'Confirm bets' });
+  await box2.uncheck();
+  await box2.check();
+  await expect(box2).toHaveAccessibleDescription(/Only bad bets\./);
+  await page.goto('/#/settings');
+  await expect(page.getByRole('radio', { name: /^Only bad bets/ })).toBeChecked();
 });
 
 test('keyboard: Tab reaches the group, arrows move the radio, Space toggles Confirm', async ({

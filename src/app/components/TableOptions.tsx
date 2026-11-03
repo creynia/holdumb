@@ -50,7 +50,14 @@ export function TableOptions() {
           aria-label="Confirm bets"
           aria-describedby={hintId}
           checked={s.confirmOn !== 'never'}
-          onChange={(e) => store.updateSettings(withConfirmEnabled(s, e.currentTarget.checked))}
+          onChange={(e) =>
+            store.updateSettings(
+              e.currentTarget.checked
+                ? withConfirmEnabled(s, true)
+                : // Keep the scope that was on, so ticking again restores it (D40).
+                  { ...withConfirmEnabled(s, false), confirmTiers: scope },
+            )
+          }
           data-testid="confirm-toggle"
         />
         <span>Confirm</span>
