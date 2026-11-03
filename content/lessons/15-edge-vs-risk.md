@@ -53,11 +53,11 @@ A folded hand counts as 2 antes wagered.
 
 ```quiz
 - q: Which number is the expected cost per hand as a share of your Ante, under perfect play?
-  options: ["0.53%", "1.09%", "2.18%", "4.15%"]
+  options: ["{{num:perfect-eor-2}}", "1.09%", "{{num:perfect-edge-2}}", "{{num:perfect-wager}}%"]
   answer: 2
   explain: "{{num:perfect-edge-3}} of the Ante. {{num:perfect-eor-2}} is per dollar in action, and {{num:perfect-wager}} is the average antes in action per hand."
 - q: $10 Ante, 30 hands an hour, perfect play. Expected cost per hour?
-  options: ["About $0.66", "About $1.60", "About $6.55", "About $12.45"]
+  options: ["About $0.66", "About $1.60", "About {{num:perfect-per-hour}}", "About $12.45"]
   answer: 2
   explain: "30 × $10 × {{num:perfect-edge-3}} ≈ {{num:perfect-per-hour}}."
 - q: Why is the element of risk smaller than the house edge per Ante?

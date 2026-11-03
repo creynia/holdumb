@@ -116,7 +116,7 @@ steps:
   answer: 2
   explain: "0.50 × $20 = $10. Ante units scale with your bet."
 - q: What is the house edge of UTH under perfect play?
-  options: ["About 0.5% of the Ante", "About 2.18% of the Ante", "About 5% of the Ante", "Zero with perfect play"]
+  options: ["About 0.5% of the Ante", "About {{num:perfect-edge-2}} of the Ante", "About 5% of the Ante", "Zero with perfect play"]
   answer: 1
   explain: "{{num:perfect-edge-3}} of the Ante per hand. Nothing beats it, and Trips is extra."
 - q: You played a hand perfectly and lost $60. Was it a bad decision?

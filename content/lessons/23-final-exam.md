@@ -66,7 +66,7 @@ steps:
   answer: 0
   explain: "19 dealer outs: bet 1x."
 - q: What's the element of risk of UTH under perfect play?
-  options: ["0.53%", "1.09%", "2.18%", "4.15%"]
+  options: ["{{num:perfect-eor-2}}", "1.09%", "{{num:perfect-edge-2}}", "{{num:perfect-wager}}%"]
   answer: 0
   explain: "Expected loss divided by the average money in action ({{num:perfect-wager}} antes)."
 - q: What's the biggest leak?

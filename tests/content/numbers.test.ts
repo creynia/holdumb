@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compileLesson, expandNumbers } from '../../src/content/compile';
+import { buildContent } from '../../src/content/load';
 import { D36_EV, NUMBERS, decimal, money } from '../../src/content/numbers';
 import { frac } from '../../src/sim/strategy/fraction';
 
@@ -73,13 +74,14 @@ describe('{{num:…}} tokens', () => {
 });
 
 describe('lessons use the tokens', () => {
-  // Quiz distractor lists may hold any figure (a wrong option is not the registry quantity), and a
-  // quoted outside source keeps its own wording even when it matches a computed figure.
+  // Quiz options are scanned too: a correct answer, or a distractor that quotes the real figure,
+  // uses the token. Only text that merely matches a figure is allowed, entry by entry: a quoted
+  // outside source keeps its own wording even when it matches a computed figure.
   const ALLOW: { file: string; includes: string }[] = [
     { file: '15-edge-vs-risk.md', includes: 'Treasury Brisbane gaming guide quotes' },
   ];
   const exempt = (file: string, line: string) =>
-    /^\s*options:/.test(line) || ALLOW.some((a) => a.file === file && line.includes(a.includes));
+    ALLOW.some((a) => a.file === file && line.includes(a.includes));
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   it('no lesson types a registry value outside a {{num:…}} token', () => {
@@ -95,9 +97,17 @@ describe('lessons use the tokens', () => {
     }
     expect(hits).toEqual([]);
   });
-  it('the scan catches a hand-typed copy (the check can fail)', () => {
-    const line = 'A house edge of 2.185% of the Ante.';
+  it('the scan catches a hand-typed copy, options included (the check can fail)', () => {
+    const line = '  options: ["About 2.18% of the Ante", "5%"]';
+    expect(exempt('05-expected-value.md', line)).toBe(false);
     expect(Object.values(NUMBERS).some((v) => new RegExp(`(?<![\\d.])${esc(v)}(?!\\d)`).test(line))).toBe(true);
+  });
+  it('chapters.json summaries use the tokens and expand them', () => {
+    const raw = readFileSync(join(process.cwd(), 'content/chapters.json'), 'utf8');
+    for (const v of Object.values(NUMBERS))
+      expect(new RegExp(`(?<![\\d.])${esc(v)}(?!\\d)`).test(raw), v).toBe(false);
+    const ch = buildContent(process.cwd()).chapters.find((c) => c.summary.includes('optimum'))!;
+    expect(ch.summary).toBe('Every decision, played to the exact optimum: 2.18% of the Ante.');
   });
   it('every token in the lessons names a registry id', () => {
     const ids = files.flatMap((f) =>

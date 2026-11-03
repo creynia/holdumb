@@ -105,7 +105,7 @@ steps:
   answer: 2
   explain: "About 4.94 antes per hand; about 27 per 30-hand hour."
 - q: You play an hour at $10 with the basic card. Which result is most typical?
-  options: ["Exactly −$6.55", "Somewhere between about −$300 and +$280", "Always a small loss", "Always a small win"]
+  options: ["Exactly −{{num:perfect-per-hour}}", "Somewhere between about −$300 and +$280", "Always a small loss", "Always a small win"]
   answer: 1
   explain: "The expected loss is {{num:perfect-per-hour}}, but 80% of hours land between about −30 and +28 antes."
 - q: Which bankroll gives about a 1-in-100 chance of busting within an hour at a $10 Ante?

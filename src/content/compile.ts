@@ -6,7 +6,16 @@ import { validateScene } from '../sim/scene';
 import { STRATEGY_IDS } from '../sim/strategy';
 import { cardsHtml, checkInline, isHandClass } from './cards';
 import { NUMBERS } from './numbers';
-import type { Block, ChartBlockData, Lesson, LessonSource, Quiz, QuizHand, SourceItem } from './types';
+import type {
+  Block,
+  ChartBlockData,
+  Lesson,
+  ProgressiveBlockData, LessonSource, Quiz, QuizHand, SourceItem } from './types';
+import {
+  PROGRESSIVE_METER_MAX,
+  PROGRESSIVE_METER_MIN,
+  PROGRESSIVE_METER_STEP,
+} from './progressive';
 
 export interface CompileOptions {
   /** known glossary slugs, for `[[term]]` links; omit to skip link checking */
@@ -251,6 +260,26 @@ export function parseChart(yamlText: string): ChartBlockData {
   return chart;
 }
 
+/** ```progressive YAML `{ meter? }`: the start meter in whole dollars (default 50,000). */
+export function parseProgressive(yamlText: string): ProgressiveBlockData {
+  const raw: unknown = yamlText.trim() ? parseYaml(yamlText) : {};
+  if (!isObj(raw)) throw new Error('progressive block must be a YAML mapping { meter? }');
+  const unknown = Object.keys(raw).filter((k) => k !== 'meter');
+  if (unknown.length) throw new Error(`progressive: unknown key(s) ${unknown.join(', ')} (only meter)`);
+  const meter = raw.meter ?? 50_000;
+  if (
+    typeof meter !== 'number' ||
+    !Number.isInteger(meter) ||
+    meter < PROGRESSIVE_METER_MIN ||
+    meter > PROGRESSIVE_METER_MAX ||
+    meter % PROGRESSIVE_METER_STEP !== 0
+  )
+    throw new Error(
+      `progressive: meter must be a whole number of thousands from ${PROGRESSIVE_METER_MIN} to ${PROGRESSIVE_METER_MAX}`,
+    );
+  return { meter };
+}
+
 /** Text a scene shows at runtime must also have valid `{{cards}}`. */
 function checkSceneText(scene: unknown): void {
   if (!isObj(scene) || !Array.isArray(scene.steps)) return;
@@ -278,7 +307,7 @@ export function expandNumbers(body: string, offset = 0, source = body): string {
   });
 }
 
-type FenceLang = 'scene' | 'quiz' | 'chart';
+type FenceLang = 'scene' | 'quiz' | 'chart' | 'progressive';
 export type Seg =
   | { t: 'md'; text: string }
   | { t: 'fence'; lang: FenceLang; text: string }
@@ -300,7 +329,7 @@ export function segment(body: string): Seg[] {
     if (fence) {
       const [, ticks = '```', lang = ''] = fence;
       const end = findFenceEnd(lines, i + 1, ticks);
-      if (lang === 'scene' || lang === 'quiz' || lang === 'chart') {
+      if (lang === 'scene' || lang === 'quiz' || lang === 'chart' || lang === 'progressive') {
         flush();
         segs.push({ t: 'fence', lang, text: lines.slice(i + 1, end).join('\n') });
       } else if (lang === 'math' || lang === 'callout' || lang === 'tip') {
@@ -393,6 +422,8 @@ export function compileLesson(
         blocks.push({ kind: 'scene', scene: res.scene });
       } else if (seg.lang === 'chart') {
         blocks.push({ kind: 'chart', chart: parseChart(seg.text) });
+      } else if (seg.lang === 'progressive') {
+        blocks.push({ kind: 'progressive', progressive: parseProgressive(seg.text) });
       } else {
         const quizzes = parseQuizzes(seg.text, id, quizCount);
         quizCount += quizzes.length;

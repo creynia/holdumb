@@ -2601,6 +2601,12 @@ straight flush 10%, quads $300, full house $50, flush $40, straight $30, trips $
 | $100,000 | 17.7% | $5.31 |
 | ≈ $160,531 | 0% (break-even) | $0 |
 
+Drag the meter to see the price at any size, and where it crosses break-even:
+
+```progressive
+meter: 50000
+```
+
 Most meters sit far below break-even, so most progressives are among the most expensive bets in the casino.
 Their tables vary, so the app gives you the method, not one number.
 

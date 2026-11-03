@@ -72,7 +72,7 @@ steps:
 
 ```quiz
 - q: What's the house edge of UTH with perfect strategy (standard Blind)?
-  options: ["0.53% of the Ante", "1.09% of the Ante", "2.18% of the Ante", "3.5% of the Ante"]
+  options: ["{{num:perfect-eor-2}} of the Ante", "1.09% of the Ante", "{{num:perfect-edge-2}} of the Ante", "3.5% of the Ante"]
   answer: 2
   explain: "{{num:perfect-edge-3}} of the Ante. {{num:perfect-eor-2}} is the element of risk (lesson 15)."
 - q: What share of hands are 4x bets under perfect play?
