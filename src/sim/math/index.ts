@@ -1,7 +1,7 @@
 export type * from './types';
 export { previewJob } from './preview';
 export { decisionTier, wagerTier } from './tiers';
-export { betterAlternative, riverFacts, flopFacts } from './alternatives';
+export { betterAlternative, riverFacts, flopFacts, groupOuts, RIVER_UNSEEN } from './alternatives';
 export type {
   AlternativeCopyKey,
   AlternativeVars,
@@ -9,6 +9,7 @@ export type {
   BetterAlternative,
   FlopFacts,
   RiverFacts,
+  OutGroup,
 } from './alternatives';
 export {
   GAME_EDGE,
