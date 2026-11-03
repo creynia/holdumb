@@ -929,3 +929,11 @@ textarea {
 [data-view] {
   scroll-margin-top: 16px;
 }
+
+/* Every label that wraps a checkbox or radio is a full-row 44px tap target (I034). */
+label:has(> input[type='checkbox'], > input[type='radio']) {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}

@@ -255,7 +255,15 @@ export function AutoPlayPanel({
             onInput={(e) => setSeed(Number(e.currentTarget.value) | 0)}
           />
         </label>
-        <label style={{ ...field, flexDirection: 'row', alignItems: 'center', gap: '6px' }}>
+        <label
+          style={{
+            ...field,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '6px',
+            minHeight: '44px',
+          }}
+        >
           <input type="checkbox" checked={cmp} onChange={(e) => setCmp(e.currentTarget.checked)} />
           Compare (same cards)
         </label>
