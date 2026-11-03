@@ -943,25 +943,16 @@ textarea {
   min-width: 1ch;
   position: relative;
 }
-/* Invisible 44px hit area; the visual size and line height are unchanged. */
+/* Invisible hit area around the citation number; the visual size and line height are unchanged. */
 .cite-btn::before {
   content: '';
   position: absolute;
-  /* the button box is 0 tall (.cite has line-height 0), so centre a fixed 44px height on it */
+  /* The button box is 0 tall (.cite has line-height 0), so centre a fixed height on it. The height
+     is capped at the line pitch (about 1.55rem), so a tap on one line never reaches the next. */
   top: 50%;
-  height: 44px;
-  margin-top: -22px;
+  height: 1.4rem;
+  margin-top: -0.7rem;
   inset-inline: -17px;
-}
-/* Adjacent citations ([2][3]) get a small gap and trimmed hit areas so they never overlap. */
-.cite + .cite {
-  margin-inline-start: 0.5rem;
-}
-.cite + .cite .cite-btn::before {
-  inset-inline-start: -4px;
-}
-.cite:has(+ .cite) .cite-btn::before {
-  inset-inline-end: -4px;
 }
 .cite-btn:focus-visible {
   outline: 2px solid var(--focus);

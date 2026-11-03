@@ -1,54 +1,78 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { readdirSync, readFileSync } from 'node:fs';
 
-// Lesson 19 has isolated citations and an adjacent run [2][3][4].
-test('every .cite-btn has a >=44px hit area and neighbours do not overlap', async ({ page }) => {
-  await page.goto('/#/learn/trips-bet');
-  const btns = page.locator('.cite-btn');
-  await expect(btns.first()).toBeAttached();
-  const n = await btns.count();
-  expect(n).toBeGreaterThan(3);
-  for (let i = 0; i < n; i++) {
-    await btns.nth(i).evaluate((el) => el.scrollIntoView({ block: 'center' }));
-    const r = await btns.nth(i).evaluate((el) => {
-      // The button box is 0 tall (line-height 0), so probe from the centre of its glyph.
-      const rg = document.createRange();
-      rg.selectNodeContents(el);
-      const b = rg.getBoundingClientRect();
-      // A neighbouring citation on the next line may win the shared strip; the tap still hits a citation.
-      const hit = (x: number, y: number) => {
-        const t = document.elementFromPoint(x, y);
-        return t === el || !!t?.classList.contains('cite-btn');
-      };
-      // Probe outward from the visual box to find the extent of the hit area, per axis.
-      const cx = b.x + b.width / 2;
-      const cy = b.y + b.height / 2;
-      const extent = (dx: number, dy: number) => {
-        let d = 0;
-        while (d < 40 && hit(cx + dx * (d + 1), cy + dy * (d + 1))) d++;
-        return d;
-      };
-      const next = el.parentElement?.nextElementSibling?.classList.contains('cite') ?? false;
-      const prev = el.parentElement?.previousElementSibling?.classList.contains('cite') ?? false;
-      return {
-        up: extent(0, -1),
-        down: extent(0, 1),
-        left: extent(-1, 0),
-        right: extent(1, 0),
-        h: b.height,
-        w: b.width,
-        next,
-        prev,
-      };
-    });
-    expect(r.up + r.down + r.h, `cite ${i} height`).toBeGreaterThanOrEqual(43);
-    if (!r.next && !r.prev)
-      expect(r.left + r.right + r.w, `cite ${i} width`).toBeGreaterThanOrEqual(43);
-    else expect(r.left + r.right + r.w, `cite ${i} adjacent width`).toBeGreaterThanOrEqual(20);
-  }
+// Every lesson that has citations (lesson id = file name without the numeric prefix).
+const lessons = readdirSync('content/lessons')
+  .filter(
+    (f) => f.endsWith('.md') && /\[\^\d+\]/.test(readFileSync(`content/lessons/${f}`, 'utf8')),
+  )
+  .map((f) => f.replace(/^\d+-/, '').replace(/\.md$/, ''));
+
+test('there are lessons with citations to test', () => {
+  expect(lessons.length).toBeGreaterThanOrEqual(9);
 });
 
-test('lesson with citations has no serious axe violations', async ({ page }) => {
+for (const id of lessons) {
+  test(`${id}: every .cite-btn hit area is wide enough, and a tap on a glyph hits that button`, async ({
+    page,
+  }) => {
+    await page.goto(`/#/learn/${id}`);
+    const btns = page.locator('.cite-btn');
+    await expect(btns.first()).toBeAttached();
+    const n = await btns.count();
+    for (let i = 0; i < n; i++) {
+      const r = await btns.nth(i).evaluate((el) => {
+        el.scrollIntoView({ block: 'center' });
+        // The button box is 0 tall (line-height 0), so probe from the glyph's own box.
+        const rg = document.createRange();
+        rg.selectNodeContents(el);
+        const g = rg.getBoundingClientRect();
+        const cx = g.x + g.width / 2;
+        const cy = g.y + g.height / 2;
+        const own = (x: number, y: number) => document.elementFromPoint(x, y) === el;
+        // 3x3 grid inside the glyph: all of it must hit this very button.
+        let glyphHits = 0;
+        for (const fx of [0.2, 0.5, 0.8])
+          for (const fy of [0.2, 0.5, 0.8])
+            if (own(g.x + g.width * fx, g.y + g.height * fy)) glyphHits++;
+        const reach = (dx: number, dy: number) => {
+          let d = 0;
+          while (d < 60 && own(cx + dx * (d + 1), cy + dy * (d + 1))) d++;
+          return d;
+        };
+        return {
+          glyphHits,
+          width: reach(-1, 0) + reach(1, 0),
+          height: reach(0, -1) + reach(0, 1),
+        };
+      });
+      expect(r.glyphHits, `cite ${i} glyph taps`).toBe(9);
+      expect(r.width, `cite ${i} width`).toBeGreaterThanOrEqual(43);
+      expect(r.height, `cite ${i} height`).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  test(`${id}: the hit area does not change the layout`, async ({ page }) => {
+    await page.goto(`/#/learn/${id}`);
+    await expect(page.locator('.cite-btn').first()).toBeAttached();
+    const measure = () =>
+      page.evaluate(() => ({
+        h: document.documentElement.scrollHeight,
+        w: document.documentElement.scrollWidth,
+        p: [...document.querySelectorAll('.lesson p, .lesson li')].map((e) => {
+          const b = e.getBoundingClientRect();
+          return [Math.round(b.x), Math.round(b.y + scrollY), Math.round(b.height)];
+        }),
+      }));
+    const withHit = await measure();
+    await page.addStyleTag({ content: '.cite-btn::before { display: none !important; }' });
+    expect(withHit).toEqual(await measure());
+    expect(withHit.w).toBeLessThanOrEqual(page.viewportSize()!.width);
+  });
+}
+
+test('a lesson with citations has no serious axe violations', async ({ page }) => {
   await page.goto('/#/learn/trips-bet');
   await expect(page.locator('.cite-btn').first()).toBeAttached();
   const { violations } = await new AxeBuilder({ page }).analyze();
