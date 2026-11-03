@@ -6,7 +6,9 @@ import type { EvStatus } from './text';
 import {
   DECISION_TIER_SHORT,
   OPTION_LABELS,
-  OPTION_ORDER,
+  OPTION_SLOT,
+  type ActionSlot,
+  SLOT_ORDER,
   isUsablePreview,
   fmtAnteUnits,
   money,
@@ -24,6 +26,8 @@ export interface ActionBarProps {
   evStatus?: EvStatus;
   /** Practice mode (D11): no EV or tier on the buttons. */
   hideEv?: boolean;
+  /** No EV can ever reach the buttons here (EV off for the scene or step): no reserved EV line. */
+  evOff?: boolean;
   /** The option whose sheet is open. */
   selected?: OptionKey | null;
   /** A scene may hide options. Omit for all. */
@@ -55,11 +59,29 @@ export function dealSubtitle(ante: Cents, trips: Cents): string {
   return `Ante + Blind ${money(ante * 2)}${trips > 0 ? ` · Trips ${money(trips)}` : ''}`;
 }
 
-/** The decision buttons for a street, in the D31 order: Bet 4x, Bet 3x, Check, Bet 2x, Bet 1x, Fold. */
+/**
+ * The decision buttons for a street in slot order (I012): the passive action first, then the bets
+ * by size, largest last. Preflop Check, Bet 3x, Bet 4x; flop Check, Bet 2x; river Fold, Bet 1x.
+ */
 export function optionsFor(street: Street, allowed?: readonly OptionKey[]): OptionKey[] {
   const set = BY_STREET[street] ?? [];
-  return OPTION_ORDER.filter((k) => set.includes(k) && (!allowed || allowed.includes(k)));
+  return SLOT_ORDER.filter((k) => set.includes(k) && (!allowed || allowed.includes(k)));
 }
+
+/**
+ * The slot an option takes. A scene that allows only one of the two preflop bets gets that bet
+ * across b + c, like the flop and river bets, so no narrow button sits alone in one column.
+ */
+export function slotOf(k: OptionKey, keys: readonly OptionKey[]): ActionSlot {
+  const s = OPTION_SLOT[k];
+  if (s !== 'b' && s !== 'c') return s;
+  const bets = keys.filter((x) => OPTION_SLOT[x] === 'b' || OPTION_SLOT[x] === 'c');
+  return bets.length === 1 ? 'bc' : s;
+}
+
+/** DOM order = visual order: left to right in the bar, top to bottom (largest first) in the rail. */
+const inLayout = <T,>(items: T[], layout: 'bar' | 'rail'): T[] =>
+  layout === 'rail' ? [...items].reverse() : items;
 
 export function ActionBar({
   street,
@@ -67,6 +89,7 @@ export function ActionBar({
   preview: rawPreview,
   evStatus,
   hideEv,
+  evOff,
   selected,
   allowed,
   highlight = [],
@@ -92,57 +115,45 @@ export function ActionBar({
           ? 'error'
           : null;
   const cls = `sim-actions sim-actions-${layout}`;
-  if (street === 'betting') {
-    const sub = dealSub ?? (bets ? dealSubtitle(bets.ante, bets.trips) : undefined);
+  if (street === 'betting' || street === 'settled') {
+    const betting = street === 'betting';
+    const sub = betting
+      ? (dealSub ?? (bets ? dealSubtitle(bets.ante, bets.trips) : undefined))
+      : undefined;
+    const buttons = [
+      // Slot a: the way back (Clear / Change bets).
+      <button
+        key="a"
+        type="button"
+        class="sim-act sim-act-secondary"
+        disabled={disabled || !canClear}
+        onClick={betting ? onClear : onChangeBets}
+        data-action={betting ? 'clear' : 'change-bets'}
+        data-slot="a"
+      >
+        <span class="sim-act-label">{betting ? 'Clear' : 'Change bets'}</span>
+      </button>,
+      // Slots b + c: Deal / Rebet & Deal, where the largest bet sits on every street.
+      <button
+        key="bc"
+        type="button"
+        class="sim-act sim-act-primary"
+        disabled={disabled || (betting && !canDeal)}
+        onClick={betting ? onDeal : onRebet}
+        data-action={betting ? 'deal' : 'rebet'}
+        data-slot="bc"
+      >
+        <span class="sim-act-label">{betting ? 'Deal' : 'Rebet & Deal'}</span>
+        {sub ? <span class="sim-act-sub">{sub}</span> : null}
+      </button>,
+    ];
     return (
       <div class={cls} role="group" aria-label="Actions" data-street={street}>
-        <button
-          type="button"
-          class="sim-act sim-act-primary"
-          disabled={disabled || !canDeal}
-          onClick={onDeal}
-          data-action="deal"
-        >
-          <span class="sim-act-label">Deal</span>
-          {sub ? <span class="sim-act-sub">{sub}</span> : null}
-        </button>
-        <button
-          type="button"
-          class="sim-act sim-act-secondary"
-          disabled={disabled || !canClear}
-          onClick={onClear}
-          data-action="clear"
-        >
-          <span class="sim-act-label">Clear</span>
-        </button>
+        {inLayout(buttons, layout)}
       </div>
     );
   }
-  if (street === 'settled') {
-    return (
-      <div class={cls} role="group" aria-label="Actions" data-street={street}>
-        <button
-          type="button"
-          class="sim-act sim-act-primary"
-          disabled={disabled}
-          onClick={onRebet}
-          data-action="rebet"
-        >
-          <span class="sim-act-label">Rebet &amp; Deal</span>
-        </button>
-        <button
-          type="button"
-          class="sim-act sim-act-secondary"
-          disabled={disabled || !canClear}
-          onClick={onChangeBets}
-          data-action="change-bets"
-        >
-          <span class="sim-act-label">Change bets</span>
-        </button>
-      </div>
-    );
-  }
-  const keys = optionsFor(street, allowed);
+  const keys = inLayout(optionsFor(street, allowed), layout);
   return (
     <div class={cls} role="group" aria-label="Your decision" data-street={street}>
       {keys.map((k) => {
@@ -157,6 +168,7 @@ export function ActionBar({
             aria-pressed={selected === k}
             onClick={() => onOption?.(k)}
             data-option={k}
+            data-slot={slotOf(k, keys)}
           >
             <span class="sim-act-label">{OPTION_LABELS[k]}</span>
             {o ? (
@@ -167,7 +179,10 @@ export function ActionBar({
               <span class="sim-act-sub">Calculating…</span>
             ) : status === 'error' ? (
               <span class="sim-act-sub">EV not available</span>
-            ) : null}
+            ) : hideEv || evOff ? null : (
+              // The EV line is reserved while EV is idle, so the label never jumps when it lands.
+              <span class="sim-act-sub" aria-hidden="true" />
+            )}
           </button>
         );
       })}

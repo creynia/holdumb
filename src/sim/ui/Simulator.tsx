@@ -12,6 +12,7 @@ import { CHIP_DENOMS } from './ChipStack';
 import { EvSheet } from './EvSheet';
 import { Felt } from './Felt';
 import { FoldReveal } from './FoldReveal';
+import { MoveLog } from './MoveLog';
 import { SessionPanel } from './SessionPanel';
 import { SimAutoPlay } from './SimAutoPlay';
 import { SimTools } from './SimTools';
@@ -23,9 +24,12 @@ import { WatchControls, WatchStatus } from './WatchBar';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
+import { useMoveLog } from './hooks/useMoveLog';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
 import { useWatch } from './hooks/useWatch';
+import { decodeMoveLog } from './moveLog';
+import { decodeSnapshot } from './persist';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
@@ -48,14 +52,20 @@ export function Simulator(props: SimulatorProps) {
   const street = state.street;
   const settled = street === 'settled';
   const decision = isDecisionStreet(street);
-  const evShown = resolveEvShown(settings, scene, sandbox, step?.showEV);
+  const evShown = resolveEvShown(settings, scene, sandbox, step);
   // The app's settings are the source of truth for practice mode; the table follows them at once.
   const practice =
     sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
 
   const ev = useEvSheet(sim, practice, orientation, evShown, decision);
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
-  useSandboxSync(sim, sandbox, baseScene, settings);
+  // The move log is the sandbox's (Play); a restored session brings its log back.
+  const moveLog = useMoveLog(view, () =>
+    sandbox && !baseScene.startAt && decodeSnapshot(props.snapshot, settings.paytable)
+      ? decodeMoveLog((props.snapshot as { log?: unknown }).log)
+      : [],
+  );
+  useSandboxSync(sim, sandbox, baseScene, settings, moveLog);
 
   const speed = resolveSpeed(settings, scene);
   const timeline = buildTimeline(view.lastEvents, speed);
@@ -91,9 +101,14 @@ export function Simulator(props: SimulatorProps) {
     toast && narrated.current?.id === toast.id
       ? { ...toast, spoken: narrated.current.spoken }
       : toast;
-  const toastNode = shownToast ? (
-    <Toasts toasts={[shownToast]} onDismiss={() => setToast(null)} />
-  ) : null;
+  // I012: the fold reveal and the toast sit below the ActionBar (portrait) or in the rail body.
+  const tableToasts =
+    shownToast || result?.outcome === 'fold' ? (
+      <>
+        {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
+        {shownToast ? <Toasts toasts={[shownToast]} onDismiss={() => setToast(null)} /> : null}
+      </>
+    ) : null;
 
   const stepPanel = step ? (
     <StepPanel
@@ -114,13 +129,14 @@ export function Simulator(props: SimulatorProps) {
   const table = (
     <Table
       orientation={orientation}
-      toasts={watching ? null : toastNode}
+      toasts={watching ? null : tableToasts}
       status={
         scene.ui?.showBankroll === false ? null : (
           <StatusBar
             bankroll={settled ? eq : state.bankroll}
             onFelt={onFelt}
             sessionNet={state.stats.hands ? eq - view.startEquity : undefined}
+            hand={settled && result ? result : null}
           />
         )
       }
@@ -136,7 +152,7 @@ export function Simulator(props: SimulatorProps) {
           playMultiple={hand?.play?.multiple ?? null}
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
-          labels={resultLabels(result)}
+          labels={resultLabels(result, hand?.deal)}
           // Watch announces each hand once (its toast), so the felt's card read-out stays quiet.
           quiet={result?.outcome === 'fold' || watching}
           timeline={timeline}
@@ -147,32 +163,30 @@ export function Simulator(props: SimulatorProps) {
         />
       }
       actions={
-        <>
-          <ActionBar
-            street={street}
-            layout={orientation === 'landscape' ? 'rail' : 'bar'}
-            preview={bar.showPreviewOnBar}
-            hideEv={practice}
-            evStatus={bar.barStatus}
-            selected={ev.open}
-            allowed={view.allowedOptions}
-            highlight={optionHl}
-            bets={{ ante: state.bets.ante, trips: state.bets.trips }}
-            canDeal={!view.dealLocked && state.bets.ante > 0}
-            canClear={!view.clearLocked}
-            disabled={(settled && view.dealLocked) || view.pendingStart || watching}
-            onOption={ev.onOption}
-            onDeal={() => void act({ type: 'deal' })}
-            onClear={bets.clearBets}
-            onRebet={() => void act({ type: 'deal' })}
-            onChangeBets={() => void act({ type: 'clear' })}
-          />
-          {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
-        </>
+        <ActionBar
+          street={street}
+          layout={orientation === 'landscape' ? 'rail' : 'bar'}
+          preview={bar.showPreviewOnBar}
+          hideEv={practice}
+          evOff={!evShown}
+          evStatus={bar.barStatus}
+          selected={ev.open}
+          allowed={view.allowedOptions}
+          highlight={optionHl}
+          bets={{ ante: state.bets.ante, trips: state.bets.trips }}
+          canDeal={!view.dealLocked && state.bets.ante > 0}
+          canClear={!view.clearLocked}
+          disabled={(settled && view.dealLocked) || view.pendingStart || watching}
+          onOption={ev.onOption}
+          onDeal={() => void act({ type: 'deal' })}
+          onClear={bets.clearBets}
+          onRebet={() => void act({ type: 'deal' })}
+          onChangeBets={() => void act({ type: 'clear' })}
+        />
       }
       chips={
         watching ? (
-          <WatchStatus watch={watch} orientation={orientation} toast={toastNode} />
+          <WatchStatus watch={watch} orientation={orientation} toast={tableToasts} />
         ) : betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
           <ChipRack
             chips={scene.ui?.chips ?? CHIP_DENOMS}
@@ -211,6 +225,7 @@ export function Simulator(props: SimulatorProps) {
         </SimTools>
       ) : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
+      {sandbox ? <MoveLog hands={moveLog} evMode={settings.evMode} /> : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />
     </div>
   );

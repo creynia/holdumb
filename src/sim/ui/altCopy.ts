@@ -1,6 +1,6 @@
 // Better-alternative copy (curriculum.md 8.4), keyed by math's `betterAlternative(...).copyKey`.
 import { formatMoney } from '../engine';
-import type { BetterAlternative } from '../math';
+import type { BasicFlopRule, BetterAlternative, MadeHand } from '../math';
 import type { DecisionPreview } from '../math';
 import {
   OPTION_LABELS,
@@ -115,4 +115,61 @@ export function alternativeCopy(
 /** Average loss of an option in cents (positive when it loses money). */
 function costOf(o: DecisionPreview['options'][number]): number {
   return -Number(roundFraction(o.evCents));
+}
+
+const RANK_PLURAL: Record<string, string> = {
+  '2': 'deuces',
+  '3': 'threes',
+  '4': 'fours',
+  '5': 'fives',
+  '6': 'sixes',
+  '7': 'sevens',
+  '8': 'eights',
+  '9': 'nines',
+  T: 'tens',
+  J: 'jacks',
+  Q: 'queens',
+  K: 'kings',
+  A: 'aces',
+};
+const MADE_NAME: Record<MadeHand, string> = {
+  'two-pair': 'two pair',
+  trips: 'three of a kind',
+  straight: 'a straight',
+  flush: 'a flush',
+  'full-house': 'a full house',
+  quads: 'four of a kind',
+  'straight-flush': 'a straight flush',
+};
+const NO_RULE_REASON: Record<NonNullable<BasicFlopRule['reason']>, string> = {
+  'pocket-deuces': "pocket deuces don't count as a hidden pair",
+  'board-pair': 'the only pair is on the board',
+  'straight-draw': 'a straight draw is not enough',
+  'flush-draw': 'a flush draw needs a ten or better of that suit',
+  nothing: 'you have nothing yet',
+};
+
+/**
+ * One line for the flop EV sheet (I058): which basic-card rule fires and whether perfect play
+ * agrees, e.g. "Basic card: rule (b), a hidden pair of kings: Bet 2x. Perfect play agrees."
+ * The disagreement wording is curriculum 8.4's; the cost uses the sheet's rounding.
+ */
+export function flopRuleLine(rule: BasicFlopRule, preview: DecisionPreview): string {
+  const best = bestOf(preview);
+  const ruleLabel = rule.raise ? 'Bet 2x' : 'Check';
+  let head: string;
+  if (rule.rule === 'a')
+    head = `rule (a), ${rule.made ? MADE_NAME[rule.made] : 'two pair or better'}`;
+  else if (rule.rule === 'b') {
+    const ranks = RANK_PLURAL[rule.pairRank ?? ''] ?? 'cards';
+    head = `rule (b), ${rule.pocketPair ? 'a pocket pair' : 'a hidden pair'} of ${ranks}`;
+  } else if (rule.rule === 'c') head = 'rule (c), four to a flush with a ten or better';
+  else head = `no rule fits (${NO_RULE_REASON[rule.reason ?? 'nothing']})`;
+  const first = `Basic card: ${head}: ${ruleLabel}.`;
+  if (rule.raise === (best.action.type === 'play')) return `${first} Perfect play agrees.`;
+  const ruleOpt = preview.options.find(
+    (o) => (o.action.type === 'play') === rule.raise && o.action.type !== 'fold',
+  );
+  const worth = ruleOpt ? fmtCostC(costCents(best, ruleOpt)) : fmtCostC(0);
+  return `${first} Perfect play prefers ${best.label}. (The basic card says ${ruleLabel} here, a rare exception worth ${worth}.)`;
 }

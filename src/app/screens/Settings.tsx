@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { PAYTABLE_PRESET_IDS, TRIPS_PAYTABLES, formatPct } from '../../sim';
 import type { PaytablePresetId } from '../../sim';
 import { TRIPS_EDGE } from '../bets';
@@ -7,6 +7,7 @@ import { useStore } from '../context';
 import { LIMITS, decodeImport } from '../storage';
 import type { Settings as SettingsData } from '../settings';
 import { effectiveSpeed } from '../theme';
+import { storageState, type StorageState } from '../persist';
 
 type Speed = SettingsData['animationSpeed'];
 type Theme = SettingsData['theme'];
@@ -29,12 +30,12 @@ const CONFIRM_OPTIONS: readonly Choice<SettingsData['confirmOn']>[] = [
   {
     value: 'all',
     label: 'All bets',
-    hint: 'Asks before Big mistakes for now (more options arrive with the new action bar).',
+    hint: 'Every move waits for a second tap.',
   },
   {
     value: 'costly',
     label: 'Medium and bad bets',
-    hint: 'Mistake or Big mistake: it costs more than 0.10 Ante. For now it asks before Big mistakes.',
+    hint: 'Mistake or Big mistake: it costs more than 0.10 Ante.',
   },
   { value: 'blunder', label: 'Only bad bets', hint: 'Big mistake: it costs more than 0.50 Ante.' },
   { value: 'never', label: 'Never', hint: 'No extra warning before a Big mistake.' },
@@ -146,6 +147,11 @@ export function Settings() {
   const [confirmImport, setConfirmImport] = useState(false);
   const forcedInstant = effectiveSpeed(s) === 'instant' && s.animationSpeed !== 'instant';
   const set = (p: Partial<SettingsData>) => store.updateSettings(p);
+  // 'pending' keeps the line's height reserved until the check resolves (no layout shift).
+  const [storage, setStorage] = useState<StorageState | 'pending'>('pending');
+  useEffect(() => {
+    void storageState().then(setStorage);
+  }, []);
   return (
     <div class="page">
       <Link to="/more" class="back">
@@ -252,6 +258,11 @@ export function Settings() {
 
       <section class="card form" aria-label="Your progress">
         <h2>Your progress</h2>
+        <p class="muted storage-line" data-testid="storage-state">
+          {storage === 'persistent' && 'Storage: persistent'}
+          {storage === 'best-effort' &&
+            'Storage: may be cleared by the browser. Install the app to keep progress.'}
+        </p>
         {!store.persistent && (
           <p role="alert" class="warn">
             Progress will not be saved in this copy. Use Export to keep it.
