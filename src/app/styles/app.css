@@ -633,6 +633,20 @@ textarea {
   align-items: center;
   flex-wrap: wrap;
 }
+.error-screen {
+  max-width: 32rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.error-build {
+  color: var(--muted, inherit);
+  font-size: 0.85rem;
+}
 .toast {
   /* Lives inside the top bar's own 44px row: adds no height, so nothing below it ever moves,
      and it can never sit over the table or the ActionBar. */
