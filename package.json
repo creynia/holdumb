@@ -36,7 +36,7 @@
     "@playwright/test": "1.56.1",
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/preact": "^3.2.4",
-    "@types/node": "^22",
+    "@types/node": "^26",
     "eslint": "^10",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",
