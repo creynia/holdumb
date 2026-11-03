@@ -1,246 +1,67 @@
 // The Simulator container: wires the SimDriver (engine + scene runner + EV previews) to the table-ui
 // components, the step panel, the session panel and the auto-play panel (simulator.md 3.4, 4.3).
+// State lives in hooks/: the driver and toasts, the EV sheet, the bet handlers and the preview bar.
 import './sim.css';
 import './container.css';
-import { useEffect, useReducer, useRef, useState } from 'preact/hooks';
-import { equity, formatMoney, maxAnte } from '../engine';
-import type { Cents, HandResult } from '../engine';
-import { SimDriver } from '../scene';
-import type { CircleId, DriverEvent, OptionKey, SceneConfig } from '../scene';
+import { equity } from '../engine';
+import type { SceneConfig } from '../scene';
 import { ActionBar } from './ActionBar';
-import { AutoPlayPanel } from './AutoPlayPanel';
 import { ChipRack } from './ChipRack';
 import { CHIP_DENOMS } from './ChipStack';
 import { EvSheet } from './EvSheet';
 import { Felt } from './Felt';
 import { FoldReveal } from './FoldReveal';
 import { SessionPanel } from './SessionPanel';
+import { SimAutoPlay } from './SimAutoPlay';
+import { SimTools } from './SimTools';
 import { StatusBar } from './StatusBar';
 import { StepPanel } from './StepPanel';
 import { Table, useOrientation } from './Table';
 import { Toasts } from './Toasts';
 import { buildTimeline, useSkippableMotion } from './animation';
-import { decodeSnapshot, encodeSnapshot } from './persist';
-import { randomSeed, resolvePractice, resolveSpeed } from './settings';
-import {
-  actionOfKey,
-  describeResult,
-  foldAnnouncement,
-  handName,
-  headline,
-  optionKeyOf,
-} from './text';
+import { useBetHandlers } from './hooks/useBetHandlers';
+import { useEvSheet } from './hooks/useEvSheet';
+import { usePreviewBar } from './hooks/usePreviewBar';
+import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
+import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
+import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
-import { betterAlternative } from '../math';
-import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../math';
-import type { StrategyId } from '../strategy';
-
-const isDecisionStreet = (s: string): boolean => s === 'preflop' || s === 'flop' || s === 'river';
-
-interface Toast {
-  id: number;
-  text: string;
-  tone?: 'info' | 'good' | 'bad';
-  spoken?: string;
-}
-
-function makeDriver(
-  props: SimulatorProps,
-  mode: 'sandbox' | 'scene',
-  onEvent: (e: DriverEvent) => void,
-): SimDriver {
-  const { settings, evClient } = props;
-  let scene: SceneConfig = props.scene ?? { id: 'sandbox', version: 1 };
-  const sandbox = mode === 'sandbox';
-  const practice = resolvePractice(settings, scene);
-  let restore: ConstructorParameters<typeof SimDriver>[0]['restore'];
-  if (sandbox && props.snapshot !== undefined && !scene.startAt) {
-    const dec = decodeSnapshot(props.snapshot, settings.paytable);
-    if (dec) {
-      restore = dec.restore;
-    }
-  }
-  if (sandbox && !restore && !scene.bets && !scene.startAt) {
-    const bank = scene.bankroll ?? 50_000;
-    const ante = Math.min(settings.anteUnitCents, Math.floor(bank / 2 / 100) * 100);
-    if (ante >= 500) scene = { ...scene, bets: { ante } };
-  }
-  return new SimDriver({
-    scene,
-    mode,
-    seed: sandbox ? randomSeed() : 1,
-    paytable: settings.paytable,
-    practice,
-    restore,
-    onEvent,
-    preview: (req, o) => evClient.run('preview', req, o),
-  });
-}
 
 export function Simulator(props: SimulatorProps) {
   const mode: 'sandbox' | 'scene' =
     props.mode ?? (props.scene?.steps?.length ? 'scene' : 'sandbox');
   const sandbox = mode === 'sandbox';
   const baseScene: SceneConfig = props.scene ?? { id: 'sandbox', version: 1 };
-  const latest = useRef(props);
-  latest.current = props;
-  const [toast, setToast] = useState<Toast | null>(null);
-  const toastId = useRef(0);
-  const pushToast = (text: string, tone?: Toast['tone'], spoken?: string): void =>
-    setToast({ id: ++toastId.current, text, tone, spoken });
-
-  const holder = useRef<SimDriver | null>(null);
-  if (!holder.current) {
-    holder.current = makeDriver(props, mode, (e) => {
-      if (e.type === 'hand-settled')
-        // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
-        pushToast(
-          describeResult(e.result),
-          e.result.net > 0 ? 'good' : undefined,
-          e.result.outcome === 'fold' ? foldAnnouncement(e.result) : undefined,
-        );
-      else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
-      else if (e.type === 'action-rejected' && !holder.current?.view.step)
-        pushToast(e.reason, 'bad');
-      latest.current.onEvent?.(e);
-    });
-  }
-  const d = holder.current;
-  const [, force] = useReducer((n: number) => n + 1, 0);
-  useEffect(() => {
-    const off = d.subscribe(() => force(0));
-    force(0);
-    latest.current.onEvent?.({ type: 'ready' });
-    return () => {
-      off();
-      d.dispose();
-    };
-  }, [d]);
+  const sim = useSimDriver(props, mode);
+  const { d, toast, setToast, act } = sim;
 
   const view = d.view;
   const { settings, evClient } = props;
-  const scene = view.scene;
-  const step = view.step;
+  const { scene, step, state } = view;
   const orientation = useOrientation(scene.ui?.orientation ?? 'auto');
-  const speed = resolveSpeed(settings, scene);
-  const state = view.state;
   const hand = state.hand;
   const street = state.street;
-  const decision = isDecisionStreet(street);
   const settled = street === 'settled';
-  const evShown = (step?.showEV ?? scene.showEV) !== false;
+  const decision = isDecisionStreet(street);
+  const evShown = resolveEvShown(settings, scene, sandbox, step?.showEV);
   // The app's settings are the source of truth for practice mode; the table follows them at once.
   const practice =
     sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
-  const pv = view.preview;
 
-  const [open, setOpen] = useState<OptionKey | null>(null);
-  const [reveal, setReveal] = useState<{
-    preview: DecisionPreview;
-    chosen: OptionKey;
-    req: PreviewRequest | null;
-  } | null>(null);
-  const [chip, setChip] = useState<Cents>(scene.ui?.defaultChip ?? 500);
-  const handKey = `${hand?.n ?? 0}:${street}`;
-  const lastKey = useRef(handKey);
-  useEffect(() => {
-    if (lastKey.current !== handKey) {
-      lastKey.current = handKey;
-      if (!reveal) setOpen(null);
-    }
-  }, [handKey, reveal]);
+  const ev = useEvSheet(sim, practice, orientation, evShown, decision);
+  const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
+  useSandboxSync(sim, sandbox, baseScene, settings);
 
-  // Sandbox persistence (PersistedV1.sandbox, owned by the app store).
-  const persistable = sandbox && !baseScene.startAt && !!props.onSnapshot;
-  useEffect(() => {
-    if (persistable) latest.current.onSnapshot?.(encodeSnapshot(d));
-  }, [view.eventSeq, persistable, d]);
-
-  // Settings are the source of truth for practice mode: the table follows them live.
-  useEffect(() => {
-    if (sandbox) d.setPractice(resolvePractice(settings, baseScene));
-  }, [settings.practice, sandbox, d]);
-
-  const timeline = buildTimeline(view.lastEvents, speed);
+  const timeline = buildTimeline(view.lastEvents, resolveSpeed(settings, scene));
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
+  const bar = usePreviewBar(view.preview, decision, evShown);
 
-  const result: HandResult | null = hand?.result ?? null;
+  const result = hand?.result ?? null;
   const dealerShown = settled || !!(step?.revealDealer ?? scene.revealDealer);
-  const labels = {
-    player: result ? handName(result.player) : undefined,
-    dealer: result
-      ? `${handName(result.dealer)}${result.dealerQualifies ? ', qualifies' : ''}`
-      : undefined,
-  };
   const board = hand ? hand.deal.board.slice(0, hand.boardShown) : [];
   const onFelt = settled ? 0 : Object.values(state.bets).reduce((a, b) => a + b, 0);
   const eq = equity(state);
-  const highlight = (step?.highlight ?? scene.highlight ?? []) as readonly string[];
-  const circleHl = highlight.filter((h): h is CircleId =>
-    ['ante', 'blind', 'play', 'trips'].includes(h),
-  );
-  const optionHl = highlight.filter(
-    (h): h is OptionKey => h === 'check' || h === 'fold' || h.startsWith('play-'),
-  );
-
-  // ---------- handlers ----------
-  const act = async (a: Parameters<SimDriver['act']>[0]) => {
-    const r = await d.act(a);
-    if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
-    return r;
-  };
-  const requestNow = (): PreviewRequest | null => {
-    const st = d.view.state;
-    const h = st.hand;
-    if (!h || !isDecisionStreet(st.street)) return null;
-    return {
-      street: st.street as PreviewRequest['street'],
-      hole: h.deal.player,
-      board: h.deal.board.slice(0, h.boardShown),
-      blindPaytable: st.rules.blindPaytable,
-      ante: st.bets.ante,
-    };
-  };
-  const confirm = async (k: OptionKey) => {
-    const before = d.view.preview.value;
-    const reqBefore = requestNow();
-    const r = await d.act(actionOfKey(k));
-    if (practice && before) setReveal({ preview: before, chosen: k, req: reqBefore });
-    else setOpen(null);
-    if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
-  };
-  const onOption = (k: OptionKey) => {
-    if (!evShown || (sandbox && settings.skipPreview && !practice)) {
-      const v = d.view.preview.value;
-      const o = v?.options.find((x) => optionKeyOf(x.action) === k);
-      if (o?.tier === 'blunder' && settings.confirmCostlyMoves && evShown) {
-        setOpen(k);
-        d.previewed(k, false);
-        return;
-      }
-      if (v && o && evShown) pushToast(headline(v, v.options.indexOf(o)));
-      void act(actionOfKey(k));
-      return;
-    }
-    setOpen(k);
-    d.previewed(k, false);
-  };
-  const onCircle = (id: CircleId) => {
-    d.tap(id);
-    if ((id !== 'ante' && id !== 'trips') || (street !== 'betting' && !settled)) return;
-    const cur = state.bets[id];
-    const cap = id === 'ante' ? maxAnte(state) : state.rules.tripsMax;
-    const amount = Math.min(cur + chip, cap);
-    if (amount === cur || amount <= 0) return;
-    void act({ type: 'set-bet', wager: id, amount });
-  };
-  const clearBets = () => {
-    if (settled) return void act({ type: 'clear' });
-    void (async () => {
-      if (state.bets.trips > 0) await act({ type: 'set-bet', wager: 'trips', amount: 0 });
-      await act({ type: 'set-bet', wager: 'ante', amount: state.rules.anteMin });
-    })();
-  };
+  const [circleHl, optionHl] = splitHighlight(step?.highlight ?? scene.highlight ?? []);
 
   const stepPanel = step ? (
     <StepPanel
@@ -255,90 +76,7 @@ export function Simulator(props: SimulatorProps) {
     />
   ) : null;
 
-  const showPreviewOnBar = evShown && pv.status === 'ready' ? pv.value : null;
-  const barStatus =
-    !decision || !evShown
-      ? undefined
-      : pv.status === 'idle'
-        ? undefined
-        : pv.status === 'ready'
-          ? 'ready'
-          : pv.status;
-
-  const sheetKey = reveal?.chosen ?? open;
-  const sheetPreview = reveal ? reveal.preview : pv.value;
-  const sheetReq = reveal ? reveal.req : requestNow();
-  let alternative: BetterAlternative | null = null;
-  if (sheetKey && sheetPreview && sheetReq && sheetPreview.street === sheetReq.street) {
-    const i = sheetPreview.options.findIndex((o) => optionKeyOf(o.action) === sheetKey);
-    try {
-      if (i >= 0) alternative = betterAlternative(sheetReq, sheetPreview, i);
-    } catch {
-      alternative = null;
-    }
-  }
-  const sheet =
-    sheetKey && (reveal || (open && decision)) ? (
-      <EvSheet
-        preview={reveal ? reveal.preview : pv.value}
-        error={!reveal && pv.status === 'error'}
-        progress={pv.progress}
-        selected={sheetKey}
-        variant={orientation === 'landscape' ? 'rail' : 'sheet'}
-        onSelect={(k) => {
-          setOpen(k);
-          d.previewed(k, false);
-        }}
-        onConfirm={(k) => void confirm(k)}
-        onCancel={() => {
-          const k = sheetKey;
-          setOpen(null);
-          setReveal(null);
-          // Give focus back to the button that opened the sheet.
-          setTimeout(
-            () => document.querySelector<HTMLElement>(`button[data-option="${k}"]`)?.focus(),
-            0,
-          );
-        }}
-        confirmCostlyMoves={settings.confirmCostlyMoves}
-        hideEv={practice}
-        alternative={alternative}
-        chosen={reveal?.chosen ?? null}
-        onContinue={() => {
-          setReveal(null);
-          setOpen(null);
-        }}
-        detail={scene.evDetail ?? 'full'}
-        whyOpen={scene.whyOpen}
-        onWhyToggle={(o) => {
-          if (o && sheetKey) d.previewed(sheetKey, true);
-        }}
-        handsPerHour={settings.handsPerHour}
-        allowed={view.allowedOptions}
-      />
-    ) : null;
-
-  const ap = scene.autoPlay;
-  const autoOnly =
-    !!ap?.enabled && scene.allowedActions?.length === 0 && !scene.deals && !scene.startAt;
-  const autoPanel =
-    ap?.enabled || (sandbox && scene.ui?.showSettings) ? (
-      <AutoPlayPanel
-        evClient={evClient}
-        settings={settings}
-        defaultStrategy={ap?.defaultStrategy}
-        compare={ap?.compare}
-        bankroll={scene.bankroll}
-        seed={scene.seed}
-        handOptions={ap?.handOptions}
-        sessionOptions={ap?.sessions}
-        onEvent={(e) => {
-          if (e.type === 'auto-play-completed')
-            d.autoPlayCompleted(e.hands, e.strategy as StrategyId);
-        }}
-      />
-    ) : null;
-
+  const autoOnly = autoOnlyOf(scene);
   const showSession = scene.ui?.showSession ?? sandbox;
   const betting = street === 'betting' || settled;
   const table = (
@@ -366,13 +104,13 @@ export function Simulator(props: SimulatorProps) {
           playMultiple={hand?.play?.multiple ?? null}
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
-          labels={labels}
+          labels={resultLabels(result)}
           quiet={result?.outcome === 'fold'}
           timeline={timeline}
           nextHand={settled}
           skipped={motion.skipped}
           onSkip={motion.playing ? motion.skip : undefined}
-          onCircle={onCircle}
+          onCircle={bets.onCircle}
         />
       }
       actions={
@@ -380,19 +118,19 @@ export function Simulator(props: SimulatorProps) {
           <ActionBar
             street={street}
             layout={orientation === 'landscape' ? 'rail' : 'bar'}
-            preview={showPreviewOnBar}
+            preview={bar.showPreviewOnBar}
             hideEv={practice}
-            evStatus={barStatus}
-            selected={open}
+            evStatus={bar.barStatus}
+            selected={ev.open}
             allowed={view.allowedOptions}
             highlight={optionHl}
             bets={{ ante: state.bets.ante, trips: state.bets.trips }}
             canDeal={!view.dealLocked && state.bets.ante > 0}
             canClear={!view.clearLocked}
             disabled={(settled && view.dealLocked) || view.pendingStart}
-            onOption={onOption}
+            onOption={ev.onOption}
             onDeal={() => void act({ type: 'deal' })}
-            onClear={clearBets}
+            onClear={bets.clearBets}
             onRebet={() => void act({ type: 'deal' })}
             onChangeBets={() => void act({ type: 'clear' })}
           />
@@ -401,11 +139,15 @@ export function Simulator(props: SimulatorProps) {
       }
       chips={
         betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
-          <ChipRack chips={scene.ui?.chips ?? CHIP_DENOMS} selected={chip} onSelect={setChip} />
+          <ChipRack
+            chips={scene.ui?.chips ?? CHIP_DENOMS}
+            selected={bets.chip}
+            onSelect={bets.setChip}
+          />
         ) : null
       }
       rail={<>{stepPanel}</>}
-      sheet={sheet}
+      sheet={ev.sheet ? <EvSheet {...ev.sheet} /> : null}
     />
   );
 
@@ -416,45 +158,22 @@ export function Simulator(props: SimulatorProps) {
       data-street={street}
       data-hands={state.stats.hands}
       data-mode={mode}
-      data-ev={pv.status}
+      data-ev={view.preview.status}
       data-equity={eq}
       style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
     >
       {orientation === 'portrait' || autoOnly ? stepPanel : null}
       {autoOnly ? null : table}
       {sandbox && scene.ui?.showSettings ? (
-        <div class="sim-tools">
-          <label>
-            <input
-              type="checkbox"
-              checked={practice}
-              onChange={(e) =>
-                props.onPracticeChange
-                  ? props.onPracticeChange(e.currentTarget.checked)
-                  : d.setPractice(e.currentTarget.checked)
-              }
-              data-testid="practice-toggle"
-            />
-            Practice mode (hide EV until I confirm)
-          </label>
-          <button
-            type="button"
-            class="sim-btn sim-btn-secondary"
-            onClick={() => d.newSession(scene.bankroll ?? 50_000)}
-          >
-            New session ({formatMoney(scene.bankroll ?? 50_000)})
-          </button>
-        </div>
+        <SimTools
+          d={d}
+          practice={practice}
+          onPracticeChange={props.onPracticeChange}
+          bankroll={scene.bankroll ?? 50_000}
+        />
       ) : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
-      {sandbox && autoPanel ? (
-        <details class="sim-autoplay" open={!!ap?.defaultStrategy}>
-          <summary>Auto-play</summary>
-          {autoPanel}
-        </details>
-      ) : (
-        autoPanel
-      )}
+      <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />
     </div>
   );
 }

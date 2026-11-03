@@ -66,6 +66,9 @@ export function App() {
       firstRoute.current = false;
       return;
     }
+    // A strategy view target focuses its own section heading (Strategy.tsx); keep that focus.
+    const view = route.query.get('view');
+    if (route.path === '/strategy' && (view === 'flop' || view === 'river')) return;
     document.getElementById('main')?.focus({ preventScroll: true });
   }, [route.path]);
 
@@ -75,7 +78,10 @@ export function App() {
     const fresh = consumeFreshNav();
     const saved = readScroll()[hash];
     const y = !fresh && route.path.startsWith('/learn/') && saved ? saved : 0;
-    if (route.query.get('term') === null) window.scrollTo?.(0, y);
+    // A strategy `view` target (Drill's "See the chart") scrolls itself; don't reset it here.
+    const view = route.query.get('view');
+    const viewTarget = route.path === '/strategy' && (view === 'flop' || view === 'river');
+    if (route.query.get('term') === null && !viewTarget) window.scrollTo?.(0, y);
     let raf = 0;
     const on = () => {
       cancelAnimationFrame(raf);

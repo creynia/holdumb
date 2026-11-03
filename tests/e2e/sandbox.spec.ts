@@ -42,7 +42,18 @@ test.describe('sandbox', () => {
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
   });
 
-  test('a blunder needs a second tap', async ({ page }) => {
+  test('by default a blunder acts on Confirm with no second tap (D39)', async ({ page }) => {
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    await ready(page);
+    await opt(page, 'check').click();
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+    await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
+  });
+
+  test('a blunder needs a second tap with "Only bad bets"', async ({ page }) => {
+    await page.goto('/#/settings');
+    await page.getByRole('radio', { name: /Only bad bets/ }).check();
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);
     await opt(page, 'check').click();
@@ -113,8 +124,9 @@ test.describe('sandbox', () => {
       await ready(page);
       await opt(page, 'check').click();
       await page.getByTestId('confirm').click();
-      const again = page.getByRole('button', { name: 'Do it anyway' });
-      if (await again.isVisible().catch(() => false)) await again.click();
+      // This scenario never flags a check as a big mistake, so the prompt is asserted absent.
+      // If a change makes it appear, this fails and the scenario should say so explicitly.
+      await expect(page.getByRole('button', { name: 'Do it anyway' })).toHaveCount(0);
       await page.waitForTimeout(150);
     }
     const sim = page.getByTestId('simulator');

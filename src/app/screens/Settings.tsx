@@ -11,6 +11,84 @@ import { effectiveSpeed } from '../theme';
 type Speed = SettingsData['animationSpeed'];
 type Theme = SettingsData['theme'];
 
+const EV_MODE_OPTIONS: readonly Choice<SettingsData['evMode']>[] = [
+  {
+    value: 'before',
+    label: 'Before I choose',
+    hint: 'Each option shows its EV; the best is marked.',
+  },
+  {
+    value: 'after',
+    label: 'After I choose',
+    hint: 'Choose blind, then see how your move compared.',
+  },
+  { value: 'never', label: 'Never', hint: 'No EV at all: just play.' },
+];
+
+const CONFIRM_OPTIONS: readonly Choice<SettingsData['confirmOn']>[] = [
+  {
+    value: 'all',
+    label: 'All bets',
+    hint: 'Asks before Big mistakes for now (more options arrive with the new action bar).',
+  },
+  {
+    value: 'costly',
+    label: 'Medium and bad bets',
+    hint: 'Mistake or Big mistake: it costs more than 0.10 Ante. For now it asks before Big mistakes.',
+  },
+  { value: 'blunder', label: 'Only bad bets', hint: 'Big mistake: it costs more than 0.50 Ante.' },
+  { value: 'never', label: 'Never', hint: 'No extra warning before a Big mistake.' },
+];
+
+interface Choice<T extends string> {
+  value: T;
+  label: string;
+  hint: string;
+}
+
+/** A radio group: every option is one tap (D39). */
+function Radios<T extends string>(props: {
+  legend: string;
+  name: string;
+  value: T;
+  options: readonly Choice<T>[];
+  /** A line under the legend that applies to the whole group. */
+  note?: string;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <fieldset class="radios">
+      <legend>{props.legend}</legend>
+      {props.note && (
+        <p class="muted radios-note" id={`${props.name}-note`}>
+          {props.note}
+        </p>
+      )}
+      {props.options.map((o) => {
+        const hintId = `${props.name}-${o.value}-hint`;
+        return (
+          <label key={o.value} class="radio">
+            <input
+              type="radio"
+              name={props.name}
+              value={o.value}
+              checked={props.value === o.value}
+              aria-describedby={hintId}
+              onChange={() => props.onChange(o.value)}
+            />
+            <span>
+              {o.label}
+              <small id={hintId} class="muted">
+                {o.hint}
+              </small>
+            </span>
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+}
+
 function Check(props: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label class="check">
@@ -119,20 +197,20 @@ export function Settings() {
           step={5}
           onCommit={(n) => set({ handsPerHour: n })}
         />
-        <Check
-          label="Practice mode: hide EV until you confirm"
-          checked={s.practice}
-          onChange={(v) => set({ practice: v })}
+        <Radios
+          legend="Show EV"
+          name="ev-mode"
+          value={s.evMode}
+          options={EV_MODE_OPTIONS}
+          onChange={(v) => set({ evMode: v })}
         />
-        <Check
-          label="Confirm costly moves (ask twice before a big mistake)"
-          checked={s.confirmCostlyMoves}
-          onChange={(v) => set({ confirmCostlyMoves: v })}
-        />
-        <Check
-          label="Skip the EV preview and act directly"
-          checked={s.skipPreview}
-          onChange={(v) => set({ skipPreview: v })}
+        <Radios
+          legend="Ask me to confirm"
+          name="confirm-on"
+          value={s.confirmOn}
+          options={CONFIRM_OPTIONS}
+          note="Confirm options apply when EV is shown before the move."
+          onChange={(v) => set({ confirmOn: v })}
         />
       </section>
 
