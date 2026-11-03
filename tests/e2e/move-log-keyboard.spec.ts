@@ -39,7 +39,14 @@ test('the move-log list scrolls with the keyboard (I087)', async ({ page }) => {
   // The list must overflow, or the scroll check below proves nothing.
   const overflow = await list.evaluate((el) => el.scrollHeight - el.clientHeight);
   expect(overflow, 'the list overflows its 50vh box').toBeGreaterThan(40);
-  await list.focus();
+  // Reach the list the way a keyboard user does: Tab from the summary.
+  await log.locator('summary').focus();
+  await page.keyboard.press('Tab');
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.className ?? ''))
+    .toContain('sim-movelog-hands');
+  const overflowY = await list.evaluate((el) => getComputedStyle(el).overflowY);
+  expect(['auto', 'scroll']).toContain(overflowY);
   await page.keyboard.press('PageDown');
   // Chromium smooth-scrolls: poll for ~500ms and keep the largest offset seen.
   let max = 0;
