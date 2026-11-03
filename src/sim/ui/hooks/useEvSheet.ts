@@ -9,7 +9,7 @@ import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
 import { resolveConfirm } from '../settings';
 import { optionsFor } from '../ActionBar';
-import { actionOfKey, bestOf, optionKeyOf } from '../text';
+import { actionOfKey, bestOf, narrationText, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
 /** The preview request for the decision on the table now, or null between decisions. */
@@ -73,10 +73,17 @@ export function useEvSheet(
   const confirm = async (k: OptionKey) => {
     const before = d.view.preview.value;
     const reqBefore = requestNow(d);
+    // I080: say what the choice was worth. The practice reveal card already does, and guided steps
+    // have the step panel. A hand that ends gets it at the front of the result toast.
+    const i = before ? before.options.findIndex((o) => optionKeyOf(o.action) === k) : -1;
+    const said = before && i >= 0 && !practice && !d.view.step ? narrationText(before, i) : null;
+    sim.narration.current = said;
     const r = await d.act(actionOfKey(k));
+    sim.narration.current = null;
     if (practice && before) setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
+    else if (r.ok && said && d.view.state.street !== 'settled') pushToast(said);
   };
   // The sheet was opened by the status bar's Details button, so closing it returns focus there.
   const fromDetails = useRef(false);
