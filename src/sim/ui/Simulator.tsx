@@ -95,13 +95,21 @@ export function Simulator(props: SimulatorProps) {
   const table = (
     <Table
       orientation={orientation}
-      toasts={toast ? <Toasts toasts={[toast]} onDismiss={() => setToast(null)} /> : null}
+      toasts={
+        toast || result?.outcome === 'fold' ? (
+          <>
+            {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
+            {toast ? <Toasts toasts={[toast]} onDismiss={() => setToast(null)} /> : null}
+          </>
+        ) : null
+      }
       status={
         scene.ui?.showBankroll === false ? null : (
           <StatusBar
             bankroll={settled ? eq : state.bankroll}
             onFelt={onFelt}
             sessionNet={state.stats.hands ? eq - view.startEquity : undefined}
+            hand={settled && result ? result : null}
           />
         )
       }
@@ -127,28 +135,26 @@ export function Simulator(props: SimulatorProps) {
         />
       }
       actions={
-        <>
-          <ActionBar
-            street={street}
-            layout={orientation === 'landscape' ? 'rail' : 'bar'}
-            preview={bar.showPreviewOnBar}
-            hideEv={practice}
-            evStatus={bar.barStatus}
-            selected={ev.open}
-            allowed={view.allowedOptions}
-            highlight={optionHl}
-            bets={{ ante: state.bets.ante, trips: state.bets.trips }}
-            canDeal={!view.dealLocked && state.bets.ante > 0}
-            canClear={!view.clearLocked}
-            disabled={(settled && view.dealLocked) || view.pendingStart}
-            onOption={ev.onOption}
-            onDeal={() => void act({ type: 'deal' })}
-            onClear={bets.clearBets}
-            onRebet={() => void act({ type: 'deal' })}
-            onChangeBets={() => void act({ type: 'clear' })}
-          />
-          {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
-        </>
+        <ActionBar
+          street={street}
+          layout={orientation === 'landscape' ? 'rail' : 'bar'}
+          preview={bar.showPreviewOnBar}
+          hideEv={practice}
+          evOff={!evShown}
+          evStatus={bar.barStatus}
+          selected={ev.open}
+          allowed={view.allowedOptions}
+          highlight={optionHl}
+          bets={{ ante: state.bets.ante, trips: state.bets.trips }}
+          canDeal={!view.dealLocked && state.bets.ante > 0}
+          canClear={!view.clearLocked}
+          disabled={(settled && view.dealLocked) || view.pendingStart}
+          onOption={ev.onOption}
+          onDeal={() => void act({ type: 'deal' })}
+          onClear={bets.clearBets}
+          onRebet={() => void act({ type: 'deal' })}
+          onChangeBets={() => void act({ type: 'clear' })}
+        />
       }
       chips={
         betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
