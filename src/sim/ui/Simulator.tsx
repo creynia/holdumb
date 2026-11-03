@@ -290,6 +290,7 @@ export function Simulator(props: SimulatorProps) {
         confirmCostlyMoves={settings.confirmCostlyMoves}
         hideEv={practice}
         alternative={alternative}
+        request={sheetReq}
         chosen={reveal?.chosen ?? null}
         onContinue={() => {
           setReveal(null);

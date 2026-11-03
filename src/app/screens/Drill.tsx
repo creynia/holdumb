@@ -242,6 +242,13 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             variant="inline"
             detail="full"
             selected={optionKeyOf(chosenOpt.action)}
+            request={{
+              street: spot.street,
+              hole: spot.hole,
+              board: spot.board,
+              blindPaytable: 'blind-standard',
+              ante: store.settings.anteUnitCents,
+            }}
           />
           <div class="row">
             <button type="button" class="btn" onClick={deal}>
