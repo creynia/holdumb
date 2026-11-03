@@ -33,6 +33,7 @@ export function Strategy({ query }: { query: URLSearchParams }) {
     if (!focusView) return;
     const sec = document.querySelector<HTMLElement>(`[data-view="${focusView}"]`);
     sec?.scrollIntoView?.({ block: 'start' });
+    sec?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
   }, [focusView]);
   return (
     <div class="page">
@@ -75,7 +76,7 @@ export function Strategy({ query }: { query: URLSearchParams }) {
       )}
       {VIEWS.map((v) => (
         <section key={v.view} data-view={v.view}>
-          <h2>{v.label}</h2>
+          <h2 tabIndex={-1}>{v.label}</h2>
           <ChartBlock
             chart={{ strategy: lens.strategy, view: v.view, ...(highlight ? { highlight } : {}) }}
           />
