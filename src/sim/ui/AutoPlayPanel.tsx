@@ -9,6 +9,8 @@ import { PICKER_GROUPS } from '../strategy/presets';
 import { STRATEGY_CONSTANTS } from '../strategy/constants';
 import { strategyMetrics } from '../strategy/metrics';
 import { fracToNumber } from '../strategy/fraction';
+import { formatPct } from '../engine/money';
+import type { TableRules } from '../engine/types';
 import type { SimulateResult, StrategyId, StrategySpec } from '../strategy/types';
 import { BankrollChart } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
@@ -19,6 +21,19 @@ const GROUP_LABEL = {
   practical: 'Practical',
   fun: 'Fun',
 } as const;
+
+/**
+ * The three net figures as shown, in whole cents. Luck is the difference of the two shown
+ * figures, so Expected + Luck = Actual to the cent (rounding each figure on its own broke that).
+ */
+export function shownNet(
+  exactNet: number,
+  simNet: number,
+): { expected: number; actual: number; luck: number } {
+  const expected = Math.round(exactNet);
+  const actual = Math.round(simNet);
+  return { expected, actual, luck: actual - expected };
+}
 
 export interface AutoPlayPanelProps {
   evClient: EvClient;
@@ -33,6 +48,21 @@ export interface AutoPlayPanelProps {
   bankroll?: number;
   seed?: number;
   onEvent?: (e: SimulatorEvent) => void;
+}
+
+/**
+ * The note under the strategy select. Always bet 4x has the same exact loss per hand as Never
+ * fold but twice the money in action, so half the element of risk. Figures come from
+ * strategyMetrics, so they stay right if the tables change.
+ */
+export function alwaysMaxNote(
+  spec: StrategySpec,
+  rules: Partial<TableRules> | undefined,
+  handsPerHour: number,
+): string {
+  const never = strategyMetrics({ ...spec, id: 'never-fold' }, rules, handsPerHour);
+  const always = strategyMetrics({ ...spec, id: 'always-max' }, rules, handsPerHour);
+  return `Same expected loss per hand as Never fold (${formatPct(never.edgePerAnte, 2)} of the Ante), but twice the money in action, so a lower element of risk (${formatPct(always.elementOfRisk, 2)} vs ${formatPct(never.elementOfRisk, 2)}).`;
 }
 
 export function AutoPlayPanel({
@@ -120,6 +150,7 @@ export function AutoPlayPanel({
   const perHand = main ? main.expected[1]! - main.expected[0]! : 0;
   const exactNet = main ? perHand * (main.handsPlayed / sessions) : 0;
   const simNet = main ? main.meanFinal - bankroll : 0;
+  const shown = shownNet(exactNet, simNet);
   const running = progress !== null;
   const field = {
     display: 'flex',
@@ -155,6 +186,15 @@ export function AutoPlayPanel({
               </optgroup>
             ))}
           </select>
+          {id === 'always-max' ? (
+            <small data-testid="strategy-note" style={{ display: 'block', marginTop: '4px' }}>
+              {alwaysMaxNote(
+                { ...spec, trips: 0 },
+                { tripsPaytable: settings.paytable },
+                settings.handsPerHour,
+              )}
+            </small>
+          ) : null}
         </label>
         <label style={field}>
           Ante ($)
@@ -243,13 +283,13 @@ export function AutoPlayPanel({
         <div data-testid="auto-play-result" style={{ display: 'grid', gap: '8px' }}>
           <BankrollChart series={result.series} bankroll={bankroll} hands={hands} />
           <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
-            <li>Expected result (exact): {formatMoney(Math.round(exactNet), { sign: true })}</li>
+            <li>Expected result (exact): {formatMoney(shown.expected, { sign: true })}</li>
             <li>
               Actual (≈ simulated{sessions > 1 ? ' average' : ''}):{' '}
-              {formatMoney(Math.round(simNet), { sign: true })}
+              {formatMoney(shown.actual, { sign: true })}
               {sessions > 1 ? ` ± ${formatMoney(Math.round(main.meanFinalCi95))}` : ''}
             </li>
-            <li>Luck: {formatMoney(Math.round(simNet - exactNet), { sign: true })}</li>
+            <li>Luck: {formatMoney(shown.luck, { sign: true })}</li>
             {sessions >= 10 ? (
               <>
                 <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>

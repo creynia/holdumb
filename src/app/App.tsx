@@ -1,9 +1,10 @@
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
 import { Shell } from './components/Shell';
-import { useStore } from './context';
+import { useContent, useStore } from './context';
 import { consumeFreshNav, useRoute } from './router';
-import { renderRoute } from './routes';
+import { renderRoute, routeName } from './routes';
+import { wagerName } from './screens/Bets';
 import { applyTheme, onReducedMotionChange } from './theme';
 
 const SCROLL_KEY = 'holdumb:scroll';
@@ -23,9 +24,13 @@ function writeScroll(hash: string, y: number) {
   }
 }
 
+/** The SEO title from index.html: Home keeps it. */
+const HOME_TITLE = typeof document === 'undefined' ? '' : document.title;
+
 export function App() {
   const route = useRoute();
   const store = useStore();
+  const content = useContent();
   const { theme, animationSpeed, reduceMotion, fourColorDeck } = store.settings;
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   useEffect(() => applyTheme(store.settings), [theme, animationSpeed, reduceMotion, fourColorDeck]);
@@ -38,6 +43,15 @@ export function App() {
       }),
     [store],
   );
+  // The document title names the screen, so tabs, history and screen readers can tell pages apart.
+  // Runs before the page view, which records document.title.
+  useEffect(() => {
+    const name = routeName(route, {
+      lessonTitle: (id) => content.lessons.find((l) => l.id === id)?.title,
+      wagerName: (id) => wagerName(id, content.bets),
+    });
+    document.title = name ? `${name} · holdumb` : HOME_TITLE;
+  }, [route.path, content]);
   // One anonymous page view per route (path only; query strings are dropped).
   useEffect(() => trackPage(pagePath(location.pathname, route.path)), [route.path]);
   // Move focus to the page after a route change (not on first load).
@@ -47,6 +61,9 @@ export function App() {
       firstRoute.current = false;
       return;
     }
+    // A strategy view target focuses its own section heading (Strategy.tsx); keep that focus.
+    const view = route.query.get('view');
+    if (route.path === '/strategy' && (view === 'flop' || view === 'river')) return;
     document.getElementById('main')?.focus({ preventScroll: true });
   }, [route.path]);
 
@@ -56,7 +73,10 @@ export function App() {
     const fresh = consumeFreshNav();
     const saved = readScroll()[hash];
     const y = !fresh && route.path.startsWith('/learn/') && saved ? saved : 0;
-    if (route.query.get('term') === null) window.scrollTo?.(0, y);
+    // A strategy `view` target (Drill's "See the chart") scrolls itself; don't reset it here.
+    const view = route.query.get('view');
+    const viewTarget = route.path === '/strategy' && (view === 'flop' || view === 'river');
+    if (route.query.get('term') === null && !viewTarget) window.scrollTo?.(0, y);
     let raf = 0;
     const on = () => {
       cancelAnimationFrame(raf);

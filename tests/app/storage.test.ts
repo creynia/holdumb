@@ -8,6 +8,7 @@ import {
   load,
   migrate,
   sanitize,
+  sanitizeSettings,
   save,
 } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
@@ -49,9 +50,8 @@ describe('storage', () => {
     })!;
     expect(p.settings).toMatchObject({
       paytable: 'trips-8-6-5',
-      practice: false,
-      confirmCostlyMoves: true,
-      skipPreview: false,
+      evMode: 'before',
+      confirmOn: 'never',
       handsPerHour: 500,
       anteUnitCents: 1200,
       theme: 'system',
@@ -59,6 +59,94 @@ describe('storage', () => {
     expect(Object.keys(p.lessons)).toEqual(['ok']);
     expect(p.drill.byStreet.flop).toEqual({ answered: 2, correct: 2 });
     expect(p.drill.recentMisses).toEqual(['a']);
+  });
+  describe('D39 migration of the legacy EV flags', () => {
+    const ev = (raw: Record<string, unknown>) => {
+      const s = sanitizeSettings(raw);
+      return [s.evMode, s.confirmOn];
+    };
+    it('practice: true -> evMode after', () => {
+      expect(ev({ practice: true })).toEqual(['after', 'never']);
+    });
+    it('practice: false or missing -> evMode before', () => {
+      expect(ev({ practice: false })).toEqual(['before', 'never']);
+      expect(ev({})).toEqual(['before', 'never']);
+      expect(ev({ practice: 'yes' })).toEqual(['before', 'never']);
+    });
+    it('every old record -> confirmOn never, whatever confirmCostlyMoves said', () => {
+      expect(ev({ confirmCostlyMoves: true })).toEqual(['before', 'never']);
+      expect(ev({ confirmCostlyMoves: false })).toEqual(['before', 'never']);
+    });
+    it('drops skipPreview and the other legacy keys', () => {
+      const s = sanitizeSettings({ practice: true, confirmCostlyMoves: true, skipPreview: true });
+      expect(Object.keys(s)).not.toContain('skipPreview');
+      expect(Object.keys(s)).not.toContain('practice');
+      expect(Object.keys(s)).not.toContain('confirmCostlyMoves');
+      expect(s.evMode).toBe('after');
+    });
+    it('a valid evMode / confirmOn wins over the legacy keys', () => {
+      expect(ev({ practice: true, evMode: 'never', confirmOn: 'costly' })).toEqual([
+        'never',
+        'costly',
+      ]);
+      expect(ev({ practice: false, evMode: 'after', confirmOn: 'all' })).toEqual(['after', 'all']);
+      expect(ev({ evMode: 'before', confirmOn: 'blunder', confirmCostlyMoves: false })).toEqual([
+        'before',
+        'blunder',
+      ]);
+    });
+    it('unknown strings fall back to the defaults', () => {
+      expect(ev({ evMode: 'sometimes', confirmOn: 'maybe' })).toEqual(['before', 'never']);
+      expect(ev({ evMode: 1, confirmOn: null })).toEqual(['before', 'never']);
+    });
+    it('is idempotent', () => {
+      for (const raw of [
+        {},
+        { practice: true, confirmCostlyMoves: false, skipPreview: true },
+        { evMode: 'never', confirmOn: 'all' },
+        { evMode: 'junk', practice: true },
+      ]) {
+        const once = sanitizeSettings(raw);
+        expect(sanitizeSettings(once)).toEqual(once);
+      }
+    });
+  });
+  it('migrates a pre-category drill record keeping streaks and byStreet', () => {
+    const old = {
+      version: 1,
+      lessons: {},
+      settings: {},
+      drill: {
+        bestStreak: 7,
+        byStreet: { preflop: { answered: 4, correct: 3 }, river: { answered: 1, correct: 0 } },
+        recentMisses: ['f:x'],
+      },
+    };
+    const p = migrate(old)!;
+    expect(p.drill.bestStreak).toBe(7);
+    expect(p.drill.byStreet.preflop).toEqual({ answered: 4, correct: 3 });
+    expect(p.drill.byStreet.river).toEqual({ answered: 1, correct: 0 });
+    expect(p.drill.recentMisses).toEqual(['f:x']);
+    expect(p.drill.byCategory).toEqual({});
+  });
+  it('sanitizes byCategory: unknown ids dropped, correct clamped, round-trips', () => {
+    const p = sanitize({
+      version: 1,
+      drill: {
+        byCategory: {
+          'flop-flush-draw': { answered: 10, correct: 4 },
+          'river-outs-low': { answered: 2, correct: 9 },
+          'made-up': { answered: 3, correct: 1 },
+          __proto__: { answered: 1, correct: 1 },
+        },
+      },
+    })!;
+    expect(p.drill.byCategory).toEqual({
+      'flop-flush-draw': { answered: 10, correct: 4 },
+      'river-outs-low': { answered: 2, correct: 2 },
+    });
+    expect(decodeImport(encodeExport(p))).toEqual(p);
+    expect(sanitize(JSON.parse(JSON.stringify(p)))).toEqual(p);
   });
   it('export codes round-trip and reject other prefixes', () => {
     const d = defaultPersisted();

@@ -103,8 +103,8 @@ describe('EvSheet', () => {
     rerender(<EvSheet {...props} selected="play-3" />);
     expect(screen.getByTestId('confirm').textContent).toBe('Confirm Bet 3x');
   });
-  it('confirms in one tap when confirmCostlyMoves is off', () => {
-    const props = sheet({ selected: 'check', confirmCostlyMoves: false });
+  it('confirms in one tap when confirmBlunder is off', () => {
+    const props = sheet({ selected: 'check', confirmBlunder: false });
     fireEvent.click(screen.getByTestId('confirm'));
     expect(props.onConfirm).toHaveBeenCalledWith('check');
   });
@@ -516,7 +516,30 @@ describe('small pieces', () => {
   });
   it('FoldReveal says what you would have done', () => {
     render(<FoldReveal result={FOLDED_RESULT} />);
-    expect(screen.getByTestId('fold-reveal').textContent).toContain('You would have lost $30.');
+    expect(screen.getByTestId('fold-reveal').textContent).toContain(
+      'You would have lost $30 (folding saved $10).',
+    );
+  });
+  it('a spoken toast shows its money to sight only and announces the spoken line', () => {
+    render(
+      <Toasts
+        toasts={[
+          {
+            id: 2,
+            text: 'Folded. Ante -$10, Blind -$10. Net -$20.',
+            spoken: 'You folded. Net -$20. The dealer had a pair of tens (qualifies).',
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByText('Folded. Ante -$10, Blind -$10. Net -$20.').getAttribute('aria-hidden'),
+    ).toBe('true');
+    const spoken = screen.getByText(
+      'You folded. Net -$20. The dealer had a pair of tens (qualifies).',
+    );
+    expect(spoken.className).toContain('sim-sr');
+    expect(screen.getByRole('log').contains(spoken)).toBe(true);
   });
   it('Table lays out portrait and landscape with the actions present in both', () => {
     for (const o of ['portrait', 'landscape'] as const) {

@@ -1,0 +1,96 @@
+/* Table UI base: colour tokens, helpers and the table layout. Colours come from src/app/styles/tokens.css;
+   the few extras below follow the same light / dark pattern. Only transforms and opacity are animated. */
+:root {
+  --sim-on-accent: #ffffff;
+  --sim-on-danger: #ffffff;
+  --sim-border: #aab3bf;
+  --sim-surface-2: #eef1f5;
+  --sim-hl: #f5c542;
+  --sim-felt-ink: #f8f5ec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --sim-on-accent: #0e1620;
+    --sim-on-danger: #0e1620;
+    --sim-border: #4d5b6b;
+    --sim-surface-2: #1f2d3d;
+  }
+}
+:root[data-theme='dark'] {
+  --sim-on-accent: #0e1620;
+  --sim-on-danger: #0e1620;
+  --sim-border: #4d5b6b;
+  --sim-surface-2: #1f2d3d;
+}
+
+.sim-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.sim-muted {
+  color: var(--muted);
+}
+
+/* ---------- layout ---------- */
+.sim-table {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
+  color: var(--text);
+}
+.sim-table-portrait {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
+}
+.sim-table-felt {
+  min-width: 0;
+  min-height: 0;
+}
+.sim-table-portrait .sim-felt {
+  max-height: calc(100dvh - 232px);
+}
+.sim-table-landscape {
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 284px;
+  height: var(--sim-table-h, 100dvh);
+  min-height: 0;
+}
+.sim-table-landscape .sim-table-felt,
+.sim-table-landscape .sim-felt-wrap,
+.sim-table-landscape .sim-felt {
+  height: 100%;
+}
+.sim-rail {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border-left: 1px solid var(--sim-border);
+}
+.sim-rail-actions,
+.sim-rail .sim-status,
+.sim-rail .sim-rack {
+  flex: none;
+}
+.sim-rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}

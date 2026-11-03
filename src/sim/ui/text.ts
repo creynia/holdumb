@@ -376,24 +376,44 @@ export function describeResult(r: HandResult): string {
     const d = handNameVs(r.dealer, r.player);
     lead = `The dealer's ${d} ${plural(r.dealer) ? 'beat' : 'beats'} your ${handNameVs(r.player, r.dealer)}.`;
   } else if (r.outcome === 'tie') lead = tieLead(r.player, r.dealer);
-  else lead = `You folded. The dealer had ${withArticle(handName(r.dealer))}.`;
+  else lead = 'Folded.';
   const parts = r.wagers.map(describeSettlement).join(', ');
   return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
 }
 
-/** D7: what the fold would have been. */
+/** The one spoken fold announcement: the real net, then the reveal's dealer and would-have lines. */
+export function foldAnnouncement(r: HandResult): string {
+  return `You folded. Net ${formatMoney(r.net, { sign: true })}. ${foldRevealText(r)}`;
+}
+
+/**
+ * D7: what the fold would have been. The money difference is ifPlayed.net minus the fold's ante and
+ * blind result: positive means folding cost that much, negative means folding saved it.
+ */
 export function foldRevealText(r: HandResult): string {
   const d = handName(r.dealer);
   const q = r.dealerQualifies ? 'qualifies' : "doesn't qualify";
   const had = `The dealer had ${withArticle(d)} (${q}).`;
   if (!r.ifPlayed) return had;
   const { outcome, net } = r.ifPlayed;
+  // Trips settles the same whether you fold or play, and ifPlayed leaves it out, so compare
+  // against what the fold itself lost: ante + blind.
+  const folded = r.wagers
+    .filter((w) => w.wager === 'ante' || w.wager === 'blind')
+    .reduce((s, w) => s + w.profit, 0);
+  const diff = net - folded;
+  const effect =
+    diff < 0
+      ? ` (folding saved ${formatMoney(-diff)})`
+      : diff > 0
+        ? ` (folding cost ${formatMoney(diff)})`
+        : '';
   const would =
     outcome === 'win'
-      ? `You would have won ${formatMoney(Math.abs(net))}.`
+      ? `You would have won ${formatMoney(Math.abs(net))}${effect}.`
       : outcome === 'lose'
-        ? `You would have lost ${formatMoney(Math.abs(net))}.`
-        : 'You would have pushed.';
+        ? `You would have lost ${formatMoney(Math.abs(net))}${effect}.`
+        : `You would have pushed${effect}.`;
   return `${had} ${would}`;
 }
 

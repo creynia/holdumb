@@ -19,3 +19,74 @@ test('a drill answer is graded and recorded', async ({ page }) => {
   const answered = await page.getByTestId('drill-stats').textContent();
   expect(answered).toMatch(/river\s*\d+%/);
 });
+
+// Drill "See the chart" lands on the matching section, not at the top of the page (I019).
+for (const [width, height] of [
+  [390, 844],
+  [844, 390],
+] as const) {
+  for (const street of ['flop', 'river'] as const) {
+    test(`See the chart lands on the ${street} section at ${width}x${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/#/drill?street=${street}`);
+      await expect(page.getByTestId('drill-spot')).toBeVisible();
+      await page.locator('.choice-row button').first().click();
+      await expect(page.getByTestId('drill-result')).toBeVisible();
+      await page.getByRole('link', { name: 'See the chart' }).click();
+      await expect(page).toHaveURL(new RegExp(`view=${street}`));
+      const heading = page.locator(`[data-view="${street}"] h2`);
+      await expect(heading).toBeFocused();
+      const box = await heading.boundingBox();
+      expect(box, 'section heading has a box').not.toBeNull();
+      // scroll-margin-top (8px+) took effect: the heading is not flush with the top edge
+      expect(box!.y, 'scroll margin keeps the heading below the top edge').toBeGreaterThanOrEqual(
+        8,
+      );
+      expect(box!.y, 'heading top is inside the viewport').toBeLessThan(height);
+    });
+  }
+}
+
+test('a category deals only that category and the select is tappable', async ({ page }) => {
+  await page.goto('/#/drill?street=flop');
+  const sel = page.getByTestId('drill-categories');
+  await expect(sel).toBeVisible();
+  expect((await sel.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(page.getByTestId('drill-spot')).toBeVisible();
+  await sel.selectOption({ label: 'Flop flush draws' });
+  await expect(page).toHaveURL(/street=flop&category=flop-flush-draw/);
+  await expect(sel).toHaveValue('flop-flush-draw');
+  await expect(page.getByTestId('drill-spot')).toBeVisible();
+  await sel.selectOption({ label: 'All' });
+  await expect(page).not.toHaveURL(/category=/);
+});
+
+for (const vp of [
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+]) {
+  test(`the category picker never moves the action buttons at ${vp.width}x${vp.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    const rowY = async (hash: string) => {
+      await page.goto(`/#/drill${hash}`);
+      await expect(page.getByTestId('drill-spot')).toBeVisible();
+      return (await page.locator('.choice-row').boundingBox())!.y;
+    };
+    const plain = await rowY('?street=flop');
+    const withCat = await rowY('?street=flop&category=flop-flush-draw');
+    expect(Math.abs(withCat - plain)).toBeLessThanOrEqual(1);
+    // the picker sits below the action buttons, so it cannot push them
+    const sel = (await page.getByTestId('drill-categories').boundingBox())!;
+    expect(sel.y).toBeGreaterThan(plain);
+    // Mixed has the same stack above the spot card as every street (no picker row)
+    await page.goto('/#/drill');
+    await expect(page.getByTestId('drill-spot')).toBeVisible();
+    const card = (await page.getByTestId('drill-spot').boundingBox())!;
+    await page.goto('/#/drill?street=flop');
+    await expect(page.getByTestId('drill-spot')).toBeVisible();
+    const card2 = (await page.getByTestId('drill-spot').boundingBox())!;
+    expect(Math.abs(card.y - card2.y)).toBeLessThanOrEqual(1);
+  });
+}

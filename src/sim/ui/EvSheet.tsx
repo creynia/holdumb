@@ -38,8 +38,8 @@ export interface EvSheetProps {
   progress?: number;
   /** `sheet`: modal dialog (portrait); `rail`: panel in the landscape rail; `inline`: plain panel. */
   variant?: 'sheet' | 'rail' | 'inline';
-  /** Red-tier moves need a second tap (D24, default on). */
-  confirmCostlyMoves?: boolean;
+  /** Red-tier moves need a second tap ("Do it anyway"; D24, D39 confirmOn). */
+  confirmBlunder?: boolean;
   /** Practice mode (D11): hide EVs until the move is confirmed. */
   hideEv?: boolean;
   /** Set once confirmed in practice mode: shows the result card and the full sheet. */
@@ -100,7 +100,7 @@ export function EvSheet({
   onCancel,
   progress,
   variant = 'sheet',
-  confirmCostlyMoves = true,
+  confirmBlunder = true,
   hideEv,
   chosen,
   onContinue,
@@ -151,8 +151,7 @@ export function EvSheet({
   const best = preview ? bestOf(preview) : null;
   const isBest = !!opt && !!best && opt.tier === 'best';
   const cost = opt && best ? costCents(best, opt) : null;
-  const needsSecondTap =
-    !!opt && opt.tier === 'blunder' && confirmCostlyMoves && !hidden && !confirmed;
+  const needsSecondTap = !!opt && opt.tier === 'blunder' && confirmBlunder && !hidden && !confirmed;
   const label = OPTION_LABELS[selected];
 
   const confirm = () => {

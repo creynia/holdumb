@@ -174,3 +174,66 @@ describe('interesting + category', () => {
       }
   }, 120_000);
 });
+
+describe('preflop classes match curriculum 9.1', () => {
+  // Copied from docs/design/curriculum.md §9.1: pre-premium is "pairs 77+, AK–AT, KQ, KJs";
+  // pre-king is "K2–KJ offsuit, K2–KT suited" (KJo is pre-king, KJs is premium).
+  const PREMIUM = new Set([
+    'AA',
+    'KK',
+    'QQ',
+    'JJ',
+    'TT',
+    '99',
+    '88',
+    '77',
+    'AKs',
+    'AKo',
+    'AQs',
+    'AQo',
+    'AJs',
+    'AJo',
+    'ATs',
+    'ATo',
+    'KQs',
+    'KQo',
+    'KJs',
+  ]);
+  const KING = new Set([
+    ...[...'23456789TJ'].map((r) => `K${r}o`),
+    ...[...'23456789T'].map((r) => `K${r}s`),
+  ]);
+  it('gives every one of the 169 classes one category, and the doc places the kings', () => {
+    const R = '23456789TJQKA';
+    const classes: string[] = [];
+    for (let i = 0; i < 13; i++) {
+      for (let j = 0; j <= i; j++) {
+        const hi = R[i]!;
+        const lo = R[j]!;
+        if (i === j) {
+          classes.push(hi + lo);
+          continue;
+        }
+        classes.push(`${hi}${lo}s`, `${hi}${lo}o`);
+      }
+    }
+    expect(new Set(classes).size).toBe(169);
+    expect(PREMIUM.size).toBe(19);
+    expect(KING.size).toBe(19);
+    expect(KING.has('KJo')).toBe(true);
+    expect(KING.has('KJs')).toBe(false);
+    for (const cls of classes) {
+      const suited = cls.endsWith('s');
+      const pair = cls.length === 2;
+      const hole = parseCards(
+        pair ? `${cls[0]}h ${cls[1]}d` : suited ? `${cls[0]}h ${cls[1]}h` : `${cls[0]}h ${cls[1]}d`,
+      );
+      const cat = categorize([hole[0]!, hole[1]!], []);
+      if (PREMIUM.has(cls)) expect(cat, cls).toBe('pre-premium');
+      else if (KING.has(cls)) expect(cat, cls).toBe('pre-king');
+      else expect(cat, cls).not.toMatch(/^pre-(premium|king)$/);
+    }
+    const kjo = parseCards('Kh Jd');
+    expect(categorize([kjo[0]!, kjo[1]!], [])).toBe('pre-king');
+  });
+});
