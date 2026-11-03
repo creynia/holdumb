@@ -72,6 +72,13 @@ test.describe('sandbox', () => {
     const reveal = page.getByTestId('fold-reveal');
     await expect(reveal).toBeVisible();
     await expect(reveal).toContainText(/would have (won|lost)|pushed/);
+    // Exactly one live region speaks the fold, and it has the real net.
+    const live = page
+      .locator('[aria-live="polite"], [role="status"], [role="log"], [role="alert"]')
+      .filter({ hasText: /folded/i });
+    await expect(live).toHaveCount(1);
+    await expect(live).toContainText('You folded. Net');
+    await expect(live).toContainText('would have');
   });
 
   test('practice mode hides the EV until you confirm', async ({ page }) => {
