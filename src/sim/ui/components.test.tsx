@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame, equity, parseCards } from '../engine';
 import type { Card as PlayingCard, HandRecord } from '../engine';
-import { classEv } from '../math';
+import { classEv, preflopPreview } from '../math';
 import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey, SessionView } from '../scene';
 import { ActionBar, optionsFor, slotOf } from './ActionBar';
@@ -840,6 +840,28 @@ describe('StrategyChart', () => {
     expect(dots.map((d) => d.getAttribute('data-class')).sort()).toEqual([...set].sort());
     for (const d of dots) expect(d.getAttribute('aria-label')).toMatch(/, close call$/);
     expect(container.querySelectorAll('[aria-label$="close call"]')).toHaveLength(7);
+  });
+  it('classEv equals the preflop EV sheet options exactly for all 169 classes', () => {
+    for (const cls of chartClasses()) {
+      const [a, b] = [cls[0]!, cls[1]!];
+      const text =
+        cls.length === 2 ? `${a}s${b}h` : cls.endsWith('s') ? `${a}s${b}s` : `${a}s${b}h`;
+      const cards = parseCards(text);
+      const hole: [number, number] = [cards[0]!, cards[1]!];
+      const p = preflopPreview({
+        street: 'preflop',
+        hole,
+        board: [],
+        blindPaytable: 'blind-standard',
+        ante: 100,
+      });
+      const bet = p.options.find((o) => o.action.type === 'play' && o.action.multiple === 4)!;
+      const chk = p.options.find((o) => o.action.type === 'check')!;
+      const e = classEv('blind-standard', cls);
+      // cross-multiplied: identical fractions, not just close ones
+      expect(e.bet4.num * bet.ev.den, cls).toBe(bet.ev.num * e.bet4.den);
+      expect(e.check.num * chk.ev.den, cls).toBe(chk.ev.num * e.check.den);
+    }
   });
   it('shows exact signed EVs for a bet cell, never hard-coded', () => {
     render(<StrategyChart strategy="perfect" view="preflop" />);

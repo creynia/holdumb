@@ -60,7 +60,7 @@
   height: 5px;
   border-radius: 50%;
   background: var(--sim-close, #ffd23f);
-  box-shadow: 0 0 0 1px #1a1a1a;
+  box-shadow: 0 0 0 1px var(--text);
   pointer-events: none;
 }
 .sim-chart-cell.is-hl {
