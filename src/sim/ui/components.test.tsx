@@ -226,7 +226,7 @@ describe('EvSheet flop basic-card rule line (I058)', () => {
     sheet({ preview: swapped, selected: 'check', request: request(FLOP_HIDDEN_PAIR) });
     const line = screen.getByTestId('flop-rule').textContent;
     expect(line).toMatch(
-      /^Basic card: rule \(b\), a hidden pair of sevens: Bet 2x\. Perfect play prefers Check\. \(The basic card says Bet 2x here, a rare exception worth \$[\d,.]+\.\)$/,
+      /^Basic card: rule \(b\), a hidden pair of sevens: Bet 2x\. Perfect play prefers Check\. \(This is a rare exception, worth \$[\d,.]+\.\)$/,
     );
   });
   it('is hidden while practice mode hides the EV, and shown after the move', () => {

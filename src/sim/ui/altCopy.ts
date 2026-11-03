@@ -141,14 +141,6 @@ const MADE_NAME: Record<MadeHand, string> = {
   quads: 'four of a kind',
   'straight-flush': 'a straight flush',
 };
-const NO_RULE_REASON: Record<NonNullable<BasicFlopRule['reason']>, string> = {
-  'pocket-deuces': "pocket deuces don't count as a hidden pair",
-  'board-pair': 'the only pair is on the board',
-  'straight-draw': 'a straight draw is not enough',
-  'flush-draw': 'a flush draw needs a ten or better of that suit',
-  nothing: 'you have nothing yet',
-};
-
 /**
  * One line for the flop EV sheet (I058): which basic-card rule fires and whether perfect play
  * agrees, e.g. "Basic card: rule (b), a hidden pair of kings: Bet 2x. Perfect play agrees."
@@ -164,12 +156,14 @@ export function flopRuleLine(rule: BasicFlopRule, preview: DecisionPreview): str
     const ranks = RANK_PLURAL[rule.pairRank ?? ''] ?? 'cards';
     head = `rule (b), ${rule.pocketPair ? 'a pocket pair' : 'a hidden pair'} of ${ranks}`;
   } else if (rule.rule === 'c') head = 'rule (c), four to a flush with a ten or better';
-  else head = `no rule fits (${NO_RULE_REASON[rule.reason ?? 'nothing']})`;
-  const first = `Basic card: ${head}: ${ruleLabel}.`;
+  else head = '';
+  // No rule fits: the line says so and that the basic card checks.
+  const noRule = rule.rule === null;
+  const first = noRule ? 'Basic card: no rule fits; Check.' : `Basic card: ${head}: ${ruleLabel}.`;
   if (rule.raise === (best.action.type === 'play')) return `${first} Perfect play agrees.`;
   const ruleOpt = preview.options.find(
     (o) => (o.action.type === 'play') === rule.raise && o.action.type !== 'fold',
   );
   const worth = ruleOpt ? fmtCostC(costCents(best, ruleOpt)) : fmtCostC(0);
-  return `${first} Perfect play prefers ${best.label}. (The basic card says ${ruleLabel} here, a rare exception worth ${worth}.)`;
+  return `${first} Perfect play prefers ${best.label}. (This is a rare exception, worth ${worth}.)`;
 }
