@@ -4,21 +4,20 @@ import type { ParsedHash } from './router';
 import { Drill } from './screens/Drill';
 import { NotFound } from './screens/NotFound';
 import { Play } from './screens/Play';
-import { lazyScreen } from './lazy';
-
-// Play and Drill are the first-paint screens and stay in the entry chunk; the rest load on demand.
-const Home = lazyScreen(() => import('./screens/Home').then((m) => m.Home), true);
-const Learn = lazyScreen(() => import('./screens/Learn').then((m) => m.Learn), true);
-const LessonView = lazyScreen(() => import('./screens/Lesson').then((m) => m.LessonView), true);
-const Strategy = lazyScreen(() => import('./screens/Strategy').then((m) => m.Strategy), true);
-const Hands = lazyScreen(() => import('./screens/Hands').then((m) => m.Hands), true);
-const BetsList = lazyScreen(() => import('./screens/Bets').then((m) => m.BetsList), true);
-const BetDetail = lazyScreen(() => import('./screens/Bets').then((m) => m.BetDetail), true);
-const Glossary = lazyScreen(() => import('./screens/Glossary').then((m) => m.Glossary), true);
-const Sources = lazyScreen(() => import('./screens/Sources').then((m) => m.Sources), true);
-const Settings = lazyScreen(() => import('./screens/Settings').then((m) => m.Settings));
-const About = lazyScreen(() => import('./screens/About').then((m) => m.About));
-const More = lazyScreen(() => import('./screens/More').then((m) => m.More));
+import {
+  About,
+  BetDetail,
+  BetsList,
+  Glossary,
+  Hands,
+  Home,
+  Learn,
+  LessonView,
+  More,
+  Settings,
+  Sources,
+  Strategy,
+} from '#screens';
 
 type Render = (p: Record<string, string>, r: ParsedHash) => VNode;
 /** The screen's name for the document title; undefined keeps the SEO title (Home). */

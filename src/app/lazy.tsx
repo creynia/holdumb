@@ -31,8 +31,8 @@ function start<P>(e: Entry<P>): Promise<ComponentType<P>> {
 }
 
 /** Resolves every lazy screen and the content bundle (tests, and warming after first paint). */
-export async function preloadRoutes(): Promise<void> {
-  await Promise.all([loadContent(), ...entries.map((e) => start(e))]);
+export async function preloadRoutes(withContent = true): Promise<void> {
+  await Promise.all([...(withContent ? [loadContent()] : []), ...entries.map((e) => start(e))]);
 }
 
 /** A route component loaded on first use. `needsContent` screens read `useContent()`. */
@@ -70,4 +70,21 @@ export function lazyScreen<P extends object>(
     );
   }
   return Lazy;
+}
+
+/**
+ * The content bundle for code outside a lazy screen: the provided one (tests), else the lazily
+ * loaded one once `wanted`. Null until it arrives.
+ */
+export function useRouteContent(provided: ContentBundle | null, wanted: boolean) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (provided || !wanted || contentDone) return;
+    let live = true;
+    void loadContent().then(() => live && force((n) => n + 1));
+    return () => {
+      live = false;
+    };
+  }, [provided, wanted]);
+  return provided ?? contentDone ?? null;
 }

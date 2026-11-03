@@ -1,4 +1,5 @@
 import { render } from 'preact';
+import content from '#content';
 import { App } from './app/App';
 import { AppProviders } from './app/context';
 import { Store } from './app/store';
@@ -13,7 +14,7 @@ applyTheme(store.settings);
 registerSW();
 
 render(
-  <AppProviders store={store}>
+  <AppProviders content={content} store={store}>
     <App />
   </AppProviders>,
   document.getElementById('app')!,
