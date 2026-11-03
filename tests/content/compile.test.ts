@@ -270,6 +270,21 @@ describe('lesson sources and citations', () => {
     expect(html).toContain('data-cite="2"');
     expect(html).not.toContain('href="#');
   });
+  it('renders a run of adjacent citations as one button', () => {
+    const src = withSrc('sources:\n  - woo\n  - { title: A, note: a }\n  - { title: B, note: b }\n', 'Claim.[^1][^2][^3] Next.[^2][^3] Last.[^1] [^2]\n');
+    const l = compileLesson(src, 't.md', { sources: known });
+    const html = l.blocks[0]!.kind === 'html' ? l.blocks[0]!.html : '';
+    expect(html.match(/<button/g)).toHaveLength(4);
+    expect(html).toContain('data-cite="1" data-cites="1,2,3"');
+    expect(html).toContain('>1\u20133</button>');
+    expect(html).toContain('>2,3</button>');
+    expect(html).toContain('aria-label="Sources 1\u20133"');
+  });
+  it('rejects an out-of-range citation inside a run', () => {
+    expect(() =>
+      compileLesson(withSrc('sources:\n  - woo\n', 'x[^1][^2]\n'), 't.md', { sources: known }),
+    ).toThrow(/citation \[\^2\] is out of range/);
+  });
   it('leaves code spans literal', () => {
     const l = compileLesson(withSrc('sources:\n  - woo\n', 'Use `[^9]` here.[^1]\n'), 't.md', {
       sources: known,

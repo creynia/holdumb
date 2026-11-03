@@ -100,7 +100,9 @@ test.describe('move log', () => {
     const log = await openLog(page);
     await expect(log.locator('li[data-kind="deal"]')).toHaveText(/You: A♥ 10♣\.$/);
     await expect(log.locator('li[data-kind="board"]')).toHaveText('Flop: 7♦ K♠ 2♣.');
-    await page.getByRole('button', { name: /^New session/ }).click();
+    // I083: New session opens the bankroll chooser; confirm the default amount.
+    await page.getByTestId('new-session').click();
+    await page.getByTestId('bankroll-confirm').click();
     await expect(log.getByTestId('move-log-hand')).toHaveCount(0);
     await expect(log).toContainText('No hands yet');
   });

@@ -50,6 +50,14 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
               {m(s.net, true)}
             </dd>
           </div>
+          {s.topUpCents > 0 ? (
+            <div>
+              <dt>Topped up</dt>
+              <dd class="sim-money" data-testid="session-topups">
+                {m(s.topUpCents)}
+              </dd>
+            </div>
+          ) : null}
           {s.wageredCents > 0 ? (
             <div>
               <dt>Total wagered</dt>

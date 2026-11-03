@@ -1,6 +1,7 @@
 // Test hook: exposes the EV client to e2e. Required by tests/e2e/single-file.spec.ts.
 // Clients are created on first access, so a cold load constructs no worker (I042).
 import { simulateUpdateAvailable } from '../pwa/register';
+import { announce, flushAnnouncements } from '../sim/ui/announcer';
 import { parseCards } from '../sim/engine';
 import { createEvClient } from '../sim/worker';
 import type { EvClient } from '../sim';
@@ -18,6 +19,14 @@ window.__holdumb = {
   },
   /** Pretends a new service worker is waiting, so e2e can show the update notice (I037). */
   simulateUpdateAvailable,
+  /** Speaks the same message twice, a frame apart, for the e2e that checks repeats mutate (I036). */
+  async announceTwice() {
+    for (let i = 0; i < 2; i++) {
+      announce('Repeat check.', { dedupeKey: 'repeat' });
+      flushAnnouncements();
+      await new Promise((r) => setTimeout(r, 80));
+    }
+  },
   // Runs one river preview through the client: the round trip proves the transport, `mode` says
   // which one served it, and `settled` says whether the job resolved.
   async smoke() {

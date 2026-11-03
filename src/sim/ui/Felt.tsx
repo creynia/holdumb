@@ -1,4 +1,5 @@
 import './sim.css';
+import { useAnnounce } from './announcer';
 import { cardName } from '../engine';
 import type { Card as CardId, Cents, WagerId } from '../engine';
 import type { CircleId } from '../scene/types';
@@ -135,6 +136,8 @@ export function Felt({
   ]
     .filter(Boolean)
     .join(' ');
+  // Spoken through the app's single announcer (I036); a fold is announced by its toast instead.
+  useAnnounce(quiet ? '' : summary, { dedupeKey: 'felt' });
   const amountOf = (id: CircleId): Cents => bets[id] ?? 0;
   return (
     <div
@@ -267,9 +270,7 @@ export function Felt({
           />
         ) : null}
       </svg>
-      <p class="sim-sr" aria-live={quiet ? 'off' : 'polite'}>
-        {summary}
-      </p>
+      <p class="sim-sr">{summary}</p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import './sim.css';
 import { useRef, useState } from 'preact/hooks';
+import { useAnnounce } from './announcer';
 import { strategyChart } from '../strategy';
 import type { StrategyId } from '../strategy';
 
@@ -64,6 +65,13 @@ export function StrategyChart({
   const [picked, setPicked] = useState<string | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  // The picked hand's answer is spoken once, through the app's announcer (I036).
+  useAnnounce(
+    picked && view === 'preflop-grid'
+      ? `${picked}: ${(preflop4x ? new Set(preflop4x) : preflop4xSet(strategy)).has(picked) ? 'Bet 4x' : 'Check'}.`
+      : '',
+    { dedupeKey: 'chart' },
+  );
   if (view === 'flop' || view === 'river') {
     const rules = ruleLines(strategy, view);
     return (
@@ -144,7 +152,7 @@ export function StrategyChart({
           </div>
         ))}
       </div>
-      <p class="sim-chart-legend" aria-live="polite">
+      <p class="sim-chart-legend">
         {picked
           ? `${picked}: ${set.has(picked) ? 'Bet 4x' : 'Check'}.`
           : `Pairs on the diagonal, suited above, offsuit below. ${count} of 169 hands bet 4x; the rest check.`}
