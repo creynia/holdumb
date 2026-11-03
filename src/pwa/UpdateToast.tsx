@@ -7,9 +7,18 @@ import { onUpdateAvailable } from './register';
 export function UpdateToast() {
   const [apply, setApply] = useState<(() => void) | null>(null);
   useEffect(() => onUpdateAvailable((fn) => setApply(() => fn)), []);
+  // Spoken through the app's one announcer; the PWA layer may not import it, so via a window event.
+  useEffect(() => {
+    if (apply)
+      window.dispatchEvent(
+        new CustomEvent('holdumb:announce', {
+          detail: { text: 'Update available. Reload to apply it.', dedupeKey: 'update' },
+        }),
+      );
+  }, [apply]);
   if (!apply) return null;
   return (
-    <div class="toast pwa-toast" role="status">
+    <div class="toast pwa-toast" data-testid="update-toast">
       <span>Update available</span>
       <button type="button" onClick={apply}>
         Reload

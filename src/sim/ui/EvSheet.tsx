@@ -10,6 +10,8 @@ import { EvOptionList } from './EvOptionList';
 import type { BetterAlternative } from '../math';
 import { TierBadge } from './TierBadge';
 import { WhyTable } from './WhyTable';
+import { needsConfirm } from './settings';
+import type { ConfirmOn } from './types';
 import {
   OPTION_LABELS,
   isUsablePreview,
@@ -22,6 +24,7 @@ import {
   optionKeyOf,
   typographic,
 } from './text';
+import { Say } from './announcer';
 
 export interface EvSheetProps {
   /** null while the flop EV is still computing (shows a skeleton; Confirm stays enabled). */
@@ -38,8 +41,11 @@ export interface EvSheetProps {
   progress?: number;
   /** `sheet`: modal dialog (portrait); `rail`: panel in the landscape rail; `inline`: plain panel. */
   variant?: 'sheet' | 'rail' | 'inline';
-  /** Red-tier moves need a second tap ("Do it anyway"; D24, D39 confirmOn). */
-  confirmBlunder?: boolean;
+  /**
+   * Which tiers need a second tap before acting (D24, D39 `confirmOn`): `all` every move, `costly`
+   * Mistakes and Big mistakes, `blunder` Big mistakes only (the default), `never` none.
+   */
+  confirmOn?: ConfirmOn;
   /** Practice mode (D11): hide EVs until the move is confirmed. */
   hideEv?: boolean;
   /** Set once confirmed in practice mode: shows the result card and the full sheet. */
@@ -78,7 +84,15 @@ function ResultCard({
   const cost = costCents(best, o);
   const isBest = optionKeyOf(best.action) === chosen || o.tier === 'best';
   return (
-    <div class="sim-result" role="status" data-testid="practice-result">
+    <div class="sim-result" data-testid="practice-result">
+      <Say
+        text={
+          isBest
+            ? `${o.label} was the best play.`
+            : `${best.label} was worth ${fmtCostC(cost)} more than ${o.label}.`
+        }
+        dedupeKey="ev-result"
+      />
       <TierBadge tier={o.tier} />
       <p>
         {isBest
@@ -100,7 +114,7 @@ export function EvSheet({
   onCancel,
   progress,
   variant = 'sheet',
-  confirmBlunder = true,
+  confirmOn = 'blunder',
   hideEv,
   chosen,
   onContinue,
@@ -151,7 +165,9 @@ export function EvSheet({
   const best = preview ? bestOf(preview) : null;
   const isBest = !!opt && !!best && opt.tier === 'best';
   const cost = opt && best ? costCents(best, opt) : null;
-  const needsSecondTap = !!opt && opt.tier === 'blunder' && confirmBlunder && !hidden && !confirmed;
+  const needsSecondTap = !!opt && needsConfirm(confirmOn, opt.tier) && !hidden && !confirmed;
+  // Mistakes and Big mistakes get a warning and "Do it anyway"; other tiers a plain second tap.
+  const warn = !!opt && (opt.tier === 'blunder' || opt.tier === 'costly');
   const label = OPTION_LABELS[selected];
 
   const confirm = () => {
@@ -330,12 +346,14 @@ export function EvSheet({
           ) : null}
         </>
       ) : failed ? (
-        <p class="sim-muted" role="status" data-testid="ev-unavailable">
+        <p class="sim-muted" data-testid="ev-unavailable">
+          <Say text="EV not available. You can still play this move." dedupeKey="ev-state" />
           EV not available. You can still play this move.
         </p>
       ) : (
         <div class="sim-skeleton" data-testid="ev-loading" aria-busy="true">
-          <p class="sim-muted sim-calc" role="status">
+          <p class="sim-muted sim-calc">
+            <Say text="Calculating." dedupeKey="ev-state" />
             <span class="sim-spinner" aria-hidden="true" />
             Calculating…
           </p>
@@ -359,10 +377,20 @@ export function EvSheet({
       )}
 
       {needsSecondTap && armed ? (
-        <p class="sim-warn" role="alert" data-testid="blunder-warning">
-          This is a big mistake{best ? `: ${best.label} is the better play` : ''}. Tap again to do
-          it anyway.
-        </p>
+        warn ? (
+          <p
+            class="sim-warn"
+            role="alert"
+            data-testid={opt.tier === 'blunder' ? 'blunder-warning' : 'mistake-warning'}
+          >
+            This is a {opt.tier === 'blunder' ? 'big mistake' : 'mistake'}
+            {best ? `: ${best.label} is the better play` : ''}. Tap again to do it anyway.
+          </p>
+        ) : (
+          <p class="sim-confirm-again" role="alert" data-testid="confirm-again">
+            Tap again to {label}.
+          </p>
+        )
       ) : null}
 
       {readOnly ? null : (
@@ -378,11 +406,15 @@ export function EvSheet({
               </button>
               <button
                 type="button"
-                class={`sim-btn ${needsSecondTap && armed ? 'sim-btn-danger' : 'sim-btn-primary'}`}
+                class={`sim-btn ${needsSecondTap && armed && warn ? 'sim-btn-danger' : 'sim-btn-primary'}`}
                 onClick={confirm}
                 data-testid="confirm"
               >
-                {needsSecondTap && armed ? 'Do it anyway' : `Confirm ${label}`}
+                {needsSecondTap && armed
+                  ? warn
+                    ? 'Do it anyway'
+                    : `Yes, ${label}`
+                  : `Confirm ${label}`}
               </button>
             </>
           )}

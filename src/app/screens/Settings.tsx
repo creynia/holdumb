@@ -1,3 +1,4 @@
+import { Say } from '../../sim';
 import { useEffect, useState } from 'preact/hooks';
 import { PAYTABLE_PRESET_IDS, TRIPS_PAYTABLES, formatPct } from '../../sim';
 import type { PaytablePresetId } from '../../sim';
@@ -30,12 +31,12 @@ const CONFIRM_OPTIONS: readonly Choice<SettingsData['confirmOn']>[] = [
   {
     value: 'all',
     label: 'All bets',
-    hint: 'Asks before Big mistakes for now (more options arrive with the new action bar).',
+    hint: 'Every move waits for a second tap.',
   },
   {
     value: 'costly',
     label: 'Medium and bad bets',
-    hint: 'Mistake or Big mistake: it costs more than 0.10 Ante. For now it asks before Big mistakes.',
+    hint: 'Mistake or Big mistake: it costs more than 0.10 Ante.',
   },
   { value: 'blunder', label: 'Only bad bets', hint: 'Big mistake: it costs more than 0.50 Ante.' },
   { value: 'never', label: 'Never', hint: 'No extra warning before a Big mistake.' },
@@ -264,7 +265,12 @@ export function Settings() {
             'Storage: may be cleared by the browser. Install the app to keep progress.'}
         </p>
         {!store.persistent && (
-          <p role="alert" class="warn">
+          <p class="warn">
+            <Say
+              text="Progress will not be saved in this copy. Use Export to keep it."
+              politeness="assertive"
+              dedupeKey="unsaved"
+            />
             Progress will not be saved in this copy. Use Export to keep it.
           </p>
         )}
@@ -319,7 +325,12 @@ export function Settings() {
             </button>
           </div>
         )}
-        {msg && <p role="status">{msg}</p>}
+        {msg && (
+          <p data-testid="settings-msg">
+            <Say text={msg} dedupeKey="settings" />
+            {msg}
+          </p>
+        )}
         {confirmReset ? (
           <div class="row">
             <span>Erase all lesson and drill progress?</span>
