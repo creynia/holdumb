@@ -85,6 +85,8 @@ export interface LensStats {
 export interface DrillStats extends LensStats {
   lens: DrillLens;
   practical: LensStats;
+  /** "Close calls" (I068): about 60% of spots are close, streets weighted by real play. Default on. */
+  closeCalls: boolean;
 }
 
 /** Stats of the lens currently selected. */
@@ -113,7 +115,7 @@ const emptyLens = (): LensStats => ({
 });
 
 export function emptyDrill(): DrillStats {
-  return { ...emptyLens(), lens: 'perfect', practical: emptyLens() };
+  return { ...emptyLens(), lens: 'perfect', practical: emptyLens(), closeCalls: true };
 }
 
 export function defaultPersisted(): PersistedV1 {
@@ -226,6 +228,7 @@ function sanitizeDrill(raw: unknown): DrillStats {
     ...sanitizeLens(raw),
     lens: raw.lens === 'practical' ? 'practical' : 'perfect',
     practical: sanitizeLens(raw.practical),
+    closeCalls: raw.closeCalls !== false,
   };
 }
 

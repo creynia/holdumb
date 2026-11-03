@@ -2,7 +2,13 @@
 // the llms files from the same content bundle the app ships (src/content/load.ts), so the text
 // matches the app. Pure: returns strings; build/vite-plugin-seo.ts writes them into dist/.
 import { buildContent, readSources } from '../../src/content/load';
-import { parseChart, parseQuizzes, segment, splitFrontMatter } from '../../src/content/compile';
+import {
+  expandNumbers,
+  parseChart,
+  parseQuizzes,
+  segment,
+  splitFrontMatter,
+} from '../../src/content/compile';
 import { cardFace, cardsHtml, parseGroup, splitInline } from '../../src/content/cards';
 import { TIER_LABEL } from '../../src/content/types';
 import type { ChartBlockData, ContentBundle, Lesson, Quiz } from '../../src/content/types';
@@ -16,6 +22,7 @@ import {
   formatPct,
 } from '../../src/sim/engine';
 import type { Paytable, PaytablePresetId, WagerId } from '../../src/sim/engine';
+import { fraction, progressiveBreakEven, progressiveEdge } from '../../src/sim/math';
 import { strategyChart } from '../../src/sim/strategy';
 import type { StrategyId } from '../../src/sim/strategy';
 import { TRIPS_EDGE, payRows, wagerTierOf } from '../../src/app/bets';
@@ -249,6 +256,41 @@ function quizMd(q: Quiz): string {
     )}\n\nAnswer: ${LETTERS[q.answer]}) ${inlineMd(q.choices[q.answer] ?? '')}. ${inlineMd(q.explanation)}`;
 }
 
+// ---------- progressive calculator (I063) ----------
+
+/** Static stand-in for the lesson 20 slider: exact edges at a few meters and the break-even. */
+const PROGRESSIVE_METERS = [25_000, 50_000, 100_000, 150_000, 200_000];
+function progressiveRows(): { meter: string; edge: string; hour: string }[] {
+  return PROGRESSIVE_METERS.map((m) => {
+    const e = progressiveEdge(m);
+    const cents = fraction.round(fraction.scale(e, 30 * 100)); // $1 × 30 hands, in cents
+    return {
+      meter: formatMoney(m * 100),
+      edge: `${e.num < 0n ? 'player edge ' : ''}${formatPct(e.num < 0n ? { num: -e.num, den: e.den } : e, 1)}`,
+      hour: formatMoney(cents).replace(/^-/, '−'),
+    };
+  });
+}
+const progressiveBreakEvenText = () => {
+  return formatMoney(fraction.round(fraction.scale(progressiveBreakEven(), 100)));
+};
+function progressiveHtml(cta: string): string {
+  const rows = progressiveRows()
+    .map((r) => `<tr><td>${r.meter}</td><td>${r.edge}</td><td>${r.hour}</td></tr>`)
+    .join('');
+  return `<aside class="progressive"><p class="tag">Progressive calculator</p><table><thead><tr><th>Meter</th><th>House edge</th><th>Cost per hour ($1, 30 hands)</th></tr></thead><tbody>${rows}</tbody></table><p>Break-even meter: ${progressiveBreakEvenText()}. <a href="${cta}">Drag the meter in the app</a>.</p></aside>`;
+}
+function progressiveMd(): string {
+  const rows = progressiveRows().map((r) => `| ${r.meter} | ${r.edge} | ${r.hour} |`);
+  return [
+    '| Meter | House edge | Cost per hour ($1, 30 hands) |',
+    '|---|---|---|',
+    ...rows,
+    '',
+    `Break-even meter: ${progressiveBreakEvenText()} (the app has a slider).`,
+  ].join('\n');
+}
+
 // ---------- lessons ----------
 
 function lessonBodyHtml(lesson: Lesson, up: string): string {
@@ -264,6 +306,8 @@ function lessonBodyHtml(lesson: Lesson, up: string): string {
           return `<details class="math"><summary>Show the math: ${esc(b.title)}</summary>${fixLinks(b.html, up)}</details>`;
         case 'chart':
           return chartHtml(b.chart);
+        case 'progressive':
+          return progressiveHtml(cta);
         case 'quiz':
           return quizHtml(b.quiz);
         case 'scene':
@@ -290,7 +334,7 @@ function shiftHeadings(md: string, shift: number): string {
 }
 
 function lessonMarkdown(source: string, id: string): string {
-  const { body } = splitFrontMatter(source);
+  const body = expandNumbers(splitFrontMatter(source).body); // {{num:…}} tokens (I064)
   const out: string[] = [];
   let quizCount = 0;
   const mins = [...body.matchAll(/^(#{1,6})\s/gm)].map((m) => m[1]!.length);
@@ -308,6 +352,7 @@ function lessonMarkdown(source: string, id: string): string {
           : `**Show the math: ${seg.title}**\n\n${shiftHeadings(inlineMd(seg.text).trim(), shift)}`,
       );
     else if (seg.lang === 'chart') out.push(chartMd(parseChart(seg.text)));
+    else if (seg.lang === 'progressive') out.push(progressiveMd());
     else if (seg.lang === 'quiz') {
       const qs = parseQuizzes(seg.text, id, quizCount);
       quizCount += qs.length;

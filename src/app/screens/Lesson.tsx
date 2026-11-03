@@ -4,6 +4,7 @@ import { Html } from '../components/Html';
 import { Link } from '../components/Link';
 import { LessonScene } from '../components/LessonScene';
 import { ChartBlock } from '../components/ChartBlock';
+import { ProgressiveBlock } from '../components/ProgressiveBlock';
 import { Quiz } from '../components/Quiz';
 import { SourceEntry } from '../components/SourceEntry';
 import { useContent, useStore } from '../context';
@@ -72,6 +73,24 @@ export function LessonView({ id }: { id: string }) {
               );
             case 'chart':
               return <ChartBlock key={i} chart={b.chart} />;
+            case 'practise':
+              // Plain links: leaving the lesson never marks it done (I066).
+              return (
+                <section key={i} class="card practise" aria-label="Practise this">
+                  <h2>Practise this</h2>
+                  <ul>
+                    {b.links.map((l) => (
+                      <li key={l.to}>
+                        <Link to={l.to} class="practise-link">
+                          {l.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            case 'progressive':
+              return <ProgressiveBlock key={i} block={b.progressive} />;
             case 'quiz':
               return (
                 <Quiz

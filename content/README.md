@@ -12,5 +12,5 @@ The full guide is `docs/authoring.md`.
   `chapters.json` is missing). Do not edit them to write real content.
 
 Body extras: `:::math Title` ... `:::`, `:::tip` ... `:::`, inline cards `{{As Kd}}` (also in quiz text,
-options and explanations), a ` ```chart ` block, a ` ```scene ` block (simulator `SceneConfig`, money in
+options and explanations), a ` ```chart ` block, a ` ```progressive ` block (the lesson 20 meter slider), a ` ```scene ` block (simulator `SceneConfig`, money in
 cents) and a ` ```quiz ` block with an optional `hand:`. **An invalid scene, quiz, chart or card fails the build.**

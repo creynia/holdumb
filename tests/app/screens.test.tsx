@@ -24,6 +24,11 @@ import { Drill, rngFromSeed, type DrillDeps } from '../../src/app/screens/Drill'
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
 import { Store } from '../../src/app/store';
+import {
+  flushAnnouncements,
+  resetAnnouncer,
+  subscribeAnnouncements,
+} from '../../src/sim/ui/announcer';
 
 /** The `_sample-*` fixtures in tests/fixtures/content, so real lessons can never break these tests. */
 function fixtureContent() {
@@ -59,7 +64,16 @@ const btn = (el: HTMLElement, text: string | RegExp) =>
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  resetAnnouncer();
 });
+/** What the single announcer would speak now. */
+function heard(): string[] {
+  const out: string[] = [];
+  const off = subscribeAnnouncements((_p, t) => out.push(t));
+  flushAnnouncements();
+  off();
+  return out;
+}
 
 describe('error boundary', () => {
   /** A store whose sandbox snapshot is corrupt: /play throws while rendering, until it is reset. */
@@ -271,6 +285,17 @@ describe('Lesson', () => {
     });
     await act(() => btn(el, 'Check answer').click());
     expect(el.querySelector('.quiz-result.no')).toBeTruthy();
+    // The verdict and the explanation are both spoken, exactly as shown (I036).
+    const spokenQuiz = heard();
+    expect(spokenQuiz).toHaveLength(1);
+    expect(spokenQuiz[0]).toBe(
+      el
+        .querySelector('.quiz-result')!
+        .textContent.replace(/\s+/g, ' ')
+        .trim()
+        .replace(/ Try again$/, ''),
+    );
+    expect(spokenQuiz[0]).toContain('Not quite.');
     expect(store.lesson(withQuiz.id)?.quizzes[quiz.id]).toMatchObject({
       correct: false,
       firstTry: false,
@@ -413,7 +438,7 @@ describe('Settings', () => {
       ta.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await act(() => btn(el, 'Import').click());
-    expect(el.querySelector('[role="status"]')?.textContent).toContain('not valid');
+    expect(el.querySelector('[data-testid="settings-msg"]')?.textContent).toContain('not valid');
     await act(() => {
       ta.value = src.exportCode();
       ta.dispatchEvent(new Event('input', { bubbles: true }));
@@ -495,11 +520,11 @@ describe('About', () => {
     await act(() => btn(el, 'Check for updates').click());
     await act(() => new Promise((r) => setTimeout(r, 0)));
     expect(check).toHaveBeenCalledTimes(1);
-    expect(el.querySelector('[role="status"]')!.textContent).toContain('latest');
+    expect(el.querySelector('[data-testid="update-status"]')!.textContent).toContain('latest');
     check.mockResolvedValue('failed');
     await act(() => btn(el, 'Check for updates').click());
     await act(() => new Promise((r) => setTimeout(r, 0)));
-    expect(el.querySelector('[role="status"]')!.textContent).toContain('Could not');
+    expect(el.querySelector('[data-testid="update-status"]')!.textContent).toContain('Could not');
   });
 });
 
@@ -682,7 +707,11 @@ describe('Drill', () => {
     const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('river', 'r:1'), r]);
     const { store, d } = setup(0, { nextSpot });
     await mountDrill(store, d, 'street=river&focus=a,b');
-    expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'river', focus: ['a', 'b'] });
+    expect(nextSpot.mock.calls[0]![1]).toEqual({
+      street: 'river',
+      focus: ['a', 'b'],
+      interesting: true,
+    });
   });
   describe('grading lens', () => {
     // Bet 2x is perfect-best by 0.300 antes over Check, which is what the basic card plays here.
@@ -716,7 +745,11 @@ describe('Drill', () => {
       await tick();
       const res = el.querySelector('[data-testid="drill-result"]')!;
       expect(res.getAttribute('data-tier')).toBe('best');
-      expect(res.querySelector('[role="status"]')!.textContent).toMatch(
+      // Spoken in full: the verdict, the better play and by how much (I036).
+      const spokenGrade = heard();
+      expect(spokenGrade).toHaveLength(1);
+      expect(spokenGrade[0]).toContain('Perfect play says Bet 2x here, by 0.300 antes');
+      expect(res.querySelector('[data-testid="drill-headline"]')!.textContent).toMatch(
         /^Correct! Check is the card's play\. Perfect play says Bet 2x here, by 0\.300 antes \(\$[\d.,]+ per hand\)\. The card's rule is still the one to remember\.$/,
       );
       expect(store.drill.practical.byStreet.flop).toEqual({ answered: 1, correct: 1 });
@@ -738,7 +771,8 @@ describe('Drill', () => {
           timeout: 60_000,
         });
         ev.dispose();
-        return el.querySelector('[data-testid="drill-result"] [role="status"]')!.textContent;
+        return el.querySelector('[data-testid="drill-result"] [data-testid="drill-headline"]')!
+          .textContent;
       };
       it("choosing the card's action names perfect play, exactly", async () => {
         expect(await run('Bet 2x')).toBe(
@@ -784,7 +818,11 @@ describe('Drill', () => {
     const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('flop', 'f:1'), r]);
     const { store, d } = setup(0, { nextSpot });
     const el = await mountDrill(store, d, 'category=flop-flush-draw');
-    expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'flop', category: 'flop-flush-draw' });
+    expect(nextSpot.mock.calls[0]![1]).toEqual({
+      street: 'flop',
+      category: 'flop-flush-draw',
+      interesting: true,
+    });
     const sel = el.querySelector<HTMLSelectElement>('[data-testid="drill-categories"]')!;
     const opts = [...sel.options];
     expect(opts.map((o) => o.textContent)).toEqual([
@@ -805,8 +843,8 @@ describe('Drill', () => {
     await mountDrill(store, d, 'street=river&category=flop-flush-draw');
     await mountDrill(store, d, 'street=river&category=nope');
     expect(nextSpot.mock.calls.map((c) => c[1])).toEqual([
-      { street: 'river' },
-      { street: 'river' },
+      { street: 'river', interesting: true },
+      { street: 'river', interesting: true },
     ]);
   });
   it('seeded: the same seed through deps deals the same category-only spots', async () => {
@@ -853,12 +891,30 @@ describe('Drill', () => {
       'Your weakest: Flop flush draws 40% (5)',
     );
   });
+  it('Close calls: on by default (filter.interesting), off restores the plain filter, and persists', async () => {
+    const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('flop', 'f:1'), r]);
+    const mem = new MemoryStorage();
+    const store = new Store(mem);
+    const d: DrillDeps = { ...setup(0).d, nextSpot };
+    const el = await mountDrill(store, d, 'street=flop');
+    expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'flop', interesting: true });
+    const box = el.querySelector<HTMLInputElement>('[data-testid="drill-close-calls"] input')!;
+    expect(box.checked).toBe(true);
+    await act(() => box.click());
+    expect(store.drill.closeCalls).toBe(false);
+    expect(nextSpot.mock.calls.at(-1)![1]).toEqual({ street: 'flop' });
+    store.flush();
+    expect(new Store(mem).drill.closeCalls).toBe(false);
+    expect(el.textContent).toContain('close-call categories');
+  });
   it('a failed preview offers a retry without recording an answer', async () => {
     const { store, d } = setup(0, { preview: () => Promise.reject(new Error('x')) });
     const el = await mountDrill(store, d);
     await act(() => btn(el, 'Check').click());
     await tick();
-    expect(el.querySelector('[role="alert"]')).toBeTruthy();
+    expect(el.querySelector('.drill-spot .warn')?.textContent).toContain(
+      'Could not work out the EV',
+    );
     expect(store.drill.byStreet.flop.answered).toBe(0);
   });
 

@@ -110,6 +110,16 @@ describe('table mistakes become Drill spots', () => {
       'f:2dJd.4h6d9d',
     ]);
   });
+  it('re-emits a valid but non-canonical code in its canonical form (and drops its repeat)', () => {
+    const d = driver(RIVER_19_OUTS);
+    const snap = JSON.parse(JSON.stringify(encodeSnapshot(d))) as Record<string, unknown>;
+    // Spaces between cards parse, but the code a driver writes has none.
+    snap.mistakeSpots = ['f:2d Jd.4h 6d 9d', 'p:As Ah.', 'f:2dJd.4h6d9d'];
+    expect(decodeSnapshot(snap, 'trips-8-6-5')?.restore.mistakeSpots).toEqual([
+      'f:2dJd.4h6d9d',
+      'p:AsAh.',
+    ]);
+  });
   it('a hand with a mistake and then a failed preview adds no spots (it is unscored)', async () => {
     // AA: check preflop (blunder, EV known), then check the flop where the preview fails.
     const d = driver(AA_PREFLOP);

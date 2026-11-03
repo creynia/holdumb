@@ -1,6 +1,17 @@
 // D34: the flop preview must resolve within 1.5 s at 4x CPU throttle (target ~1 s on a phone).
-// CDP's CPU throttle does not apply inside Web Workers, so the budget is also checked on the
-// in-thread fallback client, which runs on the throttled main thread.
+// Why the budget is measured in-thread (I041): CDP cannot CPU-throttle a Web Worker in Chromium 141
+// (Playwright 1.56.1). newCDPSession(worker) throws "expected Page or Frame", and
+// Emulation.setCPUThrottlingRate on an attached worker target fails with "Operation is only
+// supported for pages, not workers", so the worker job below runs at full speed whatever the page
+// rate. Flattened auto-attach (Target.setAutoAttach flatten) does attach the worker, but the same
+// call on its sessionId returns -32000 too, and an in-worker timed loop is not throttled by the
+// page rate (about 20x slower if it were; at most about 2x under machine load).
+// Page-rate effects on worker round trips are main-thread messaging, not the enumeration. The
+// in-thread fallback client runs the same job on the throttled main thread, so it is the honest 4x
+// measurement; the worker timing only proves the shipped transport answers in budget.
+// Every request uses a distinct deal. The client memo is keyed on the whole request
+// (`${kind}:${canonicalJson(req)}`, cards and ante included), so repeating a request is a hit;
+// distinct deals keep each job independent and cold.
 import { readdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { parseCards } from '../../src/sim/engine';
@@ -15,9 +26,11 @@ const req = (street: 'preflop' | 'flop' | 'river', cards: string) => {
     ante: 1000,
   };
 };
-const FLOP = req('flop', 'AhTc7dKs2c');
-const RIVER = req('river', 'AhTc7dKs2c9h4s');
-const PREFLOP = req('preflop', 'AhTc');
+const FLOP_WORKER = req('flop', 'AhTc7dKs2c');
+const FLOP_INTHREAD = req('flop', 'QsJh8c5d3h');
+const RIVER = req('river', '9s9d6hJcTd4c2s');
+const PREFLOP = req('preflop', 'Kh7s');
+type Req = typeof FLOP_WORKER;
 
 test.skip(({ browserName }) => browserName !== 'chromium');
 
@@ -27,7 +40,7 @@ test('preview timings at 4x CPU throttle', async ({ page }) => {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 
-  const run = (which: 'client' | 'inthread', r: typeof FLOP, label: string) =>
+  const run = (which: 'client' | 'inthread', r: Req, label: string) =>
     page.evaluate(
       async ([w, rq, key]) => {
         const hook = window.__holdumb as unknown as Record<
@@ -54,13 +67,18 @@ test('preview timings at 4x CPU throttle', async ({ page }) => {
       [which, r, label] as const,
     );
 
-  const fresh = (r: typeof FLOP, salt: number) => ({ ...r, ante: 1000 + salt * 100 }); // dodge the memo cache
-  const worker = await run('client', fresh(FLOP, 1), 'w-flop');
-  const inthread = await run('inthread', fresh(FLOP, 2), 'i-flop');
-  const riverIn = await run('inthread', fresh(RIVER, 3), 'i-river');
-  const preflopIn = await run('inthread', fresh(PREFLOP, 4), 'i-pre');
+  // Distinct deals, so no job is a cache hit (see the note at the top).
+  const keys = [FLOP_WORKER, FLOP_INTHREAD, RIVER, PREFLOP].map((r) =>
+    [...r.hole, ...r.board].join(),
+  );
+  expect(new Set(keys).size).toBe(keys.length);
+  const worker = await run('client', FLOP_WORKER, 'w-flop');
+  expect(worker.mode).toBe('worker');
+  const inthread = await run('inthread', FLOP_INTHREAD, 'i-flop');
+  const riverIn = await run('inthread', RIVER, 'i-river');
+  const preflopIn = await run('inthread', PREFLOP, 'i-pre');
   console.log(
-    `perf @4x: flop worker ${worker.ms.toFixed(0)} ms (${worker.mode}, long task ${worker.longest.toFixed(0)} ms), ` +
+    `perf @4x: flop worker ${worker.ms.toFixed(0)} ms (${worker.mode}, unthrottled, long task ${worker.longest.toFixed(0)} ms), ` +
       `flop in-thread ${inthread.ms.toFixed(0)} ms (long task ${inthread.longest.toFixed(0)} ms), ` +
       `river ${riverIn.ms.toFixed(0)} ms, preflop ${preflopIn.ms.toFixed(0)} ms`,
   );

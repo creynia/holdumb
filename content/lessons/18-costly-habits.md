@@ -11,16 +11,16 @@ figures are exact, at a $10 Ante and 30 hands an hour.
 
 | Habit | House edge per Ante | Cost per hour | Extra vs perfect |
 |---|---|---|---|
-| Perfect play | 2.18% | $6.55 | — |
-| Basic card | 2.38% | $7.14 | $0.59 |
-| Simple card | 2.71% | $8.12 | $1.57 |
+| Perfect play | {{num:perfect-edge-2}} | {{num:perfect-per-hour}} | — |
+| Basic card | {{num:basic-edge-2}} | {{num:basic-per-hour}} | {{num:basic-extra-per-hour}} |
+| Simple card | {{num:simple-edge-2}} | {{num:simple-per-hour}} | {{num:simple-extra-per-hour}} |
 | 4x only with pairs and aces | 5.65% | $16.94 | $10.39 |
 | Never bet 2x on the flop | 9.42% | $28.26 | $21.70 |
 | Bet 3x instead of 4x | 9.86% | $29.58 | $23.02 |
 | Check to the river, then play perfectly | 32.03% | $96.10 | $89.55 |
 | Never fold (check, check, always 1x) | 40.70% | $122.11 | $115.56 |
 | Bet 4x on every hand | 40.70% | $122.11 | $115.56 |
-| Check to the river, bet 1x only with a hidden pair | 50.04% | $150.11 | $143.55 |
+| Check to the river, bet 1x only with a hidden pair | {{num:d36-edge-2}} | {{num:d36-per-hour}} | {{num:d36-extra-per-hour}} |
 
 Three lessons hide in that table.
 

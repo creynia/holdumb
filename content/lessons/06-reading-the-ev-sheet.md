@@ -44,7 +44,7 @@ Write the preflop EV of betting P as EV(P) = a + P·b, where b = P(win) − P(lo
 * If b < 0: EV(3) = a + 3b < a + b = EV(check, then always bet 1x) ≤ EV(check, then play the river perfectly).
 
 For aces: EV(4x) = 472094411/131098275 ≈ 3.6011, EV(3x) ≈ 2.8970, EV(check) = 38331809/17479770 ≈ 2.1929.
-Playing perfect strategy except always betting 3x instead of 4x raises the house edge from 2.18% to **9.86%**.
+Playing perfect strategy except always betting 3x instead of 4x raises the house edge from {{num:perfect-edge-2}} to **9.86%**.
 :::
 
 ```scene

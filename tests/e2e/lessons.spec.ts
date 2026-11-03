@@ -116,3 +116,90 @@ for (const [lesson, title] of [
     await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
   });
 }
+
+test('lesson 20: the progressive meter slider prices the bet and finds break-even (I063)', async ({
+  page,
+}) => {
+  await page.goto('/#/learn/other-side-bets');
+  const block = page.getByTestId('progressive');
+  await block.scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('progressive-meter')).toHaveText('$50,000');
+  await expect(page.getByTestId('progressive-edge')).toContainText('House edge 32.3%');
+  await expect(page.getByTestId('progressive-edge')).toContainText('$9.70 an hour');
+  await expect(page.getByTestId('progressive-vs')).toContainText('$160,530.53');
+  const slider = page.getByTestId('progressive-slider');
+  expect((await slider.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  // Keyboard: End jumps to the top of the range, Home to the bottom.
+  await slider.focus();
+  await page.keyboard.press('End');
+  await expect(page.getByTestId('progressive-meter')).toHaveText('$300,000');
+  await expect(page.getByTestId('progressive-edge')).toContainText('Player edge');
+  await page.keyboard.press('Home');
+  await expect(page.getByTestId('progressive-meter')).toHaveText('$10,000');
+  await expect(page.getByTestId('progressive-vs')).toContainText('below break-even');
+  const sw = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(sw).toBeLessThanOrEqual(page.viewportSize()!.width);
+});
+
+test('lesson 20: dragging the meter from $10k to $300k never changes the block height (I063)', async ({
+  page,
+}) => {
+  for (const vp of [
+    { width: 360, height: 740 },
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 667, height: 375 },
+  ]) {
+    await page.setViewportSize(vp);
+    await page.goto('/#/learn/other-side-bets');
+    const block = page.getByTestId('progressive');
+    await block.scrollIntoViewIfNeeded();
+    const slider = page.getByTestId('progressive-slider');
+    await slider.focus();
+    await page.keyboard.press('Home');
+    const heights = new Set<number>();
+    const docHeights = new Set<number>();
+    // Every $1,000 step across the whole range, by keyboard (one ArrowRight = one step).
+    for (let m = 10_000; m <= 300_000; m += 1_000) {
+      if (m > 10_000) await page.keyboard.press('ArrowRight');
+      const h = await block.evaluate((el) => [
+        Math.round(el.getBoundingClientRect().height),
+        document.documentElement.scrollHeight,
+      ]);
+      heights.add(h[0]!);
+      docHeights.add(h[1]!);
+    }
+    await expect(page.getByTestId('progressive-meter')).toHaveText('$300,000');
+    expect([...heights], `block heights at ${vp.width}x${vp.height}`).toHaveLength(1);
+    expect([...docHeights], `page heights at ${vp.width}x${vp.height}`).toHaveLength(1);
+  }
+});
+
+// I066: "Practise this" opens the lesson's own river spot on the table; leaving doesn't finish it.
+test('lesson 12 "Practise this" opens its river spot and keeps the lesson unfinished', async ({
+  page,
+}) => {
+  await page.goto('/#/learn/counting-dealer-outs');
+  const block = page.getByRole('region', { name: 'Practise this' });
+  const link = block.getByRole('link', { name: 'Play jack-eight on K-Q-4-3-2' });
+  await link.scrollIntoViewIfNeeded();
+  const box = (await link.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?hole=Jd8c&board=KhQs4d3c2h/);
+  const sim = page.getByTestId('simulator');
+  await expect(sim).toHaveAttribute('data-street', 'river');
+  await expect(page.locator('button[data-option="fold"]')).toBeVisible();
+  await page.goto('/#/learn');
+  const row = page.locator('a.lesson-row[href="#/learn/counting-dealer-outs"]');
+  await expect(row).toHaveClass(/st-progress/);
+  await expect(row).not.toHaveClass(/st-done/);
+  await page.goto('/#/learn/counting-dealer-outs');
+  await expect(page.getByRole('button', { name: 'Mark complete' })).toBeVisible();
+  const drill = page
+    .getByRole('region', { name: 'Practise this' })
+    .getByRole('link', { name: 'Drill rivers near 21 outs' });
+  await drill.click();
+  await expect(page).toHaveURL(/#\/drill\?category=river-outs-edge/);
+  await expect(page.getByTestId('drill-category-label')).toBeVisible();
+});

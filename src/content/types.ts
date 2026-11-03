@@ -38,13 +38,27 @@ export interface ChartBlockData {
   highlight?: string[]; // 'AKs', 'T9o', '77'
 }
 
+/** I063: the progressive jackpot calculator (lesson 20). `meter` is the slider's start, whole dollars. */
+export interface ProgressiveBlockData {
+  meter: number;
+}
+
 export type Block =
   | { kind: 'html'; html: string } // marked output, trusted repo content
   | { kind: 'math'; title: string; html: string } // collapsible "Show the math"
   | { kind: 'tip'; html: string }
   | { kind: 'scene'; scene: SceneConfig }
   | { kind: 'chart'; chart: ChartBlockData }
-  | { kind: 'quiz'; quiz: Quiz };
+  | { kind: 'progressive'; progressive: ProgressiveBlockData }
+  | { kind: 'quiz'; quiz: Quiz }
+  | { kind: 'practise'; links: PractiseLink[] };
+
+/** A "Practise this" link (I066): a Drill category or a preset table spot from the lesson. */
+export interface PractiseLink {
+  label: string;
+  /** In-app route, e.g. '/drill?category=flop-board-pair' or '/play?hole=Qc7d&board=KdJh9s5c2d'. */
+  to: string;
+}
 
 /** One entry of content/sources.json (shown on #/sources and cited by lessons). */
 export interface SourceItem {

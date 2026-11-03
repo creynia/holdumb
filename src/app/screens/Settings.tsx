@@ -1,3 +1,4 @@
+import { Say } from '../../sim';
 import { useEffect, useState } from 'preact/hooks';
 import { PAYTABLE_PRESET_IDS, TRIPS_PAYTABLES, formatPct } from '../../sim';
 import type { PaytablePresetId } from '../../sim';
@@ -264,7 +265,12 @@ export function Settings() {
             'Storage: may be cleared by the browser. Install the app to keep progress.'}
         </p>
         {!store.persistent && (
-          <p role="alert" class="warn">
+          <p class="warn">
+            <Say
+              text="Progress will not be saved in this copy. Use Export to keep it."
+              politeness="assertive"
+              dedupeKey="unsaved"
+            />
             Progress will not be saved in this copy. Use Export to keep it.
           </p>
         )}
@@ -319,7 +325,12 @@ export function Settings() {
             </button>
           </div>
         )}
-        {msg && <p role="status">{msg}</p>}
+        {msg && (
+          <p data-testid="settings-msg">
+            <Say text={msg} dedupeKey="settings" />
+            {msg}
+          </p>
+        )}
         {confirmReset ? (
           <div class="row">
             <span>Erase all lesson and drill progress?</span>
