@@ -139,6 +139,23 @@ function isClose(s: DrillSpot): boolean {
   return secondBestRegret(p) < CLOSE_THRESHOLD;
 }
 
+/**
+ * Mixed street weights with "Close calls" on (curriculum.md section 9): how often each street's
+ * decision comes up per hand of real play, as integers over 6,497,400 (= 663 x 9,800).
+ * - preflop: 1 (every hand).
+ * - flop: 413/663 = 4,047,400 (the chart checks 826 of 1,326 combos; decisions.md P(4x) = 250/663).
+ * - river: a river spot needs the preflop check and then a flop check under the basic card (the
+ *   filter `sampleStreet` uses): 4,047,400 - 1,381,793 = 2,665,607, where 1,381,793/6,497,400 =
+ *   5,527,172/25,989,600 is P(check preflop and the basic flop rule fires), enumerated over the
+ *   826 check combos x 19,600 flops (drill.test.ts recomputes it).
+ */
+export const MIXED_STREET_WEIGHTS: Readonly<Record<DecisionStreet, number>> = {
+  preflop: 6_497_400,
+  flop: 4_047_400,
+  river: 2_665_607,
+};
+const STREETS_IN_ORDER: readonly DecisionStreet[] = ['preflop', 'flop', 'river'];
+
 // ---------- public API ----------
 function randomClassSpot(rng: RngState, cls: string): [DrillSpot, RngState] {
   const { hi, lo, suited, pair } = parseClass(cls);
@@ -169,9 +186,17 @@ export function nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngSta
   let street: DecisionStreet;
   if (filter.category) street = DRILL_STREET_OF[filter.category];
   else if (filter.street === 'mixed') {
-    let k: number;
-    [k, r] = randBelow(r, 3);
-    street = (['preflop', 'flop', 'river'] as const)[k]!;
+    if (filter.interesting) {
+      // Real-play mix; without it the three streets are equally likely (the pre-I068 behaviour).
+      const total = STREETS_IN_ORDER.reduce((n, st) => n + MIXED_STREET_WEIGHTS[st], 0);
+      let u: number;
+      [u, r] = randBelow(r, total);
+      street = STREETS_IN_ORDER.find((st) => (u -= MIXED_STREET_WEIGHTS[st]) < 0)!;
+    } else {
+      let k: number;
+      [k, r] = randBelow(r, 3);
+      street = STREETS_IN_ORDER[k]!;
+    }
   } else street = filter.street;
 
   const cat = filter.category;
