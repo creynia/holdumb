@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateN, parseCards, resolveRules, settleHand } from '../engine';
+import { PAYTABLE_PRESET_IDS } from '../engine/paytables';
 import type { HandResult } from '../engine';
 import {
   FOLDED_RESULT,
@@ -122,6 +123,67 @@ describe('prose', () => {
       net: 9000,
     };
     expect(describeResult(fullHouseTrips, tablesFor('trips-9-7-4'))).toContain(
+      'full house pays 9 to 1 on Trips 9/7/4',
+    );
+  });
+  it('a straight flush is never named as a flush (I011 review)', () => {
+    const sf: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'straight-flush' },
+      wagers: [
+        { wager: 'blind', amount: 1000, result: 'win', profit: 50000, reason: 'blind-bonus' },
+      ],
+      net: 50000,
+    };
+    const text = describeResult(sf);
+    expect(text).toContain('Blind +$500 (straight flush pays 50 to 1)');
+    expect(text).not.toContain('(flush pays');
+  });
+  it('each Trips preset names itself and its own odds (I011 review)', () => {
+    for (const id of PAYTABLE_PRESET_IDS) {
+      const t = tablesFor(id);
+      const odds = t.trips.pays['trips'];
+      const r: HandResult = {
+        ...WON_RESULT,
+        player: { ...WON_RESULT.player, category: 'trips' },
+        wagers: [
+          { wager: 'trips', amount: 1000, result: 'win', profit: 3000, reason: 'trips-pays' },
+        ],
+        net: 3000,
+      };
+      expect(describeResult(r, t)).toContain(
+        `Trips +$30 (three of a kind pays ${odds![0]} to ${odds![1]} on ${t.trips.label})`,
+      );
+    }
+  });
+  it('a Blind push adds no odds (I011 review)', () => {
+    const push: HandResult = {
+      ...WON_RESULT,
+      wagers: [
+        {
+          wager: 'blind',
+          amount: 1000,
+          result: 'push',
+          profit: 0,
+          reason: 'blind-push-under-straight',
+        },
+      ],
+      net: 0,
+    };
+    expect(describeResult(push)).toContain('Blind push (needs a straight).');
+    expect(describeResult(push)).not.toContain('pays');
+  });
+  it('the odds come from the preset the hand settled at, not a different one (I011 review)', () => {
+    const win: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'full-house' },
+      wagers: [{ wager: 'trips', amount: 1000, result: 'win', profit: 9000, reason: 'trips-pays' }],
+      net: 9000,
+    };
+    expect(describeResult(win, tablesFor('trips-8-6-5'))).toContain(
+      'full house pays 8 to 1 on Trips 8/6/5',
+    );
+    expect(describeResult(win, tablesFor('trips-9-7-4'))).toContain(
       'full house pays 9 to 1 on Trips 9/7/4',
     );
   });

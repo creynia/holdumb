@@ -76,7 +76,13 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
       if (e.type === 'hand-settled')
         // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
         pushToast(
-          describeResult(e.result, tablesFor(latest.current.settings.paytable)),
+          // The preset the hand settled at: a scene's own rules win over the Settings preset.
+          describeResult(
+            e.result,
+            tablesFor(
+              holder.current?.view.state.rules.tripsPaytable ?? latest.current.settings.paytable,
+            ),
+          ),
           e.result.net > 0 ? 'good' : undefined,
           e.result.outcome === 'fold' ? foldAnnouncement(e.result) : undefined,
         );

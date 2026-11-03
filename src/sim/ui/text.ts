@@ -211,17 +211,12 @@ const WAGER_NAME = { ante: 'Ante', blind: 'Blind', play: 'Play', trips: 'Trips' 
 export interface SettlementTables {
   blind: Paytable;
   trips: Paytable;
-  tripsId: TripsPaytableId;
 }
 export const tablesFor = (tripsId: TripsPaytableId): SettlementTables => ({
   blind: BLIND_PAYTABLES['blind-standard'],
   trips: TRIPS_PAYTABLES[tripsId],
-  tripsId,
 });
 const DEFAULT_TABLES = tablesFor(DEFAULT_PAYTABLE_PRESET);
-
-/** 'trips-8-6-5' -> '8/6/5' (the name a learner sees in the paytable). */
-const presetName = (id: TripsPaytableId): string => id.replace('trips-', '').replace(/-/g, '/');
 
 function describeSettlement(s: WagerSettlement, hand: EvaluatedHand, t: SettlementTables): string {
   const name = WAGER_NAME[s.wager];
@@ -244,7 +239,7 @@ function describeSettlement(s: WagerSettlement, hand: EvaluatedHand, t: Settleme
   if (s.wager === 'trips') {
     const odds = t.trips.pays[hand.category];
     return odds
-      ? `${name} ${money} (${hn} pays ${odds[0]} to ${odds[1]} on Trips ${presetName(t.tripsId)})`
+      ? `${name} ${money} (${hn} pays ${odds[0]} to ${odds[1]} on ${t.trips.label})`
       : `${name} ${money}`;
   }
   return `${name} ${money}`;
