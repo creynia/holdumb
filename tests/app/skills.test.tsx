@@ -144,7 +144,7 @@ describe('Learn: Your skills', () => {
   });
   it('speaks plainly: a guide to practise, no prediction or points', async () => {
     const el = await mountLearn([]);
-    const text = el.querySelector('[data-testid="skills"]')!.textContent!;
+    const text = el.querySelector('[data-testid="skills"]')!.textContent;
     expect(text).toMatch(/not a score/);
     expect(text).not.toMatch(/win|beat the house|points|level|streak/i);
   });
