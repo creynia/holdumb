@@ -134,17 +134,17 @@ describe('useSandboxSync', () => {
 
   it('the table follows the EV-mode setting live', async () => {
     const { result, rerender } = mount(sandbox);
-    expect(result.current.d.view.practice).toBe(false);
+    expect(result.current.d.view.evMode).toBe('before');
     const setEvMode = vi.spyOn(result.current.d, 'setEvMode');
     rerender({ s: { ...settings, evMode: 'after' } });
     await waitFor(() => expect(setEvMode).toHaveBeenLastCalledWith('after'));
-    expect(result.current.d.view.practice).toBe(true);
+    expect(result.current.d.view.evMode).toBe('after');
     rerender({ s: { ...settings, evMode: 'never' } });
     await waitFor(() => expect(setEvMode).toHaveBeenLastCalledWith('never'));
     expect(result.current.d.view.evMode).toBe('never');
     rerender({ s: { ...settings, evMode: 'before' } });
     await waitFor(() => expect(setEvMode).toHaveBeenLastCalledWith('before'));
-    expect(result.current.d.view.practice).toBe(false);
+    expect(result.current.d.view.evMode).toBe('before');
   });
 });
 

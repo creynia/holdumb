@@ -507,7 +507,7 @@ describe('ActionBar', () => {
     expect(b.textContent).toContain('+3.601 · Best');
     expect(screen.getByText('Check').closest('button')!.textContent).toContain('Big mistake');
   });
-  it('shows no EV when practice mode leaves the preview off', () => {
+  it('shows no EV when EV after the move leaves the preview off', () => {
     render(<ActionBar street="flop" />);
     expect(screen.getByText('Bet 2x').closest('button')!.textContent).toBe('Bet 2x');
   });
@@ -1259,7 +1259,7 @@ describe('review fixes', () => {
       'Bet 4x instead: AA is a 4x hand. +$36.01 vs +$21.93.',
     );
   });
-  it('ActionBar practice mode shows no EV', () => {
+  it('ActionBar with EV after the move shows no EV', () => {
     render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} hideEv />);
     expect(document.body.textContent).not.toMatch(/Best|3\.601|Calculating|not available/);
   });
