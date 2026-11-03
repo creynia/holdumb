@@ -127,6 +127,7 @@ export function Simulator(props: SimulatorProps) {
           layout={orientation === 'landscape' ? 'rail' : 'bar'}
           preview={bar.showPreviewOnBar}
           hideEv={practice}
+          evOff={!evShown}
           evStatus={bar.barStatus}
           selected={ev.open}
           allowed={view.allowedOptions}

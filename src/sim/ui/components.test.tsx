@@ -388,13 +388,21 @@ describe('ActionBar', () => {
       ['deal', 'bc'],
     ]);
   });
-  it('reserves the EV line while EV is idle or hidden', () => {
-    render(<ActionBar street="flop" hideEv />);
+  it('reserves the EV line while EV is idle, not when EV is off or hidden', () => {
+    render(<ActionBar street="flop" />);
     for (const b of screen.getAllByRole('button')) {
       const sub = b.querySelector('.sim-act-sub');
       expect(sub).not.toBeNull();
       expect(sub!.getAttribute('aria-hidden')).toBe('true');
     }
+    cleanup();
+    render(<ActionBar street="flop" evOff />);
+    for (const b of screen.getAllByRole('button'))
+      expect(b.querySelector('.sim-act-sub')).toBeNull();
+    cleanup();
+    render(<ActionBar street="flop" hideEv />);
+    for (const b of screen.getAllByRole('button'))
+      expect(b.querySelector('.sim-act-sub')).toBeNull();
   });
   it('carries EV and a tier word when EV is on, and a spoken name', () => {
     render(<ActionBar street="preflop" preview={PREFLOP_AA.preview} />);

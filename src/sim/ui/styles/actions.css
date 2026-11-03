@@ -96,6 +96,11 @@
   gap: 8px;
   padding: 4px 12px;
 }
+/* With no EV line (EV off or hidden), the label sits in the middle like Deal and Clear. */
+.sim-actions-rail .sim-act-decision:not(:has(.sim-act-sub)),
+.sim-rail .sim-act-decision:not(:has(.sim-act-sub)) {
+  justify-content: center;
+}
 .sim-actions-rail .sim-act-decision .sim-act-label,
 .sim-rail .sim-act-decision .sim-act-label {
   flex: none;

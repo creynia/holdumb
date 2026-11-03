@@ -26,6 +26,8 @@ export interface ActionBarProps {
   evStatus?: EvStatus;
   /** Practice mode (D11): no EV or tier on the buttons. */
   hideEv?: boolean;
+  /** No EV can ever reach the buttons here (EV off for the scene or step): no reserved EV line. */
+  evOff?: boolean;
   /** The option whose sheet is open. */
   selected?: OptionKey | null;
   /** A scene may hide options. Omit for all. */
@@ -87,6 +89,7 @@ export function ActionBar({
   preview: rawPreview,
   evStatus,
   hideEv,
+  evOff,
   selected,
   allowed,
   highlight = [],
@@ -176,8 +179,8 @@ export function ActionBar({
               <span class="sim-act-sub">Calculating…</span>
             ) : status === 'error' ? (
               <span class="sim-act-sub">EV not available</span>
-            ) : (
-              // The EV line is reserved while EV is idle or hidden, so the bar never grows.
+            ) : hideEv || evOff ? null : (
+              // The EV line is reserved while EV is idle, so the label never jumps when it lands.
               <span class="sim-act-sub" aria-hidden="true" />
             )}
           </button>
