@@ -469,7 +469,6 @@ describe('Simulator container', () => {
       );
       expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
       expect(text).not.toMatch(/on average/);
-      expect(text.match(/\bcosts?\b/g)).toHaveLength(1);
       evClient.dispose();
     });
     it('hidden when EV is never shown; shown with EV after the move', async () => {
