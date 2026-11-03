@@ -7,7 +7,7 @@ import type { SimSettings } from './types';
 import type { EvClient, Progress } from '../worker/protocol';
 import { PICKER_GROUPS } from '../strategy/presets';
 import { STRATEGY_CONSTANTS } from '../strategy/constants';
-import { strategyMetrics } from '../strategy/metrics';
+import { costVsPerfectPerHour, strategyMetrics } from '../strategy/metrics';
 import { fracToNumber } from '../strategy/fraction';
 import { formatPct } from '../engine/money';
 import type { TableRules } from '../engine/types';
@@ -107,6 +107,27 @@ export function AutoPlayPanel({
     settings.handsPerHour,
   );
   const hourCents = fracToNumber(metrics.evPerHourCents);
+  const rules = { tripsPaytable: settings.paytable };
+  const costCents = Math.round(fracToNumber(costVsPerfectPerHour(spec, settings.handsPerHour)));
+  const others: StrategySpec[] = cmp
+    ? (compare ?? [{ id: id === 'basic' ? 'expert' : 'basic', ante, trips }]).map((s) => ({
+        ...s,
+        ante,
+        trips,
+      }))
+    : [];
+  // Compare table: exact figures only, lowest house edge first (cross-multiplied, no floats).
+  const tableRows = [spec, ...others]
+    .map((s) => ({
+      s,
+      m: strategyMetrics(s, rules, settings.handsPerHour),
+      cost: Math.round(fracToNumber(costVsPerfectPerHour(s, settings.handsPerHour))),
+    }))
+    .sort((a, b) => {
+      const l = a.m.edgePerAnte.num * b.m.edgePerAnte.den;
+      const r = b.m.edgePerAnte.num * a.m.edgePerAnte.den;
+      return l < r ? -1 : l > r ? 1 : 0;
+    });
 
   async function run(): Promise<void> {
     ctl.current?.abort();
@@ -115,13 +136,6 @@ export function AutoPlayPanel({
     setError(null);
     setResult(null);
     setProgress({ done: 0, total: 1 });
-    const others: StrategySpec[] = cmp
-      ? (compare ?? [{ id: id === 'basic' ? 'expert' : 'basic', ante, trips }]).map((s) => ({
-          ...s,
-          ante,
-          trips,
-        }))
-      : [];
     try {
       const res = await evClient.run(
         'simulate',
@@ -131,7 +145,7 @@ export function AutoPlayPanel({
           sessions,
           seed,
           bankroll,
-          rules: { tripsPaytable: settings.paytable },
+          rules,
           compare: others,
         },
         { key: 'auto-play', signal: ac.signal, onProgress: setProgress },
@@ -265,6 +279,43 @@ export function AutoPlayPanel({
         Ante ({settings.handsPerHour} hands/hour, house edge{' '}
         {(fracToNumber(metrics.edgePerAnte) * 100).toFixed(2)}% of the Ante).
       </p>
+      <p style={{ margin: 0, fontSize: '13px' }} data-testid="auto-play-cost">
+        {id === 'perfect'
+          ? 'The lowest edge possible.'
+          : `Costs ${formatMoney(costCents)} an hour more than perfect play.`}{' '}
+        <a
+          href="#/glossary?term=element-of-risk"
+          style={{ display: 'inline-block', minHeight: '44px', lineHeight: '44px' }}
+        >
+          Element of risk
+        </a>{' '}
+        {(fracToNumber(metrics.elementOfRisk) * 100).toFixed(2)}%.
+      </p>
+      {cmp ? (
+        <table data-testid="auto-play-compare" style={{ fontSize: '12px', width: '100%' }}>
+          <caption style={{ textAlign: 'left' }}>Exact figures, lowest edge first</caption>
+          <thead>
+            <tr>
+              <th scope="col">Strategy</th>
+              <th scope="col">Edge</th>
+              <th scope="col">Per hour</th>
+              <th scope="col">Vs perfect</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.map(({ s, m, cost }) => (
+              <tr key={s.id}>
+                <th scope="row" style={{ textAlign: 'left' }}>
+                  {STRATEGY_CONSTANTS[s.id].name}
+                </th>
+                <td>{(fracToNumber(m.edgePerAnte) * 100).toFixed(2)}%</td>
+                <td>{formatMoney(Math.round(fracToNumber(m.evPerHourCents)), { sign: true })}</td>
+                <td>{cost === 0 ? '--' : `+${formatMoney(cost)}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <button type="button" class="btn" onClick={() => void run()} disabled={running}>
           Run
