@@ -4,9 +4,10 @@ import { PAYTABLE_PRESET_IDS } from '../engine';
 import type { Cents, GameState, TripsPaytableId } from '../engine';
 import { frac } from '../math/fraction';
 import type { Fraction } from '../math';
-import { EMPTY_TOTALS } from '../scene';
+import { EMPTY_TOTALS, MAX_MISTAKE_SPOTS } from '../scene';
 import type { SessionTotals, SimDriver } from '../scene';
 import type { LoggedHand } from './moveLog';
+import { spotCode, spotFromCode } from '../strategy';
 import { EV_MODES, evModeOfPractice } from './settings';
 import type { EvMode } from './types';
 
@@ -25,6 +26,8 @@ export interface SandboxSnapshot {
   state: GameState;
   startEquity: Cents;
   totals: SessionTotalsJson;
+  /** Drill spot codes of table mistakes, newest first (I056). Older snapshots lack it. */
+  mistakeSpots?: string[];
   /** The table's EV visibility (D39). Older snapshots carry a boolean `practice` instead. */
   evMode: EvMode;
   /** The move log (I081), newest hand first; read back with decodeMoveLog. Optional. */
@@ -54,6 +57,7 @@ export function encodeSnapshot(
     state: s.state,
     startEquity: s.startEquity,
     totals: encodeTotals(s.totals),
+    mistakeSpots: s.mistakeSpots,
     evMode: evMode ?? s.evMode,
     ...(log && log.length ? { log: log.slice() } : {}),
   };
@@ -89,12 +93,36 @@ export function decodeTotals(raw: Record<string, unknown>): SessionTotals {
   return totals as unknown as SessionTotals;
 }
 
+/**
+ * Saved mistake spot codes: each must parse as a real spot (cards, street and board agree); the
+ * canonical code is kept, repeats dropped, at most MAX_MISTAKE_SPOTS.
+ */
+function decodeSpots(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const c of raw) {
+    if (typeof c !== 'string') continue;
+    try {
+      const code = spotCode(spotFromCode(c));
+      if (!out.includes(code)) out.push(code);
+    } catch {
+      // not a spot: dropped
+    }
+  }
+  return out.slice(0, MAX_MISTAKE_SPOTS);
+}
+
 /** Restores the saved table as it was. The paytable follows the current setting. */
 export function decodeSnapshot(
   raw: unknown,
   paytable: TripsPaytableId,
 ): {
-  restore: { state: GameState; startEquity: Cents; totals: SessionTotals };
+  restore: {
+    state: GameState;
+    startEquity: Cents;
+    totals: SessionTotals;
+    mistakeSpots: string[];
+  };
   evMode: EvMode;
 } | null {
   try {
@@ -125,7 +153,12 @@ export function decodeSnapshot(
       if (!ok) return null;
     }
     return {
-      restore: { state, startEquity: raw.startEquity, totals: decodeTotals(raw.totals) },
+      restore: {
+        state,
+        startEquity: raw.startEquity,
+        totals: decodeTotals(raw.totals),
+        mistakeSpots: decodeSpots(raw.mistakeSpots),
+      },
       // A valid evMode wins; a legacy snapshot's `practice: true` maps to 'after' (D39).
       evMode: (EV_MODES as readonly unknown[]).includes(raw.evMode)
         ? (raw.evMode as EvMode)

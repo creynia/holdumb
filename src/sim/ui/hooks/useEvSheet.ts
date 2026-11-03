@@ -12,7 +12,7 @@ import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
 import { needsConfirm, resolveConfirm } from '../settings';
 import type { EvMode } from '../types';
-import { actionOfKey, optionKeyOf } from '../text';
+import { actionOfKey, narrationText, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
 /** The preview request for the decision on the table now, or null between decisions. */
@@ -112,12 +112,21 @@ export function useEvSheet(
     const pre = d.view.preview;
     const before = pre.status === 'ready' ? pre.value : null;
     const reqBefore = requestNow(d);
+    // I080: say what the choice was worth, with EV shown before the move only (D40: 'after' gets the
+    // reveal card, 'never' nothing); guided steps have the step panel. A hand that ends gets it at
+    // the front of the result toast.
+    const i = before ? before.options.findIndex((o) => optionKeyOf(o.action) === k) : -1;
+    const said =
+      before && i >= 0 && evMode === 'before' && !d.view.step ? narrationText(before, i) : null;
+    sim.narration.current = said;
     const r = await d.act(actionOfKey(k));
+    sim.narration.current = null;
     if (r.ok && evMode === 'after' && before)
       setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
     if (r.ok) refocus();
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
+    else if (r.ok && said && d.view.state.street !== 'settled') pushToast(said);
   };
   const openSheet = (k: OptionKey, waiting = false) => {
     setPending(waiting);
