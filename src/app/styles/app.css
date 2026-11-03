@@ -791,7 +791,7 @@ textarea {
   flex-wrap: wrap;
   gap: 0.4rem 1.2rem;
 }
-.drill-result [role='status'] {
+.drill-result [data-testid='drill-headline'] {
   margin-top: 0;
 }
 .rankings {
@@ -1128,4 +1128,20 @@ html[data-route='play'] body {
 .route-failed .btn {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* The one pair of live regions (I036): out of flow and out of the scroll area, so it never
+   changes page height. */
+.announcer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  pointer-events: none;
 }

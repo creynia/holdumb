@@ -1,5 +1,6 @@
 import { render } from 'preact';
 import content from '#content';
+import { Announcer } from './app/announcer';
 import { App } from './app/App';
 import { AppProviders } from './app/context';
 import { Store } from './app/store';
@@ -16,6 +17,7 @@ registerSW();
 render(
   <AppProviders content={content} store={store}>
     <App />
+    <Announcer />
   </AppProviders>,
   document.getElementById('app')!,
 );
