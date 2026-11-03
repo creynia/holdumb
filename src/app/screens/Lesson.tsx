@@ -4,11 +4,13 @@ import { Html } from '../components/Html';
 import { Link } from '../components/Link';
 import { LessonScene } from '../components/LessonScene';
 import { ChartBlock } from '../components/ChartBlock';
+import { ProgressiveBlock } from '../components/ProgressiveBlock';
 import { Quiz } from '../components/Quiz';
 import { SourceEntry } from '../components/SourceEntry';
 import { useContent, useStore } from '../context';
 import { FINAL_EXAM_ID, finalExamScore } from '../store';
 import { NotFound } from './NotFound';
+import { requestPersistOnce } from '../persist';
 
 /** Click on a `[^n]` marker: scroll to, and focus, that entry in the lesson's Sources list. */
 function onCite(e: MouseEvent) {
@@ -71,6 +73,8 @@ export function LessonView({ id }: { id: string }) {
               );
             case 'chart':
               return <ChartBlock key={i} chart={b.chart} />;
+            case 'progressive':
+              return <ProgressiveBlock key={i} block={b.progressive} />;
             case 'quiz':
               return (
                 <Quiz
@@ -122,6 +126,10 @@ export function LessonView({ id }: { id: string }) {
           onClick={() => {
             if (!done) trackEvent(`lesson-complete/${lesson.id}`);
             store.completeLesson(lesson.id, !done);
+            if (!done)
+              void requestPersistOnce(navigator, store.settings.persistAsked, (o) =>
+                store.updateSettings({ persistAsked: o }),
+              );
           }}
         >
           {done ? '✓ Completed (tap to undo)' : 'Mark complete'}

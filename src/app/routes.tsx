@@ -1,20 +1,23 @@
 import type { VNode } from 'preact';
 import { matchPath } from './router';
 import type { ParsedHash } from './router';
-import { BetDetail, BetsList } from './screens/Bets';
-import { Drill } from './screens/Drill';
-import { Glossary } from './screens/Glossary';
-import { Hands } from './screens/Hands';
-import { Home } from './screens/Home';
-import { Learn } from './screens/Learn';
-import { LessonView } from './screens/Lesson';
-import { More } from './screens/More';
 import { NotFound } from './screens/NotFound';
 import { Play } from './screens/Play';
-import { Settings } from './screens/Settings';
-import { About } from './screens/About';
-import { Sources } from './screens/Sources';
-import { Strategy } from './screens/Strategy';
+import {
+  About,
+  BetDetail,
+  BetsList,
+  Drill,
+  Glossary,
+  Hands,
+  Home,
+  Learn,
+  LessonView,
+  More,
+  Settings,
+  Sources,
+  Strategy,
+} from '#screens';
 
 type Render = (p: Record<string, string>, r: ParsedHash) => VNode;
 /** The screen's name for the document title; undefined keeps the SEO title (Home). */

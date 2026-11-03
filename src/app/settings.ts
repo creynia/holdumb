@@ -6,6 +6,8 @@ export interface Settings extends SimSettings {
   theme: 'system' | 'light' | 'dark';
   reduceMotion: boolean;
   defaultBankrollCents: number; // default 50_000 ($500)
+  /** Whether the once-ever storage request has been answered (I076). */
+  persistAsked: 'no' | 'granted' | 'denied';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -13,4 +15,5 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   reduceMotion: false,
   defaultBankrollCents: 50_000,
+  persistAsked: 'no',
 };

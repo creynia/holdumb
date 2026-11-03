@@ -18,10 +18,23 @@ export const TABS = [
 export function Shell(props: {
   path: string;
   banner?: ComponentChildren;
+  /** Extra top-bar notice (error toast); lives in the top bar row like UpdateToast. */
+  toast?: ComponentChildren;
   children: ComponentChildren;
 }) {
   return (
     <div class="shell">
+      <a
+        class="skip-link"
+        href="#main"
+        onClick={(e) => {
+          // Hash routing: keep the route, just move focus to the content.
+          e.preventDefault();
+          document.getElementById('main')?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       <header class="topbar">
         <Link to="/" class="brand">
           holdumb
@@ -34,6 +47,7 @@ export function Shell(props: {
           ))}
         </nav>
         <UpdateToast />
+        {props.toast}
       </header>
       {props.banner}
       <main id="main" tabIndex={-1}>
