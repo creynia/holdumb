@@ -106,17 +106,11 @@
 }
 .sim-session-body dt {
   color: var(--muted);
-  flex-shrink: 0;
 }
-/* Long values ("200.00% (perfect play 2.18%)") wrap on the right between their parts (each
-   amount is a nowrap .sim-money span); the label never wraps. */
 .sim-session-body dd {
   margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-align: right;
 }
 .sim-session-body p {
   margin: 4px 0 0;
@@ -145,10 +139,25 @@
   border-radius: 10px;
   padding: 10px 12px;
 }
-.sim-autoplay summary {
-  min-height: 32px;
+.sim-autoplay > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
   font-weight: 700;
+  list-style: none;
+}
+.sim-autoplay > summary::-webkit-details-marker {
+  display: none;
+}
+.sim-autoplay > summary::before {
+  content: '\25B8';
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.sim-autoplay[open] > summary::before {
+  transform: rotate(90deg);
 }
 .sim-pending {
   opacity: 0.6;
