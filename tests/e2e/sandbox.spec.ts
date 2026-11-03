@@ -283,9 +283,9 @@ test.describe('sandbox', () => {
       .check();
     await expect(page.locator('button[data-option]').first()).not.toContainText('·');
     await opt(page, 'play-2').click();
-    await expect(page.getByTestId('practice-hidden')).toBeVisible();
+    await expect(page.getByTestId('ev-hidden')).toBeVisible();
     await page.getByTestId('confirm').click();
-    await expect(page.getByTestId('practice-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-result')).toBeVisible();
   });
 
   test('the session is saved in the app store and restored after a reload', async ({ page }) => {

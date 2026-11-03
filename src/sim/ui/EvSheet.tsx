@@ -48,7 +48,7 @@ export interface EvSheetProps {
   confirmOn?: ConfirmOn;
   /** EV after the move (D11): hide EVs until the move is confirmed. */
   hideEv?: boolean;
-  /** Set once confirmed in practice mode: shows the result card and the full sheet. */
+  /** Set once confirmed when EV is shown after the move: shows the result card and the full sheet. */
   chosen?: OptionKey | null;
   onContinue?: () => void;
   /** `basic` = EV + badge; `full` = + alternative + Why? */
@@ -70,7 +70,7 @@ export interface EvSheetProps {
 const FOCUSABLE =
   'button:not([disabled]),[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
 
-/** Result of a practice-mode move, e.g. "Best play" or "Mistake: Bet 2x was worth $0.48 more". */
+/** Result of a move taken with EV after the move, e.g. "Best play" or "Mistake: Bet 2x was worth $0.48 more". */
 function ResultCard({
   preview,
   chosen,
@@ -86,7 +86,7 @@ function ResultCard({
   const cost = costCents(best, o);
   const isBest = optionKeyOf(best.action) === chosen || o.tier === 'best';
   return (
-    <div class="sim-result" data-testid="practice-result">
+    <div class="sim-result" data-testid="reveal-result">
       <Say
         text={
           isBest
@@ -215,7 +215,7 @@ export function EvSheet({
     preview && opt && handsPerHour && !isBest
       ? wrongEveryTimePerHour(preview, opt, handsPerHour)
       : null;
-  // River facts (lesson 12): on every river preview, hidden only while practice mode hides the EV.
+  // River facts (lesson 12): on every river preview, hidden only while EV after the move hides it.
   // 47 hand evaluations, so cheap enough to recompute on each render.
   const river =
     preview?.street === 'river' &&
@@ -225,7 +225,7 @@ export function EvSheet({
       ? riverFacts(request.hole, request.board)
       : null;
   // Flop (I058): which basic-card rule fires. Same visibility as the river facts: hidden while
-  // practice mode hides the EV, shown after the move, and never in a read-only sheet's absence.
+  // EV after the move hides it, shown after the move, and never in a read-only sheet's absence.
   const flopRule =
     detail === 'full' &&
     preview?.street === 'flop' &&
@@ -266,7 +266,7 @@ export function EvSheet({
       {preview ? (
         <>
           {hidden ? (
-            <p class="sim-muted" data-testid="practice-hidden">
+            <p class="sim-muted" data-testid="ev-hidden">
               The EV is hidden until you confirm.
             </p>
           ) : (

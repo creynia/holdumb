@@ -29,7 +29,7 @@ import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
 import { decodeMoveLog } from './moveLog';
 import { decodeSnapshot } from './persist';
-import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
+import { resolveEvMode, resolveEvShown, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
 import { isRackRejection, rackShort } from './bankroll';
@@ -56,11 +56,12 @@ export function Simulator(props: SimulatorViewProps) {
   const decision = isDecisionStreet(street);
   const evShown = resolveEvShown(settings, scene, sandbox, step);
   // EV after the move (D11): the settings decide in the sandbox and the table follows at once.
-  const practice = sandbox ? resolvePractice(settings, baseScene) : view.practice;
+  const evMode = sandbox ? resolveEvMode(settings, baseScene, 'sandbox') : view.evMode;
 
-  const ev = useEvSheet(sim, practice, orientation, evShown, decision);
+  const ev = useEvSheet(sim, evMode, orientation, evShown, decision);
   // I092: Details is the way into the EV sheet that does not act (EV shown before the move).
-  const detailsOpen = decision && evShown && !practice && ev.open === null && !view.pendingStart;
+  const detailsOpen =
+    decision && evShown && evMode !== 'after' && ev.open === null && !view.pendingStart;
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
   // The move log is the sandbox's (Play); a restored session brings its log back.
   const moveLog = useMoveLog(view, () =>
@@ -148,7 +149,7 @@ export function Simulator(props: SimulatorViewProps) {
           street={street}
           layout={orientation === 'landscape' ? 'rail' : 'bar'}
           preview={bar.showPreviewOnBar}
-          hideEv={practice}
+          hideEv={evMode === 'after'}
           evOff={!evShown}
           evStatus={bar.barStatus}
           selected={ev.open}

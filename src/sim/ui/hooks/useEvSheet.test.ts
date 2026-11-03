@@ -24,7 +24,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function mount(practice: boolean) {
+function mount(afterMove: boolean) {
   const evClient = createEvClient({ mode: 'inthread' });
   clients.push(evClient);
   const props: SimulatorProps = { settings, evClient, scene: preflop };
@@ -32,7 +32,7 @@ function mount(practice: boolean) {
     const sim = useSimDriver(props, 'sandbox');
     const ev = useEvSheet(
       sim,
-      practice,
+      afterMove ? 'after' : 'before',
       'portrait',
       resolveEvShown(settings, sim.d.view.scene, true, sim.d.view.step),
       isDecisionStreet(sim.d.view.state.street),
@@ -55,7 +55,7 @@ describe('useEvSheet', () => {
     expect(result.current.ev.sheet).toBeNull();
   });
 
-  it('practice: open -> confirm -> reveal -> continue', async () => {
+  it('EV after the move: open -> confirm -> reveal -> continue', async () => {
     const { result } = mount(true);
     await ready(result);
     await act(() => result.current.ev.onOption('play-4'));

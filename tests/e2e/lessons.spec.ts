@@ -110,9 +110,9 @@ for (const [lesson, title] of [
     const opt = scene.locator('button[data-option="play-4"]');
     await expect(opt).not.toContainText('$');
     await opt.click();
-    await expect(page.getByTestId('practice-hidden')).toBeVisible();
+    await expect(page.getByTestId('ev-hidden')).toBeVisible();
     await page.getByTestId('confirm').click();
-    await expect(page.getByTestId('practice-result')).toBeVisible();
+    await expect(page.getByTestId('reveal-result')).toBeVisible();
     await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
   });
 }

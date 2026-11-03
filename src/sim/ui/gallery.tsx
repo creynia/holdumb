@@ -30,7 +30,7 @@ import { actionOfKey, describeResult, handName, optionKeyOf } from './text';
 const q = new URLSearchParams(location.search);
 if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme')!;
 const scene = q.get('scene');
-const practice = q.get('practice') === '1';
+const reveal = q.get('reveal') === '1';
 const evMode = q.get('ev');
 const fourColor = q.get('four') === '1';
 const speed = effectiveSpeed((q.get('speed') as Speed | null) ?? 'normal');
@@ -227,9 +227,9 @@ function Demo({ id }: { id: string }) {
         selected={open}
         variant={orientation === 'landscape' ? 'rail' : 'sheet'}
         onSelect={setOpen}
-        onConfirm={(k) => (practice && !chosen ? setChosen(k) : act(actionOfKey(k)))}
+        onConfirm={(k) => (reveal && !chosen ? setChosen(k) : act(actionOfKey(k)))}
         onCancel={() => setOpen(null)}
-        hideEv={practice}
+        hideEv={reveal}
         chosen={chosen}
         onContinue={() => chosen && act(actionOfKey(chosen))}
         alternative={
@@ -285,7 +285,7 @@ function Demo({ id }: { id: string }) {
             street={state.street}
             layout={orientation === 'landscape' ? 'rail' : 'bar'}
             preview={preview}
-            hideEv={practice}
+            hideEv={reveal}
             evStatus={evError ? 'error' : preview ? 'ready' : decision ? 'pending' : undefined}
             selected={open}
             bets={{ ante: state.bets.ante, trips: state.bets.trips }}
@@ -303,7 +303,7 @@ function Demo({ id }: { id: string }) {
         orientation === 'landscape' && preview && !open ? (
           <EvOptionList
             preview={preview}
-            hideEv={practice}
+            hideEv={reveal}
             compact
             allowed={preview.options.map((o) => optionKeyOf(o.action))}
           />

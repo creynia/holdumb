@@ -204,8 +204,6 @@ export interface DriverView {
   evMode: EvMode;
   /** Confirm policy for the current step (D39); in the sandbox the container applies the user's. */
   confirmOn: ConfirmOn;
-  /** Legacy alias: evMode === 'after' (hide EV until confirm). */
-  practice: boolean;
   rejection: Rejection | null;
   session: SessionView;
   startEquity: Cents;
@@ -225,8 +223,6 @@ export interface DriverOptions {
   paytable?: TripsPaytableId;
   /** Sandbox only: the table's EV mode. In a lesson the scene decides and this is ignored (D39). */
   evMode?: EvMode;
-  /** Legacy alias for `evMode: 'after'` (sandbox only). */
-  practice?: boolean;
   onEvent?: (e: DriverEvent) => void;
   restore?: {
     state: GameState;
@@ -340,9 +336,7 @@ export class SimDriver {
     this.mode = opts.mode;
     this.scene = opts.scene ?? { id: 'sandbox', version: 1 };
     this.evMode =
-      opts.mode === 'sandbox'
-        ? (opts.evMode ?? (opts.practice ? 'after' : sceneEvMode(this.scene)))
-        : sceneEvMode(this.scene);
+      opts.mode === 'sandbox' ? (opts.evMode ?? sceneEvMode(this.scene)) : sceneEvMode(this.scene);
     const sc = this.scene;
     if (opts.restore) {
       this.game = opts.restore.state;
@@ -442,7 +436,6 @@ export class SimDriver {
       preview: this.pv,
       evMode: modeNow,
       confirmOn: stepConfirmOn(this.scene, step),
-      practice: modeNow === 'after',
       rejection: this.rejection,
       session: {
         ...t,
@@ -490,11 +483,6 @@ export class SimDriver {
     if (this.mode !== 'sandbox' || mode === this.evMode) return;
     this.evMode = mode;
     this.notify();
-  }
-
-  /** Legacy alias: on = 'after', off = 'before'. */
-  setPractice(on: boolean): void {
-    this.setEvMode(on ? 'after' : 'before');
   }
 
   dispose(): void {

@@ -9,7 +9,6 @@ import {
   resolveConfirm,
   resolveEvMode,
   resolveEvShown,
-  resolvePractice,
 } from './settings';
 import { DEFAULT_SIM_SETTINGS } from './types';
 
@@ -42,16 +41,12 @@ describe('D39 settings helpers', () => {
       [false, false],
     ]);
   });
-  it('maps the mode onto the table until the one-tap interaction lands', () => {
+  it('the sandbox follows the user, a lesson follows its scene (D39)', () => {
     const scene = { id: 's', version: 1 as const };
     const s = (evMode: 'before' | 'after' | 'never') => ({ ...DEFAULT_SIM_SETTINGS, evMode });
-    expect(resolvePractice(s('before'), scene)).toBe(false);
-    expect(resolvePractice(s('after'), scene)).toBe(true);
-    expect(resolvePractice(s('never'), scene)).toBe(false);
-    // The sandbox follows the user; a lesson follows its scene (D39).
-    expect(resolvePractice(s('after'), { ...scene, practice: false })).toBe(true);
-    expect(resolvePractice(s('after'), scene, 'scene')).toBe(false);
-    expect(resolvePractice(s('before'), { ...scene, practice: true }, 'scene')).toBe(true);
+    expect(resolveEvMode(s('after'), { ...scene, practice: false }, 'sandbox')).toBe('after');
+    expect(resolveEvMode(s('after'), scene, 'scene')).toBe('before');
+    expect(resolveEvMode(s('before'), { ...scene, practice: true }, 'scene')).toBe('after');
     expect(resolveEvShown(s('never'), scene, true)).toBe(false);
     expect(resolveEvShown(s('after'), scene, true)).toBe(true);
     // Scenes keep their own showEV; "never" only applies to the sandbox here.

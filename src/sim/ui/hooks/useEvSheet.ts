@@ -1,7 +1,7 @@
-// The EV sheet state machine: tap an option -> sheet open -> confirm -> (practice) reveal ->
+// The EV sheet state machine: tap an option -> sheet open -> confirm -> (EV after the move) reveal ->
 // continue; cancel closes it and gives focus back to the option button that opened it.
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { OptionKey, SimDriver } from '../../scene';
+import type { EvMode, OptionKey, SimDriver } from '../../scene';
 import { betterAlternative } from '../../math';
 import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../../math';
 import type { EvSheetProps } from '../EvSheet';
@@ -44,18 +44,19 @@ export interface EvSheetState {
 }
 
 /**
- * `practice` (D11): confirming shows the reveal card before the sheet closes. The sheet is a modal
+ * `evMode` 'after' (D11): confirming shows the reveal card before the sheet closes. The sheet is a modal
  * in portrait and a rail panel in landscape. `evShown`: the scene or step shows EVs; `decision`:
  * the hand is on a decision street (an open sheet only shows there).
  */
 export function useEvSheet(
   sim: SimDriverHandle,
-  practice: boolean,
+  evMode: EvMode,
   orientation: Orientation,
   evShown: boolean,
   decision: boolean,
 ): EvSheetState {
   const { d, pushToast, act } = sim;
+  const afterMove = evMode === 'after'; // EV is hidden until the move is confirmed
   const settings = sim.latest.current.settings;
   const { scene, state, preview: pv } = d.view;
   // Changes on every new hand or street; closes an open (non-reveal) sheet.
@@ -73,14 +74,14 @@ export function useEvSheet(
   const confirm = async (k: OptionKey) => {
     const before = d.view.preview.value;
     const reqBefore = requestNow(d);
-    // I080: say what the choice was worth. The practice reveal card already does, and guided steps
+    // I080: say what the choice was worth. The reveal card already does, and guided steps
     // have the step panel. A hand that ends gets it at the front of the result toast.
     const i = before ? before.options.findIndex((o) => optionKeyOf(o.action) === k) : -1;
-    const said = before && i >= 0 && !practice && !d.view.step ? narrationText(before, i) : null;
+    const said = before && i >= 0 && !afterMove && !d.view.step ? narrationText(before, i) : null;
     sim.narration.current = said;
     const r = await d.act(actionOfKey(k));
     sim.narration.current = null;
-    if (practice && before) setReveal({ preview: before, chosen: k, req: reqBefore });
+    if (afterMove && before) setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
     else if (r.ok && said && d.view.state.street !== 'settled') pushToast(said);
@@ -146,7 +147,7 @@ export function useEvSheet(
           },
           // A lesson's own confirm policy, the user's in the sandbox (D39).
           confirmOn: resolveConfirm(settings, scene, d.view.step, d.mode),
-          hideEv: practice,
+          hideEv: afterMove,
           focusOnOpen: fromDetails.current,
           alternative,
           request: sheetReq,

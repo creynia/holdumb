@@ -187,18 +187,18 @@ describe('EvSheet', () => {
     expect(screen.queryByText('Why?')).toBeNull();
     expect(screen.queryByTestId('alternative')).toBeNull();
   });
-  it('practice mode hides every EV until confirm, then shows the result', () => {
+  it('EV after the move hides every EV until confirm, then shows the result', () => {
     const props = baseProps({ hideEv: true, selected: 'check' });
     const { container, rerender } = render(<EvSheet {...props} />);
     expect(container.textContent).not.toContain('$36.01');
     expect(container.textContent).not.toContain('Big mistake');
-    expect(screen.getByTestId('practice-hidden')).toBeTruthy();
+    expect(screen.getByTestId('ev-hidden')).toBeTruthy();
     expect(screen.getByTestId('confirm').textContent).toBe('Confirm Check');
     fireEvent.click(screen.getByTestId('confirm'));
     expect(props.onConfirm).toHaveBeenCalledWith('check'); // no second tap while hidden
     rerender(<EvSheet {...props} chosen="check" />);
     expect(container.textContent).toContain('$36.01');
-    expect(screen.getByTestId('practice-result').textContent).toContain(
+    expect(screen.getByTestId('reveal-result').textContent).toContain(
       'Bet 4x was worth $14.08 more than Check',
     );
   });
@@ -332,7 +332,7 @@ describe('EvSheet river dealer outs (lesson 12)', () => {
       'Basic card: fold (21+ outs, no hidden pair)',
     );
   });
-  it('after the move (practice result) the facts, basic card included, sit in the result', () => {
+  it('after the move (reveal result) the facts, basic card included, sit in the result', () => {
     sheet({
       preview: RIVER_ACE_HIGH.preview,
       selected: 'fold',
@@ -350,7 +350,7 @@ describe('EvSheet river dealer outs (lesson 12)', () => {
     });
     const outs = screen.getByTestId('dealer-outs');
     expect(outs.getAttribute('data-mode')).toBe('after');
-    expect(screen.getByTestId('practice-result').contains(outs)).toBe(true);
+    expect(screen.getByTestId('reveal-result').contains(outs)).toBe(true);
     expect(outs.textContent).toContain('Dealer outs: 15 of 45');
     expect(outs.textContent).toContain('Hidden pair or better: no');
     expect(screen.getByTestId('basic-river').textContent).toBe('Basic card: bet 1x (outs < 21)');
