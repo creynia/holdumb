@@ -311,7 +311,11 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
               Next hand
             </button>
             <Link
-              to={`/strategy?highlight=${answer.preview.handClass ?? ''}`}
+              to={
+                answer.preview.street === 'preflop'
+                  ? `/strategy?highlight=${answer.preview.handClass ?? ''}`
+                  : `/strategy?view=${answer.preview.street}`
+              }
               class="btn btn-ghost"
             >
               See the chart
