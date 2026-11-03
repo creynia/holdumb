@@ -30,6 +30,8 @@ async function openLog(page: Page): Promise<Locator> {
 }
 
 test('the move-log list scrolls with the keyboard (I087)', async ({ page }) => {
+  // 60 decisions to fill the log; each waits out the 450 ms double-tap guard (D40).
+  test.setTimeout(120_000);
   await page.goto('/#/play?speed=instant');
   for (let i = 0; i < 20; i++) await playHand(page, i === 0);
   const log = await openLog(page);
