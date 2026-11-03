@@ -4,12 +4,14 @@
 // Emulation.setCPUThrottlingRate on an attached worker target fails with "Operation is only
 // supported for pages, not workers", so the worker job below runs at full speed whatever the page
 // rate. Flattened auto-attach (Target.setAutoAttach flatten) does attach the worker, but the same
-// call on its sessionId returns -32000 too, and an in-worker timed loop is unchanged at page rate 20.
+// call on its sessionId returns -32000 too, and an in-worker timed loop is not throttled by the
+// page rate (about 20x slower if it were; at most about 2x under machine load).
 // Page-rate effects on worker round trips are main-thread messaging, not the enumeration. The
 // in-thread fallback client runs the same job on the throttled main thread, so it is the honest 4x
 // measurement; the worker timing only proves the shipped transport answers in budget.
-// Every request uses a distinct deal: the preview cache ignores the ante, so re-using cards (even
-// with another ante) would time a cache hit instead of the enumeration.
+// Every request uses a distinct deal. The client memo is keyed on the whole request
+// (`${kind}:${canonicalJson(req)}`, cards and ante included), so repeating a request is a hit;
+// distinct deals keep each job independent and cold.
 import { readdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { parseCards } from '../../src/sim/engine';
