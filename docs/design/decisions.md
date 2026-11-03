@@ -22,6 +22,16 @@ spike's and the simulator spike's `strat.c`/`strat2.c`), plus orchestrator spot 
 | D8 | Poker basics | One short hand-rankings refresher lesson plus an always-available hand-ranking card (More → Hand rankings, and a link from the table). No from-zero hand-ranking course. |
 | D14 | Merging | The orchestrator merges PRs (merge commit) after an Opus review and green CI on the latest head. The repo is public; Pages source must be set to GitHub Actions by the user. |
 
+### D5a Six Card Bonus is simulated (I062)
+D5a (2026-11-03, human-approved idea I062). Amends D5; Progressive and Bad Beat stay lesson-only.
+- **Where:** an optional side bet in the Play sandbox (a panel under the table), off by default, not in scenes. It never sits on the felt and adds no ActionBar button.
+- **Cards:** best five of six: your two hole cards plus **four bonus cards** dealt to a separate area (the New Jersey layout, lesson 20's source). They come from the 43 cards the main deal left unseen, through their own seeded stream (game seed + hand number), so the game's RNG stream and every seeded replay are unchanged. As curriculum.md's sources note says, the edge does not depend on which four unseen cards are used.
+- **Paytables:** `six-card-1000-200-100` (default; 1000/200/100/20/15/10/7) and `six-card-1000-200-50` (1000/200/50/20/15/10/5), "to 1". Exact edges from the 6-card counts over C(52,6) = 20,358,520 (royal 188, SF 1,656, quads 14,664, FH 165,984, flush 205,792, straight 361,620, trips 732,160): **12816/149695 (8.5614%, Poor bet)** and **70366/363545 (19.3555%, Sucker bet)**. `math/sixcardEdge.ts sixCardEdge`; re-derived by an independent exhaustive count in `engine/sixcard.test.ts`.
+- **Limits:** whole dollars, $1–$25 (offered: $1, $5, $10, $25).
+- **Settlement:** at the deal, because the bet does not depend on play, so no money is pending mid-hand and a snapshot is always whole. The bet is taken only if the rack still covers a 4x Play afterwards; otherwise that hand's Six Card is skipped and says so.
+- **Contracts:** the engine's frozen `WagerId` and types are unchanged. The bet lives in the SimDriver (`setSixCard`), and the profit goes straight into the bankroll, so equity (D38) is right. The session ledger adds `sixCardCents`, `sixCardWageredCents` and `sixCardExpectedCents` (−edge × wager, exact). "Perfect play expects" includes it, so luck still adds up to the cent. "Total wagered" includes it too. The setting is not persisted: it is off again after a reload.
+- **Auto-play:** with the bet on, auto-play settles it at every deal through the same rule (`engine/sixcard.ts applySixCard`), so a seeded run matches the same hands at the table to the cent. `SimulateRequest.sixCard` and `SessionSeries.sixCard` carry it: two optional fields, an approved frozen-contract change.
+
 ## 2. Orchestrator calls
 
 | # | Topic | Decision |
@@ -163,11 +173,33 @@ D39 (2026-11-03, human-approved user feedback). Links D11, D24 and D30.
 - Settings shows two radio groups (Show EV; Ask me to confirm). Scene `practice` / `showEV` keys keep working and map onto these modes.
 - Lessons (I004): in a lesson the scene decides; the user's `evMode` / `confirmOn` apply only in the sandbox (`mode: 'sandbox'`). Scene and step keys `evMode?` (default `before`) and `confirmOn?` (default `never`); a step key overrides the scene. Legacy keys parse as aliases: `practice: true` == `evMode: 'after'`, `showEV: false` == `evMode: 'never'` (a step `showEV` works as before); setting `evMode` next to its alias is an error. A step whose `completeWhen` uses `previewed` needs an effective `confirmOn: 'all'`, because the confirm sheet is how a learner previews. Best-decision steps need an effective `evMode` other than `never`. Lessons 07 and 23 use `evMode: after` (was `practice: true`, D35 S4); lesson 06's compare and look steps set `confirmOn: all`.
 
-### D5a Six Card Bonus is simulated (I062)
-D5a (2026-11-03, human-approved idea I062). Amends D5; Progressive and Bad Beat stay lesson-only.
-- **Where:** an optional side bet in the Play sandbox (a panel under the table), off by default, not in scenes. It never sits on the felt and adds no ActionBar button.
-- **Cards:** best five of six: your two hole cards plus **four bonus cards** dealt to a separate area (the New Jersey layout, lesson 20's source). They come from the 43 cards the main deal left unseen, through their own seeded stream (game seed + hand number), so the game's RNG stream and every seeded replay are unchanged. As curriculum.md's sources note says, the edge does not depend on which four unseen cards are used.
-- **Paytables:** `six-card-1000-200-100` (default; 1000/200/100/20/15/10/7) and `six-card-1000-200-50` (1000/200/50/20/15/10/5), "to 1". Exact edges from the 6-card counts over C(52,6) = 20,358,520 (royal 188, SF 1,656, quads 14,664, FH 165,984, flush 205,792, straight 361,620, trips 732,160): **12816/149695 (8.5614%, Poor bet)** and **70366/363545 (19.3555%, Sucker bet)**. `math/edges.ts sixCardEdge`; re-derived by an independent exhaustive count in `engine/sixcard.test.ts`.
-- **Limits:** whole dollars, $1–$25 (offered: $1, $5, $10, $25).
-- **Settlement:** at the deal, because the bet does not depend on play, so no money is pending mid-hand and a snapshot is always whole. The bet is taken only if the rack still covers a 4x Play afterwards; otherwise that hand's Six Card is skipped and says so.
-- **Contracts:** the engine's frozen `WagerId` and types are unchanged. The bet lives in the SimDriver (`setSixCard`), and the profit goes straight into the bankroll, so equity (D38) is right. The session ledger adds `sixCardCents`, `sixCardWageredCents` and `sixCardExpectedCents` (−edge × wager, exact). "Perfect play expects" includes it, so luck still adds up to the cent. "Total wagered" includes it too. The setting is not persisted: it is off again after a reload.
+### D40 EV visibility and confirm: one tap acts, in-play controls
+D40 (2026-11-03, from the human's report on the live site). Links D11, D24, D30, D39.
+- **One tap acts.** A decision button acts at once unless the effective confirm policy covers
+  that option's tier; then the EV sheet opens as the confirm step with "Confirm <label>", or a
+  warning and "Do it anyway" for Mistake / Big mistake, and Cancel. A sheet's Confirm always
+  acts; there is no "tap again" step. D39's interim rule ("until one-tap acting lands the sheet
+  opens on every tap") is retired.
+- **Confirm does not depend on Show EV.** With `evMode: 'never'` the confirm sheet shows no EV
+  (title, "Confirm this move." or the tier warning naming the better play, no numbers). With
+  `'after'` the sheet hides EV until the move is made and then shows the reveal in place.
+- **After the move:** `after` opens the reveal sheet (result card, full sheet, Continue);
+  `before` shows the narration toast (I080); `never` shows nothing.
+- **Details.** With EV shown before the move, the status bar's third column reads "EV / Details"
+  on decision streets and opens the sheet on the best option without acting; its Confirm acts.
+  Available in lessons too.
+- **Settings.** Show EV: Before I choose / After I choose / Off (`evMode`). Confirm bets: a
+  checkbox "Confirm my bets" plus "Which bets" (All bets / Medium and bad bets / Only bad bets).
+  Storage keeps `confirmOn` as the effective policy (D30; `'never'` = unticked) and adds
+  `confirmTiers: 'all' | 'costly' | 'blunder'` (default `'all'`), the scope the box turns on;
+  `sanitizeSettings` keeps `confirmTiers === confirmOn` whenever `confirmOn !== 'never'`. Tick →
+  `confirmOn = confirmTiers`; untick → `'never'`; a scope radio writes both.
+- **Quick controls on the Play table** (sandbox only, `scene.ui.showSettings`): the same two
+  settings as a 44 px row — an "EV" segmented radio group (Before / After / Off) and a "Confirm"
+  checkbox — between the top bar and the status bar in portrait, under the status bar in the
+  landscape rail. They write the persisted settings through the app store; there is no session
+  override. The practice checkbox is removed ("practice" is `evMode: 'after'`). Lessons never
+  show the row; Drill is unaffected (grades after the answer, no confirm).
+- **Layout cost.** The row costs the portrait felt 52 px: drawn felt width ≥ 270 px at 360x740
+  (was ≥ 300 under I029), ≥ 300 px at 390x844. ActionBar slots and Deal never move (I012).
+- I013 is superseded by this entry; I014 is subsumed.
