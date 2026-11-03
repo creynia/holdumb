@@ -1,8 +1,15 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
-import { PAYTABLE_PRESET_IDS } from '../sim/engine';
-import { CONFIRM_ON, EV_MODES, evModeOfPractice } from '../sim/ui/settings';
-import { DRILL_CATEGORY_IDS } from '../sim/strategy';
-import type { DrillCategoryId } from '../sim/strategy';
+// The store loads with Home, so it imports no simulator module that the lazy table chunks share
+// (Rollup would split it into a chunk Home preloads, I095): the setting value lists live in
+// ./settingValues, kept equal to the simulator's by tests/app/settings-values.test.ts.
+import {
+  CONFIRM_ON,
+  DRILL_CATEGORY_IDS,
+  EV_MODES,
+  PAYTABLE_PRESET_IDS,
+  evModeOfPractice,
+} from './settingValues';
+import type { DrillCategoryId } from '../sim/strategy/types';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
 
