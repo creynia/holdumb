@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEvClient } from '../worker/client';
-import { AutoPlayPanel, shownNet } from './AutoPlayPanel';
+import { AutoPlayPanel, alwaysMaxNote, shownNet } from './AutoPlayPanel';
+import { strategyMetrics } from '../strategy/metrics';
+import { fracToNumber } from '../strategy/fraction';
 import { DEFAULT_SIM_SETTINGS } from './types';
 
 afterEach(cleanup);
@@ -74,5 +76,31 @@ describe('shown net figures add up to the cent', () => {
       expect(shown.expected + shown.luck).toBe(shown.actual);
     }
     expect(shownNet(1234.5, 2000.4)).toEqual({ expected: 1235, actual: 2000, luck: 765 });
+  });
+});
+
+describe('always bet 4x versus never fold', () => {
+  const spec = (id: 'never-fold' | 'always-max') => ({ id, ante: 1000, trips: 0 });
+  const rules = { tripsPaytable: 'trips-8-6-5' } as never;
+
+  it('the note names the same loss per hand and the two elements of risk', () => {
+    const note = alwaysMaxNote(spec('always-max'), rules, 30);
+    expect(note).toContain('Same loss per hand as Never fold (40.70% of the Ante)');
+    expect(note).toContain('a lower element of risk (6.78% vs 13.57%)');
+    expect(note).not.toMatch(/you will lose/i);
+  });
+
+  it('the element of risk is exactly half, from fractions', () => {
+    const never = strategyMetrics(spec('never-fold'), rules, 30).elementOfRisk;
+    const always = strategyMetrics(spec('always-max'), rules, 30).elementOfRisk;
+    // always = never / 2  <=>  always * 2 = never, cross-multiplied to stay exact
+    expect(always.num * 2n * never.den).toBe(never.num * always.den);
+  });
+
+  it('the per-hour line is identical and pins to -$122.11 at $10 x 30 hands', () => {
+    const a = strategyMetrics(spec('never-fold'), rules, 30).evPerHourCents;
+    const b = strategyMetrics(spec('always-max'), rules, 30).evPerHourCents;
+    expect(a.num * b.den).toBe(b.num * a.den);
+    expect(Math.round(fracToNumber(b))).toBe(-12211);
   });
 });
