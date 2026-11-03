@@ -15,8 +15,7 @@ title: Five hands for the road
 bankroll: 100000
 bets: { ante: 1000, trips: 500 }
 seed: 2301
-showEV: true
-practice: true
+evMode: after
 ui: { showSession: true }
 steps:
   - id: play

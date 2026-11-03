@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HAND_CATEGORIES, WAGER_IDS } from '../../src/sim/engine';
-import { STRATEGY_IDS } from '../../src/sim/strategy';
+import { DRILL_CATEGORY_IDS, STRATEGY_IDS } from '../../src/sim/strategy';
 import { buildContent } from '../../src/content/load';
 import { strategyMetrics } from '../../src/sim/strategy/metrics';
 import { formatMoney, formatPct } from '../../src/sim/engine/money';
@@ -61,5 +61,17 @@ describe('content bundle', () => {
   it('quiz ids are unique across the course', () => {
     const ids = bundle.lessons.flatMap((l) => l.blocks.flatMap((b) => (b.kind === 'quiz' ? [b.quiz.id] : [])));
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('drill.json', () => {
+  it('has a reminder for exactly the 18 Drill categories; river-outs and board-plays ones carry {outs}', () => {
+    expect(Object.keys(bundle.drill).sort()).toEqual([...DRILL_CATEGORY_IDS].sort());
+    for (const [id, text] of Object.entries(bundle.drill)) {
+      expect(text, id).toBeTruthy();
+      expect(text.includes('{outs}'), id).toBe(
+        id.startsWith('river-outs-') || id === 'river-board-plays',
+      );
+    }
   });
 });

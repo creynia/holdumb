@@ -1,10 +1,12 @@
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
+import { ErrorBoundary, ErrorToast } from './components/ErrorBoundary';
 import { Shell } from './components/Shell';
-import { useContent, useStore } from './context';
+import { useProvidedContent, useStore } from './context';
+import { useRouteContent } from './lazy';
 import { consumeFreshNav, useRoute } from './router';
 import { renderRoute, routeName } from './routes';
-import { wagerName } from './screens/Bets';
+import { wagerName } from './wagers';
 import { applyTheme, onReducedMotionChange } from './theme';
 
 const SCROLL_KEY = 'holdumb:scroll';
@@ -30,9 +32,14 @@ const HOME_TITLE = typeof document === 'undefined' ? '' : document.title;
 export function App() {
   const route = useRoute();
   const store = useStore();
-  const content = useContent();
+  // Only lesson and bet pages are titled from content, so only they pull the bundle in.
+  const content = useRouteContent(
+    useProvidedContent(),
+    route.path.startsWith('/learn/') || route.path.startsWith('/bets/'),
+  );
   const { theme, animationSpeed, reduceMotion, fourColorDeck } = store.settings;
   const [, rerender] = useReducer((n: number) => n + 1, 0);
+  const [epoch, remount] = useReducer((n: number) => n + 1, 0);
   useEffect(() => applyTheme(store.settings), [theme, animationSpeed, reduceMotion, fourColorDeck]);
   // OS reduced-motion preference can change while the app is open.
   useEffect(
@@ -47,11 +54,18 @@ export function App() {
   // Runs before the page view, which records document.title.
   useEffect(() => {
     const name = routeName(route, {
-      lessonTitle: (id) => content.lessons.find((l) => l.id === id)?.title,
-      wagerName: (id) => wagerName(id, content.bets),
+      lessonTitle: (id) => content?.lessons.find((l) => l.id === id)?.title,
+      wagerName: (id) => wagerName(id, content?.bets ?? {}),
     });
     document.title = name ? `${name} · holdumb` : HOME_TITLE;
   }, [route.path, content]);
+  // Route class on <html> so CSS can scope behaviour (overscroll) to the Play table only.
+  useEffect(() => {
+    document.documentElement.dataset.route = route.path.split('/')[1] || 'home';
+    return () => {
+      delete document.documentElement.dataset.route;
+    };
+  }, [route.path]);
   // One anonymous page view per route (path only; query strings are dropped).
   useEffect(() => trackPage(pagePath(location.pathname, route.path)), [route.path]);
   // Move focus to the page after a route change (not on first load).
@@ -92,6 +106,7 @@ export function App() {
   return (
     <Shell
       path={route.path}
+      toast={<ErrorToast route={route.path} />}
       banner={
         store.persistent ? undefined : (
           <p class="banner" role="status">
@@ -100,7 +115,18 @@ export function App() {
         )
       }
     >
-      {renderRoute(route)}
+      <ErrorBoundary
+        key={`${route.path}:${epoch}`}
+        route={route.path}
+        onReset={() => {
+          // Only the sandbox snapshot; lessons, drill and settings stay.
+          store.setSandbox(undefined);
+          store.flush();
+          remount(0);
+        }}
+      >
+        {renderRoute(route)}
+      </ErrorBoundary>
     </Shell>
   );
 }
