@@ -43,7 +43,7 @@ and/or exact rationals in Python. The scratch code is in
 | Transport | All EV goes through architecture.md's `EvClient` (`preview`, `simulate` jobs, generator-based, cancellable, worker with in-thread fallback). |
 | Rendering | SVG felt, data-driven layouts for portrait (390×844) and landscape (844×390), HTML action bar and EV sheet. Every target is at least 44 px. |
 | Fold reveal | When you fold, the dealer's cards are revealed with "You would have won $X / lost $Y" (D7). |
-| EV visibility (was Practice mode) | Setting `evMode`: EV `before` I choose (default) / `after` I choose (the move is graded once you act) / `never`. `confirmOn` (default `never`: one tap acts) adds a confirm step for all bets, Mistake + Big mistake, or Big mistake only (D11, D24, D39). |
+| EV visibility (was Practice mode) | Setting `evMode`: EV `before` I choose (default) / `after` I choose (the move is graded once you act) / `never`. `confirmOn` (default `never`: one tap acts) adds a confirm step for all bets, Mistake + Big mistake, or Big mistake only (D11, D24, D39). On `/play` both are also in the table options row (I090): `EV [Before | After | Off]` and a `Confirm` box, above the status bar in portrait and under it in the landscape rail; they are the persisted settings, not a session override, and never appear in a lesson. |
 | Strategies | Ladder `perfect` → `basic` → `simple` (D16), plus `expert` (fast perfect for sims), `check-to-river`, `never-fold`, `always-max`, and lesson-only `riverLeak`, each with an **exact** EV per hand and a Trips amount. Multi-session sims with charts. |
 
 ---

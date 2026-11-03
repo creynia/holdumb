@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import type { EvClient } from '../worker/protocol';
 import type { DecisionPreview } from '../math/types';
 import type { Action, GameEvent, GameState, HandResult, PaytablePresetId } from '../engine/types';
@@ -61,6 +62,10 @@ export interface SimulatorProps {
   snapshot?: unknown;
   /** Sandbox only: called with a JSON-safe snapshot after every action. */
   onSnapshot?: (snapshot: unknown) => void;
-  /** Sandbox: the table's Practice checkbox (on = EV after). The app writes evMode to settings. */
-  onPracticeChange?: (on: boolean) => void;
+  /**
+   * Sandbox: the table's quick options row (I090: Show EV and Confirm, the app's persisted
+   * settings), shown above the status bar in portrait and under it in the landscape rail. Only
+   * rendered when the scene shows its settings (Play), never in a lesson.
+   */
+  options?: ComponentChildren;
 }

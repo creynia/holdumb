@@ -1,5 +1,6 @@
 import { Simulator, parsePlayParams } from '../../sim';
 import type { SceneConfig } from '../../sim';
+import { TableOptions } from '../components/TableOptions';
 import { useStore } from '../context';
 import { getEvClient } from '../evClient';
 import { simSettings } from '../theme';
@@ -48,7 +49,7 @@ export function Play({ query }: { query: URLSearchParams }) {
         snapshot={preset ? undefined : store.sandbox}
         onSnapshot={preset ? undefined : (snap) => store.setSandbox(snap)}
         onBankrollChange={(cents) => store.updateSettings({ defaultBankrollCents: cents })}
-        onPracticeChange={(on) => store.updateSettings({ evMode: on ? 'after' : 'before' })}
+        options={<TableOptions />}
       />
       <p class="muted">
         <a href="#/hands" class="inline-link">

@@ -113,10 +113,13 @@ test.describe('sandbox', () => {
     await expect(live).toContainText('would have');
   });
 
-  test('practice mode hides the EV until you confirm', async ({ page }) => {
+  test('EV "After" hides the EV until you confirm', async ({ page }) => {
     await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
     await ready(page);
-    await page.getByTestId('practice-toggle').check();
+    await page
+      .getByRole('group', { name: 'Show EV' })
+      .getByRole('radio', { name: 'After' })
+      .check();
     await expect(page.locator('button[data-option]').first()).not.toContainText('·');
     await opt(page, 'play-2').click();
     await expect(page.getByTestId('practice-hidden')).toBeVisible();

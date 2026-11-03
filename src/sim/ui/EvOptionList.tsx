@@ -18,7 +18,7 @@ export interface EvOptionListProps {
   selected?: OptionKey | null;
   /** Rows become selectable (radio) when given. */
   onSelect?: (k: OptionKey) => void;
-  /** Practice mode (D11): labels only. */
+  /** EV after the move (D11): labels only. */
   hideEv?: boolean;
   compact?: boolean;
   /** Options a scene forbids are hidden. */
