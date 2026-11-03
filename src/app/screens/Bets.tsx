@@ -11,15 +11,9 @@ import { Link } from '../components/Link';
 import { TierBadge } from '../components/TierBadge';
 import { TRIPS_EDGE, payRows, wagerTierOf } from '../bets';
 import { useContent, useStore } from '../context';
+import { NAME, wagerName } from '../wagers';
 import { NotFound } from './NotFound';
 import { HAND_LABEL } from './handLabels';
-
-export const NAME: Record<WagerId, string> = {
-  ante: 'Ante',
-  blind: 'Blind',
-  play: 'Play',
-  trips: 'Trips',
-};
 
 function PayTable({ rows }: { rows: { category: string; pays: string }[] }) {
   return (
@@ -92,16 +86,6 @@ export function BetsList() {
   );
 }
 
-/** The wager's page name (its h1), or undefined for an unknown wager id. */
-export function wagerName(
-  id: string,
-  bets: Partial<Record<WagerId, { name?: string }>>,
-): string | undefined {
-  if (!(WAGER_IDS as readonly string[]).includes(id)) return undefined;
-  const w = id as WagerId;
-  return bets[w]?.name ?? NAME[w];
-}
-
 export function BetDetail({ id }: { id: string }) {
   const content = useContent();
   const store = useStore();
@@ -147,3 +131,5 @@ export function BetDetail({ id }: { id: string }) {
     </div>
   );
 }
+
+export { wagerName };

@@ -9,6 +9,7 @@ import { parseCards } from '../../src/sim/engine';
 import { formatMoney } from '../../src/sim';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
+import { preloadRoutes } from '../../src/app/lazy';
 import { AppProviders } from '../../src/app/context';
 import {
   DRILL_CATEGORY_IDS,
@@ -45,6 +46,7 @@ async function mount(hash: string, store = new Store(new MemoryStorage())) {
   location.hash = hash;
   const el = document.createElement('div');
   document.body.appendChild(el);
+  await preloadRoutes(false);
   await act(() => {
     render(
       <AppProviders content={content} store={store}>

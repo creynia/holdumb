@@ -2,9 +2,9 @@ import './sim.css';
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { OptionKey } from '../scene';
-import { riverFacts } from '../math';
+import { basicFlopRule, riverFacts } from '../math';
 import type { DecisionPreview, PreviewRequest } from '../math';
-import { alternativeCopy } from './altCopy';
+import { alternativeCopy, flopRuleLine } from './altCopy';
 import { DealerOuts } from './DealerOuts';
 import { EvOptionList } from './EvOptionList';
 import type { BetterAlternative } from '../math';
@@ -213,6 +213,16 @@ export function EvSheet({
     !hidden
       ? riverFacts(request.hole, request.board)
       : null;
+  // Flop (I058): which basic-card rule fires. Same visibility as the river facts: hidden while
+  // practice mode hides the EV, shown after the move, and never in a read-only sheet's absence.
+  const flopRule =
+    detail === 'full' &&
+    preview?.street === 'flop' &&
+    request?.street === 'flop' &&
+    request.board.length === 3 &&
+    !hidden
+      ? flopRuleLine(basicFlopRule(request.hole, request.board), preview)
+      : null;
   const outs =
     river && request ? (
       <DealerOuts
@@ -268,6 +278,11 @@ export function EvSheet({
               ) : null}
             </p>
           )}
+          {flopRule ? (
+            <p class="sim-flop-rule" data-testid="flop-rule">
+              {flopRule}
+            </p>
+          ) : null}
           {confirmed ? (
             <ResultCard preview={preview} chosen={chosen}>
               {outs}

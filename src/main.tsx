@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import content from 'virtual:content';
+import content from '#content';
 import { Announcer } from './app/announcer';
 import { App } from './app/App';
 import { AppProviders } from './app/context';
