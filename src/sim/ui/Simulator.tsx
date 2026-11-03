@@ -12,6 +12,7 @@ import { EvSheet } from './EvSheet';
 import { Felt } from './Felt';
 import { FoldReveal } from './FoldReveal';
 import { HandHistory } from './HandHistory';
+import { MoveLog } from './MoveLog';
 import { SessionPanel } from './SessionPanel';
 import { SimAutoPlay } from './SimAutoPlay';
 import { SimTools } from './SimTools';
@@ -22,8 +23,11 @@ import { Toasts } from './Toasts';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
+import { useMoveLog } from './hooks/useMoveLog';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
+import { decodeMoveLog } from './moveLog';
+import { decodeSnapshot } from './persist';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
@@ -44,14 +48,20 @@ export function Simulator(props: SimulatorProps) {
   const street = state.street;
   const settled = street === 'settled';
   const decision = isDecisionStreet(street);
-  const evShown = resolveEvShown(settings, scene, sandbox, step?.showEV);
+  const evShown = resolveEvShown(settings, scene, sandbox, step);
   // The app's settings are the source of truth for practice mode; the table follows them at once.
   const practice =
     sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
 
   const ev = useEvSheet(sim, practice, orientation, evShown, decision);
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
-  useSandboxSync(sim, sandbox, baseScene, settings);
+  // The move log is the sandbox's (Play); a restored session brings its log back.
+  const moveLog = useMoveLog(view, () =>
+    sandbox && !baseScene.startAt && decodeSnapshot(props.snapshot, settings.paytable)
+      ? decodeMoveLog((props.snapshot as { log?: unknown }).log)
+      : [],
+  );
+  useSandboxSync(sim, sandbox, baseScene, settings, moveLog);
 
   const timeline = buildTimeline(view.lastEvents, resolveSpeed(settings, scene));
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
@@ -107,7 +117,7 @@ export function Simulator(props: SimulatorProps) {
           playMultiple={hand?.play?.multiple ?? null}
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
-          labels={resultLabels(result)}
+          labels={resultLabels(result, hand?.deal)}
           quiet={result?.outcome === 'fold'}
           timeline={timeline}
           nextHand={settled}
@@ -179,6 +189,7 @@ export function Simulator(props: SimulatorProps) {
       {showHistory ? (
         <HandHistory records={view.history} rules={state.rules} replayHref={props.replayHref} />
       ) : null}
+      {sandbox ? <MoveLog hands={moveLog} evMode={settings.evMode} /> : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />
     </div>
   );

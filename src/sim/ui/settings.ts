@@ -1,12 +1,12 @@
 // How the container combines app settings, scene options and URL presets.
 import type { DecisionTier } from '../math';
-import type { SceneConfig } from '../scene';
+import { stepConfirmOn, stepEvMode } from '../scene';
+import type { SceneConfig, SceneStep } from '../scene';
 import type { ConfirmOn, EvMode, SimSettings } from './types';
 import { effectiveSpeed } from './animation';
 import type { Speed } from './animation';
 
-export const EV_MODES: readonly EvMode[] = ['before', 'after', 'never'];
-export const CONFIRM_ON: readonly ConfirmOn[] = ['all', 'costly', 'blunder', 'never'];
+export { CONFIRM_ON, EV_MODES } from '../scene';
 
 /** EV shown on the buttons and sheet before you act (D39). */
 export function evVisibleBefore(mode: EvMode): boolean {
@@ -44,12 +44,41 @@ export function resolveSpeed(settings: SimSettings, scene: SceneConfig): Speed {
   return effectiveSpeed(scene.ui?.speed ?? settings.animationSpeed);
 }
 
+type Mode = 'sandbox' | 'scene';
+
 /**
- * A scene may force practice (D11); the sandbox starts from the setting. Until the one-tap
- * interaction lands, "after" maps onto today's practice behaviour (EV hidden until confirm).
+ * EV visibility (D39). In a lesson the scene decides (its `evMode`, or the legacy `practice` /
+ * `showEV` aliases; a step override wins); the user's setting applies only in the sandbox.
  */
-export function resolvePractice(settings: SimSettings, scene: SceneConfig): boolean {
-  return scene.practice ?? settings.evMode === 'after';
+export function resolveEvMode(
+  settings: SimSettings,
+  scene: SceneConfig,
+  mode: Mode,
+  step?: SceneStep | null,
+): EvMode {
+  return mode === 'sandbox' ? settings.evMode : stepEvMode(scene, step);
+}
+
+/** Confirm policy (D39): the scene's (step override wins, default 'never') in a lesson. */
+export function resolveConfirm(
+  settings: SimSettings,
+  scene: SceneConfig,
+  step: SceneStep | null | undefined,
+  mode: Mode,
+): ConfirmOn {
+  return mode === 'sandbox' ? settings.confirmOn : stepConfirmOn(scene, step);
+}
+
+/**
+ * Legacy: practice behaviour (EV hidden until confirm) is evMode 'after'. Until the one-tap
+ * interaction lands the container still reads this boolean.
+ */
+export function resolvePractice(
+  settings: SimSettings,
+  scene: SceneConfig,
+  mode: Mode = 'sandbox',
+): boolean {
+  return resolveEvMode(settings, scene, mode) === 'after';
 }
 
 /** Sandbox: "never" hides every EV, like a scene with `showEV: false` (D39). */
@@ -57,11 +86,13 @@ export function resolveEvShown(
   settings: SimSettings,
   scene: SceneConfig,
   sandbox: boolean,
-  stepShowEV?: boolean,
+  step?: SceneStep | null,
 ): boolean {
-  const explicit = stepShowEV ?? scene.showEV;
+  // A lesson: its own evMode (or the showEV / practice aliases), step first (D39).
+  if (!sandbox) return evVisibleAfter(stepEvMode(scene, step));
+  const explicit = step?.showEV ?? scene.showEV;
   if (explicit !== undefined) return explicit;
-  return !(sandbox && !evVisibleAfter(settings.evMode));
+  return evVisibleAfter(settings.evMode);
 }
 
 export function randomSeed(): number {

@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { simulateJob } from '../strategy/simulate';
 import type { SimulateRequest } from '../strategy/types';
-import { BankrollChart } from './BankrollChart';
+import { BankrollChart, niceTicks } from './BankrollChart';
 import { OutcomeHistogram } from './OutcomeHistogram';
 
 function run(sessions: number) {
@@ -47,5 +47,51 @@ describe('compare legend', () => {
     expect(legend).toContain('Basic');
     expect(legend).toContain('Expert');
     expect(screen.getByRole('img').getAttribute('aria-label')).toContain('Expert');
+  });
+  describe('niceTicks', () => {
+    const round = (v: number): boolean => {
+      if (v === 0) return true;
+      const m = Math.abs(v) / 10 ** Math.floor(Math.log10(Math.abs(v)));
+      return [1, 2, 5].some((k) => Math.abs(m - k) < 1e-9) || Number.isInteger(v / 10);
+    };
+    for (const [lo, hi, start] of [
+      [360, 645, 500],
+      [-1771, 3640, 1000],
+      [0, 100000, 0],
+    ] as const) {
+      it(`(${lo}..${hi}) is round, has start, <= 5`, () => {
+        const t = niceTicks(lo, hi, start);
+        expect(t.length).toBeLessThanOrEqual(5);
+        expect(t.length).toBeGreaterThanOrEqual(3);
+        expect(t).toContain(start);
+        for (const v of t) {
+          expect(v).toBeGreaterThanOrEqual(lo);
+          expect(v).toBeLessThanOrEqual(hi);
+          expect(Number.isInteger(v)).toBe(true);
+          if (v !== start) expect(round(v)).toBe(true);
+        }
+        if (lo < 0 && hi > 0) expect(t).toContain(0);
+      });
+    }
+  });
+  it('draws the $0 line iff the range crosses zero', () => {
+    const mk = (equity: number[]) =>
+      [
+        {
+          strategy: { id: 'basic', ante: 1000, trips: 0 },
+          equity: Float64Array.from(equity),
+          expected: Float64Array.from(equity.map(() => 100_000)),
+        },
+      ] as unknown as Parameters<typeof BankrollChart>[0]['series'];
+    const a = render(
+      <BankrollChart series={mk([100_000, -50_000])} bankroll={100_000} hands={2} />,
+    );
+    expect(a.queryByTestId('zero-line')).toBeTruthy();
+    a.unmount();
+    const b = render(<BankrollChart series={mk([100_000, 50_000])} bankroll={100_000} hands={2} />);
+    expect(b.queryByTestId('zero-line')).toBeNull();
+    b.unmount();
+    const c = render(<BankrollChart series={mk([100_000, 0])} bankroll={100_000} hands={2} />);
+    expect(c.queryByTestId('zero-line')).toBeNull();
   });
 });

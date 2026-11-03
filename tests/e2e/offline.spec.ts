@@ -30,6 +30,39 @@ test('PWA works offline after the service worker is installed', async ({ page, c
   await context.setOffline(false);
 });
 
+test('every route, including the lazily loaded ones, works offline after first load (I039)', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/');
+  await page.evaluate('navigator.serviceWorker.ready.then(() => true)');
+  await page.waitForFunction('!!navigator.serviceWorker.controller');
+  await context.setOffline(true);
+  await page.reload();
+  const routes = [
+    '/',
+    '/learn',
+    '/learn/welcome',
+    '/play',
+    '/drill',
+    '/strategy',
+    '/hands',
+    '/bets',
+    '/bets/trips',
+    '/glossary',
+    '/settings',
+    '/sources',
+    '/about',
+    '/more',
+  ];
+  for (const r of routes) {
+    await page.evaluate((h) => (location.hash = h), `#${r}`);
+    await expect(page.locator('main h1').first(), r).toBeVisible();
+    await expect(page.locator('main .route-loading, main .route-failed')).toHaveCount(0);
+  }
+  await context.setOffline(false);
+});
+
 test('the precache includes the EV worker file, so it loads offline', async ({ page }) => {
   await page.goto('/');
   await page.evaluate('navigator.serviceWorker.ready.then(() => true)');

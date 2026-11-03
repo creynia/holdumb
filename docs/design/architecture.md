@@ -665,10 +665,12 @@ single-file tests see a real file), upload `holdumb-html`.
 Job `e2e` (needs `check`): `npm ci`, `npx playwright install --with-deps
 chromium`, `npm run test:e2e`, upload `playwright-report` on failure.
 
-**`pages.yml`**: `push` to `main` + `workflow_dispatch`;
+**`pages.yml`**: `workflow_run` of `CI` (completed, branch `main`; builds only
+when the run succeeded for a `push`, checking out `workflow_run.head_sha`) +
+`workflow_dispatch`;
 `permissions: { contents: read, pages: write, id-token: write }`;
 `concurrency: { group: pages, cancel-in-progress: false }`.
-Build: `npm ci`, `npm run check`, `npm run build:all`,
+Build: `npm ci`, `npm run build:all` (no second `check`; CI already ran it),
 `actions/configure-pages@v5` (no `enablement`), `upload-pages-artifact@v3`
 (`dist`). Deploy: `actions/deploy-pages@v4`, `environment: github-pages`.
 Known GitHub-side flake (crappy): a deploy can time out in "updating_pages"

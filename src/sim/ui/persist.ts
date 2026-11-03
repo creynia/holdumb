@@ -2,34 +2,65 @@
 // (decisions: not a separate storage key). Anything that does not validate is dropped.
 import { HISTORY_LIMIT, PAYTABLE_PRESET_IDS, parseCards } from '../engine';
 import type { Cents, GameState, HandRecord, TripsPaytableId } from '../engine';
+import { frac } from '../math/fraction';
+import type { Fraction } from '../math';
 import { EMPTY_TOTALS } from '../scene';
 import type { SessionTotals, SimDriver } from '../scene';
+import type { LoggedHand } from './moveLog';
 import { EV_MODES, evModeOfPractice } from './settings';
 import type { EvMode } from './types';
+
+/** An exact Fraction as JSON (bigint does not stringify). */
+export interface FractionJson {
+  num: string;
+  den: string;
+}
+/** SessionTotals with every Fraction as FractionJson. */
+export type SessionTotalsJson = {
+  [K in keyof SessionTotals]: SessionTotals[K] extends Fraction ? FractionJson : number;
+};
 
 export interface SandboxSnapshot {
   v: 1;
   state: GameState;
   startEquity: Cents;
-  totals: SessionTotals;
+  totals: SessionTotalsJson;
   /** The table's EV visibility (D39). Older snapshots carry a boolean `practice` instead. */
   evMode: EvMode;
-  /** The last hands, newest first. Its own version: an unknown one restores as no history. */
+  /** The move log (I081), newest hand first; read back with decodeMoveLog. Optional. */
+  log?: LoggedHand[];
+  /** The hand history (I055), newest first. Its own version: an unknown one restores as none. */
   history: { v: 1; items: HandRecord[] };
 }
 
 const HISTORY_VERSION = 1;
 
-/** `evMode` defaults to the driver's practice flag ('after' when on, else 'before'). */
-export function encodeSnapshot(d: SimDriver, evMode?: EvMode): SandboxSnapshot {
+const isFraction = (v: unknown): v is Fraction =>
+  typeof v === 'object' && v !== null && typeof (v as Fraction).num === 'bigint';
+
+export function encodeTotals(t: SessionTotals): SessionTotalsJson {
+  const out: Record<string, number | FractionJson> = {};
+  for (const [k, v] of Object.entries(t)) {
+    out[k] = isFraction(v) ? { num: v.num.toString(), den: v.den.toString() } : (v as number);
+  }
+  return out as SessionTotalsJson;
+}
+
+/** `evMode` defaults to the driver's table mode. */
+export function encodeSnapshot(
+  d: SimDriver,
+  evMode?: EvMode,
+  log?: readonly LoggedHand[],
+): SandboxSnapshot {
   const s = d.snapshotData();
   return {
     v: 1,
     state: s.state,
     startEquity: s.startEquity,
-    totals: s.totals,
-    evMode: evMode ?? evModeOfPractice(s.practice),
+    totals: encodeTotals(s.totals),
+    evMode: evMode ?? s.evMode,
     history: { v: HISTORY_VERSION, items: s.history.slice(0, HISTORY_LIMIT) },
+    ...(log && log.length ? { log: log.slice() } : {}),
   };
 }
 
@@ -78,6 +109,32 @@ export function decodeHistory(raw: unknown): HandRecord[] {
   return (raw.items as unknown[]).filter(isHandRecord).slice(0, HISTORY_LIMIT);
 }
 
+/**
+ * A saved Fraction, or a legacy float of cents (snapshots before the exact ledger) rounded to the
+ * cent. Anything else is null, and the field keeps its empty value.
+ */
+function decodeFraction(x: unknown): Fraction | null {
+  if (isObj(x) && typeof x.num === 'string' && typeof x.den === 'string') {
+    if (!/^-?\d+$/.test(x.num) || !/^[1-9]\d*$/.test(x.den)) return null;
+    return frac(BigInt(x.num), BigInt(x.den));
+  }
+  if (typeof x === 'number' && Number.isFinite(x)) return frac(Math.round(x));
+  return null;
+}
+
+/** Missing or malformed fields keep their empty value (0), so a row that needs them stays hidden. */
+export function decodeTotals(raw: Record<string, unknown>): SessionTotals {
+  const totals: Record<string, number | Fraction> = { ...EMPTY_TOTALS };
+  for (const k of Object.keys(EMPTY_TOTALS) as (keyof SessionTotals)[]) {
+    const x = raw[k];
+    if (isFraction(EMPTY_TOTALS[k])) {
+      const f = decodeFraction(x);
+      if (f) totals[k] = f;
+    } else if (typeof x === 'number' && Number.isFinite(x)) totals[k] = x;
+  }
+  return totals as unknown as SessionTotals;
+}
+
 /** Restores the saved table as it was. The paytable follows the current setting. */
 export function decodeSnapshot(
   raw: unknown,
@@ -118,13 +175,13 @@ export function decodeSnapshot(
         );
       if (!ok) return null;
     }
-    const totals: SessionTotals = { ...EMPTY_TOTALS };
-    for (const k of Object.keys(EMPTY_TOTALS) as (keyof SessionTotals)[]) {
-      const x = raw.totals[k];
-      if (typeof x === 'number' && Number.isFinite(x)) totals[k] = x;
-    }
     return {
-      restore: { state, startEquity: raw.startEquity, totals, history: decodeHistory(raw.history) },
+      restore: {
+        state,
+        startEquity: raw.startEquity,
+        totals: decodeTotals(raw.totals),
+        history: decodeHistory(raw.history),
+      },
       // A valid evMode wins; a legacy snapshot's `practice: true` maps to 'after' (D39).
       evMode: (EV_MODES as readonly unknown[]).includes(raw.evMode)
         ? (raw.evMode as EvMode)

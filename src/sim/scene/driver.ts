@@ -22,8 +22,25 @@ import type {
   TableRules,
   TripsPaytableId,
 } from '../engine';
-import { toRatio } from '../math/fraction';
-import type { DecisionOption, DecisionPreview, DecisionTier, PreviewRequest } from '../math/types';
+import { tripsEdge } from '../math/edges';
+import {
+  ZERO as ZERO_CENTS,
+  add,
+  div,
+  frac,
+  neg,
+  round,
+  scale,
+  sub,
+  toRatio,
+} from '../math/fraction';
+import type {
+  DecisionOption,
+  DecisionPreview,
+  DecisionTier,
+  Fraction,
+  PreviewRequest,
+} from '../math/types';
 import type { StrategyId } from '../strategy/types';
 import { effectiveGate, gatedOptions, optionKeyOfAction, gateAllows } from './gate';
 import type { Gate } from './gate';
@@ -37,8 +54,11 @@ import {
   observe,
 } from './runner';
 import type { SceneContext } from './runner';
+import { sceneEvMode, stepConfirmOn, stepEvMode } from './modes';
 import type {
   CircleId,
+  ConfirmOn,
+  EvMode,
   OptionKey,
   SceneConfig,
   SceneInput,
@@ -73,36 +93,57 @@ export type DriverEvent =
   | { type: 'scene-completed'; sceneId: string }
   | { type: 'auto-play-completed'; hands: number; strategy: string };
 
-/** The luck vs mistake ledger (cents; floats because EV is rational). */
+/**
+ * The luck vs mistake ledger (curriculum 8.5). Expected values are exact cents (Fractions) and are
+ * rounded once, in the view, so the figures on screen add up to the result to the cent.
+ */
 export interface SessionTotals {
   hands: number;
   /** Hands where every decision had an EV preview (only these feed the luck split). */
   scored: number;
-  /** Sum of the best EV at each scored hand's first decision. */
-  expectedCents: number;
-  /** Sum of regrets at the decisions taken. */
-  mistakeCents: number;
+  /** Sum of the best EV at each scored hand's first decision (exact cents). */
+  expectedCents: Fraction;
+  /** Sum of regrets at the decisions taken (exact cents). */
+  mistakeCents: Fraction;
   /** Actual Ante+Blind+Play result of the scored hands. */
   scoredMainCents: number;
+  /** Antes of the scored hands: the denominator of "your edge per Ante". */
+  scoredAnteCents: number;
   tripsCents: number;
+  /** Trips action over every hand. */
+  tripsWageredCents: number;
+  /** Expected Trips result, −edge × wager per hand (exact cents). */
+  tripsExpectedCents: Fraction;
   decisions: number;
   mistakes: number;
 }
 export const EMPTY_TOTALS: SessionTotals = {
   hands: 0,
   scored: 0,
-  expectedCents: 0,
-  mistakeCents: 0,
+  expectedCents: ZERO_CENTS,
+  mistakeCents: ZERO_CENTS,
   scoredMainCents: 0,
+  scoredAnteCents: 0,
   tripsCents: 0,
+  tripsWageredCents: 0,
+  tripsExpectedCents: ZERO_CENTS,
   decisions: 0,
   mistakes: 0,
 };
 
 export interface SessionView extends SessionTotals {
   net: Cents;
-  /** scoredMain - (expected - mistakes): what the cards did beyond your decisions. */
-  luckCents: number;
+  /** Ante+Blind+Play+Trips action over the session (the engine's stats). */
+  wageredCents: Cents;
+  /** round(expected + expected Trips): "Perfect play expects", rounded once. */
+  perfectCents: Cents;
+  /** round(mistakeCents): what the decisions cost against perfect play. */
+  mistakesRoundedCents: Cents;
+  /** net − perfect + mistakes: the displayed split adds up to the result to the cent. */
+  luckCents: Cents;
+  tripsExpectedRoundedCents: Cents;
+  /** −(expected − mistakes) / antes of the scored hands; null before the first scored hand. */
+  edgePerAnte: Fraction | null;
 }
 
 export interface PreviewState {
@@ -139,6 +180,11 @@ export interface DriverView {
   /** Clear (betting) / Change bets (settled) is gated by the scene. */
   clearLocked: boolean;
   preview: PreviewState;
+  /** EV visibility for the current step (D39): the scene's in a lesson, the table's in the sandbox. */
+  evMode: EvMode;
+  /** Confirm policy for the current step (D39); in the sandbox the container applies the user's. */
+  confirmOn: ConfirmOn;
+  /** Legacy alias: evMode === 'after' (hide EV until confirm). */
   practice: boolean;
   rejection: Rejection | null;
   session: SessionView;
@@ -155,6 +201,9 @@ export interface DriverOptions {
   seed: number;
   /** Trips paytable for the sandbox (scenes use their own `rules.trips`, default 8-6-5). */
   paytable?: TripsPaytableId;
+  /** Sandbox only: the table's EV mode. In a lesson the scene decides and this is ignored (D39). */
+  evMode?: EvMode;
+  /** Legacy alias for `evMode: 'after'` (sandbox only). */
   practice?: boolean;
   onEvent?: (e: DriverEvent) => void;
   restore?: {
@@ -176,7 +225,6 @@ const TIER_CODE: Record<DecisionTier, HandTierCode> = {
 const ZERO = { ante: 0, blind: 0, play: 0, trips: 0 } as const;
 const isDecision = (s: string): s is DecisionStreet =>
   s === 'preflop' || s === 'flop' || s === 'river';
-const num = (f: { num: bigint; den: bigint }): number => Number(f.num) / Number(f.den);
 
 function sameOption(o: DecisionOption, a: Action): boolean {
   return o.action.type === a.type && optionKeyOfAction(o.action) === optionKeyOfAction(a);
@@ -212,10 +260,11 @@ export class SimDriver {
   private startEq: Cents;
   private totals: SessionTotals;
   private hand: {
-    base: number | null;
-    regret: number;
+    base: Fraction | null;
+    regret: Fraction;
     scored: boolean;
     ante: number;
+    mistakes: number;
     /** One entry per decision taken: its tier and exact regret when a preview scored it. */
     notes: ({ tier: HandTierCode; regret: string } | null)[];
   } | null = null;
@@ -227,7 +276,7 @@ export class SimDriver {
   private pvAbort: AbortController | null = null;
   private pendingStart: SceneStep['startAt'] | null = null;
   private rejection: Rejection | null = null;
-  private practice: boolean;
+  private evMode: EvMode;
   private version = 0;
   private listeners = new Set<() => void>();
   private cached: DriverView | null = null;
@@ -238,7 +287,10 @@ export class SimDriver {
     this.opts = opts;
     this.mode = opts.mode;
     this.scene = opts.scene ?? { id: 'sandbox', version: 1 };
-    this.practice = !!(opts.practice || this.scene.practice);
+    this.evMode =
+      opts.mode === 'sandbox'
+        ? (opts.evMode ?? (opts.practice ? 'after' : sceneEvMode(this.scene)))
+        : sceneEvMode(this.scene);
     const sc = this.scene;
     if (opts.restore) {
       this.game = opts.restore.state;
@@ -298,12 +350,16 @@ export class SimDriver {
     if (this.cached) return this.cached;
     const step = currentStep(this.scene, this.rt);
     const gate = activeGate(this.scene, this.rt);
+    const modeNow = this.mode === 'sandbox' ? this.evMode : stepEvMode(this.scene, step);
     const st = this.game.street;
     const decision = isDecision(st);
     const opts = decision ? gatedOptions(gate, st) : undefined;
     const allowedOptions = decision && gate.options ? opts : undefined;
     const t = this.totals;
     const net = equity(this.game) - this.startEq;
+    const perfectCents = round(add(t.expectedCents, t.tripsExpectedCents));
+    const mistakesRoundedCents = round(t.mistakeCents);
+    const w = this.game.stats.wagered;
     this.cached = {
       version: this.version,
       state: this.game,
@@ -327,12 +383,22 @@ export class SimDriver {
           ? !gateAllows(gate, { type: 'clear' })
           : !gateAllows(gate, { type: 'set-bet', wager: 'ante', amount: 0 }),
       preview: this.pv,
-      practice: this.practice,
+      evMode: modeNow,
+      confirmOn: stepConfirmOn(this.scene, step),
+      practice: modeNow === 'after',
       rejection: this.rejection,
       session: {
         ...t,
         net,
-        luckCents: t.scoredMainCents - (t.expectedCents - t.mistakeCents),
+        wageredCents: w.ante + w.blind + w.play + w.trips,
+        perfectCents,
+        mistakesRoundedCents,
+        luckCents: net - perfectCents + mistakesRoundedCents,
+        tripsExpectedRoundedCents: round(t.tripsExpectedCents),
+        edgePerAnte:
+          t.scoredAnteCents > 0
+            ? div(neg(sub(t.expectedCents, t.mistakeCents)), frac(t.scoredAnteCents))
+            : null,
       },
       startEquity: this.startEq,
       result: this.game.hand?.result ?? null,
@@ -345,21 +411,28 @@ export class SimDriver {
     state: GameState;
     startEquity: Cents;
     totals: SessionTotals;
-    practice: boolean;
+    evMode: EvMode;
     history: readonly HandRecord[];
   } {
     return {
       state: this.game,
       startEquity: this.startEq,
       totals: this.totals,
-      practice: this.practice,
+      evMode: this.evMode,
       history: this.history,
     };
   }
 
-  setPractice(on: boolean): void {
-    this.practice = on;
+  /** The table's EV mode (sandbox; a lesson keeps its scene's mode). */
+  setEvMode(mode: EvMode): void {
+    if (this.mode !== 'sandbox' || mode === this.evMode) return;
+    this.evMode = mode;
     this.notify();
+  }
+
+  /** Legacy alias: on = 'after', off = 'before'. */
+  setPractice(on: boolean): void {
+    this.setEvMode(on ? 'after' : 'before');
   }
 
   dispose(): void {
@@ -447,7 +520,14 @@ export class SimDriver {
   // ---------- hand tracking (luck vs mistakes) ----------
 
   private beginHandTrack(): void {
-    this.hand = { base: null, regret: 0, scored: true, ante: this.game.bets.ante, notes: [] };
+    this.hand = {
+      base: null,
+      regret: ZERO_CENTS,
+      scored: true,
+      ante: this.game.bets.ante,
+      mistakes: 0,
+      notes: [],
+    };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
     if (!this.hand) return;
@@ -459,10 +539,10 @@ export class SimDriver {
       return;
     }
     this.hand.notes.push({ tier: TIER_CODE[opt.tier], regret: toRatio(opt.regret) });
-    if (this.hand.base === null) this.hand.base = num(pv.options[pv.bestIndex]!.evCents);
-    this.hand.regret += num(opt.regret) * this.hand.ante;
-    if (opt.tier !== 'best' && opt.tier !== 'close')
-      this.totals = { ...this.totals, mistakes: this.totals.mistakes + 1 };
+    if (this.hand.base === null) this.hand.base = pv.options[pv.bestIndex]!.evCents;
+    this.hand.regret = add(this.hand.regret, scale(opt.regret, this.hand.ante));
+    // Counted per hand and added only if the hand ends scored (see finishHandTrack).
+    if (opt.tier !== 'best' && opt.tier !== 'close') this.hand.mistakes += 1;
   }
   private finishHandTrack(result: HandResult): void {
     const h = this.hand;
@@ -478,20 +558,34 @@ export class SimDriver {
     }
     let main = 0;
     let trips = 0;
+    let tripsBet = 0;
     for (const w of result.wagers) {
-      if (w.wager === 'trips') trips += w.profit;
-      else main += w.profit;
+      if (w.wager === 'trips') {
+        trips += w.profit;
+        tripsBet += w.amount;
+      } else main += w.profit;
     }
     const t = {
       ...this.totals,
       hands: this.totals.hands + 1,
       tripsCents: this.totals.tripsCents + trips,
+      tripsWageredCents: this.totals.tripsWageredCents + tripsBet,
+      // Trips pays on your own hand whatever you decide, so its expectation is −edge × wager.
+      tripsExpectedCents:
+        tripsBet > 0
+          ? add(
+              this.totals.tripsExpectedCents,
+              scale(neg(tripsEdge(this.game.rules.tripsPaytable).edge), tripsBet),
+            )
+          : this.totals.tripsExpectedCents,
     };
     if (h && h.scored && h.base !== null) {
       t.scored += 1;
-      t.expectedCents += h.base;
-      t.mistakeCents += h.regret;
+      t.expectedCents = add(t.expectedCents, h.base);
+      t.mistakeCents = add(t.mistakeCents, h.regret);
+      t.mistakes = t.mistakes + h.mistakes;
       t.scoredMainCents += main;
+      t.scoredAnteCents += h.ante;
     }
     this.totals = t;
   }

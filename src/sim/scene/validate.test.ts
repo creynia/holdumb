@@ -166,8 +166,71 @@ describe('validateScene', () => {
         }),
       ],
     };
-    expect(errs(s).join()).toMatch(/needs showEV/);
+    expect(errs(s).join()).toMatch(/best-decision matching needs EV/);
     expect(errs({ ...s, practice: true })).toEqual([]);
+    const { showEV: _off, ...noAlias } = s;
+    expect(errs({ ...noAlias, evMode: 'never' }).join()).toMatch(
+      /best-decision matching needs EV \(evMode 'before' or 'after', not 'never'\)/,
+    );
+    expect(errs({ ...noAlias, evMode: 'after' })).toEqual([]);
+    // A step override counts: the step's evMode 'never' fails even when the scene shows EV.
+    const st = { ...noAlias.steps[0]!, evMode: 'never' };
+    expect(errs({ ...noAlias, steps: [st] }).join()).toMatch(/needs EV/);
+  });
+  describe('D39 evMode / confirmOn keys', () => {
+    it('accepts every known value on scenes and steps', () => {
+      for (const evMode of ['before', 'after', 'never'])
+        for (const confirmOn of ['all', 'costly', 'blunder', 'never'])
+          expect(
+            errs({ ...base, evMode, confirmOn, steps: [step({ evMode, confirmOn })] }),
+          ).toEqual([]);
+    });
+    it('rejects unknown values', () => {
+      expect(errs({ ...base, evMode: 'sometimes' }).join()).toMatch(/unknown evMode "sometimes"/);
+      expect(errs({ ...base, confirmOn: true }).join()).toMatch(/unknown confirmOn "true"/);
+      expect(errs({ ...base, steps: [step({ evMode: 'hidden' })] }).join()).toMatch(
+        /steps\[0\]\.evMode: unknown evMode "hidden"/,
+      );
+      expect(errs({ ...base, steps: [step({ confirmOn: 'some' })] }).join()).toMatch(
+        /steps\[0\]\.confirmOn: unknown confirmOn "some"/,
+      );
+    });
+    it('rejects a legacy alias next to evMode', () => {
+      expect(errs({ ...base, practice: true, evMode: 'after' }).join()).toMatch(
+        /set evMode or practice, not both/,
+      );
+      expect(errs({ ...base, showEV: true, evMode: 'after' }).join()).toMatch(
+        /set evMode or showEV, not both/,
+      );
+      expect(errs({ ...base, steps: [step({ showEV: false, evMode: 'never' })] }).join()).toMatch(
+        /set evMode or showEV, not both/,
+      );
+    });
+    it('previewed needs confirmOn: all (scene or step)', () => {
+      const pv = ({ step: over = {}, ...o }: { step?: object; confirmOn?: string }) => ({
+        ...base,
+        ...o,
+        steps: [
+          step({
+            startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } },
+            allowedActions: ['check', 'play'],
+            completeWhen: { any: [{ previewed: { option: 'play-3' } }, { street: 'settled' }] },
+            ...over,
+          }),
+        ],
+      });
+      expect(errs(pv({})).join()).toMatch(/previewed needs confirmOn: all/);
+      expect(errs(pv({ confirmOn: 'costly' })).join()).toMatch(/previewed needs confirmOn: all/);
+      expect(errs(pv({ step: { confirmOn: 'blunder' } })).join()).toMatch(
+        /previewed needs confirmOn: all/,
+      );
+      expect(errs(pv({ confirmOn: 'all' }))).toEqual([]);
+      expect(errs(pv({ step: { confirmOn: 'all' } }))).toEqual([]);
+      // A step override to something else wins over the scene's 'all'.
+      expect(errs(pv({ confirmOn: 'all', step: { confirmOn: 'never' } })).join()).toMatch(
+        /previewed needs confirmOn: all/,
+      );
+    });
   });
   it('requires a fully forced hand for win/lose/tie results', () => {
     const s = {

@@ -4,7 +4,7 @@ import type { TableRules } from '../engine/types';
 import type { Fraction } from '../math/types';
 import { HANDS_PER_HOUR, tripsEdge } from '../math/edges';
 import { STRATEGY_CONSTANTS } from './constants';
-import { frac, fracAdd, fracDiv, fracMul, fracNeg } from './fraction';
+import { frac, fracAdd, fracDiv, fracMul, fracNeg, fracSub } from './fraction';
 import type { StrategyMetrics, StrategySpec } from './types';
 
 /**
@@ -31,6 +31,19 @@ export function strategyMetrics(
     evPerHandCents,
     evPerHourCents: fracMul(evPerHandCents, frac(handsPerHour)),
   };
+}
+
+/**
+ * What the strategy costs per hour over perfect play, in cents (exact; Trips is the same for every
+ * strategy so it cancels). Perfect is 0. decisions.md §4: at $10 and 30 hands/hour expert $0.26,
+ * basic $0.59, simple $1.57.
+ */
+export function costVsPerfectPerHour(
+  spec: StrategySpec,
+  handsPerHour: number = HANDS_PER_HOUR,
+): Fraction {
+  const gap = fracSub(STRATEGY_CONSTANTS.perfect.ev, STRATEGY_CONSTANTS[spec.id].ev);
+  return fracMul(fracMul(gap, frac(spec.ante)), frac(handsPerHour));
 }
 
 /** Expected $ per hand in whole cents as a number (display / chart line), Trips included. */

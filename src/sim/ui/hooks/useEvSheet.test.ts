@@ -34,7 +34,7 @@ function mount(practice: boolean) {
       sim,
       practice,
       'portrait',
-      resolveEvShown(settings, sim.d.view.scene, true, sim.d.view.step?.showEV),
+      resolveEvShown(settings, sim.d.view.scene, true, sim.d.view.step),
       isDecisionStreet(sim.d.view.state.street),
     );
     return { sim, ev };

@@ -1,7 +1,7 @@
 import type { EvClient } from '../worker/protocol';
 import type { DecisionPreview } from '../math/types';
 import type { Action, GameEvent, GameState, HandResult, PaytablePresetId } from '../engine/types';
-import type { SceneConfig } from '../scene/types';
+import type { ConfirmOn, EvMode, SceneConfig } from '../scene/types';
 
 /** The settings the simulator reads (decisions.md D30). The app's Settings extends this. */
 export interface SimSettings {
@@ -18,10 +18,8 @@ export interface SimSettings {
   confirmOn: ConfirmOn;
 }
 
-/** EV visibility (D11, D39). */
-export type EvMode = 'before' | 'after' | 'never';
-/** Confirm policy (D24, D39): every bet, costly + blunder, blunder only, or no confirm step. */
-export type ConfirmOn = 'all' | 'costly' | 'blunder' | 'never';
+/** EV visibility and confirm policy live with the scene contract (D39). */
+export type { ConfirmOn, EvMode } from '../scene/types';
 
 export const DEFAULT_SIM_SETTINGS: SimSettings = {
   animationSpeed: 'normal',

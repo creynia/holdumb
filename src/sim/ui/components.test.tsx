@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame, equity, parseCards } from '../engine';
 import type { Card as PlayingCard, HandRecord } from '../engine';
 import type { DecisionPreview, PreviewRequest } from '../math';
-import type { OptionKey } from '../scene';
+import type { OptionKey, SessionView } from '../scene';
 import { ActionBar, optionsFor } from './ActionBar';
 import { BetCircle } from './BetCircle';
 import { Card } from './Card';
@@ -12,6 +12,7 @@ import { EvSheet } from './EvSheet';
 import type { EvSheetProps } from './EvSheet';
 import { Felt } from './Felt';
 import { HandHistory, actionsText, costliestStreet } from './HandHistory';
+import { SessionPanel } from './SessionPanel';
 import { FoldReveal } from './FoldReveal';
 import {
   FLOP_HIDDEN_PAIR,
@@ -20,6 +21,7 @@ import {
   PREFLOP_AA,
   RIVER_ACE_HIGH,
   RIVER_PLAY_BOARD,
+  frac,
 } from './fixtures';
 import { StatusBar } from './StatusBar';
 import { statusMoney } from './status';
@@ -182,6 +184,68 @@ describe('EvSheet', () => {
     sheet({ variant: 'rail' });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('region')).toBeTruthy();
+  });
+});
+
+describe('EvSheet flop basic-card rule line (I058)', () => {
+  const request = (f: {
+    hole: [PlayingCard, PlayingCard];
+    board: PlayingCard[];
+  }): PreviewRequest => ({
+    street: 'flop',
+    hole: f.hole,
+    board: f.board,
+    blindPaytable: 'blind-standard',
+    ante: 1000,
+  });
+  it('names the rule and says perfect play agrees', () => {
+    sheet({
+      preview: FLOP_HIDDEN_PAIR.preview,
+      selected: 'play-2',
+      request: request(FLOP_HIDDEN_PAIR),
+    });
+    expect(screen.getByTestId('flop-rule').textContent).toBe(
+      'Basic card: rule (b), a hidden pair of sevens: Bet 2x. Perfect play agrees.',
+    );
+  });
+  it('says so when perfect play prefers the other option (curriculum 8.4 wording)', () => {
+    // Same cards, but Check is the exact best: the card's Bet 2x is the rare exception.
+    const p = FLOP_HIDDEN_PAIR.preview;
+    const swapped = {
+      ...p,
+      bestIndex: 1,
+      options: [
+        {
+          ...p.options[0]!,
+          tier: 'small' as const,
+          evCents: frac(-100_000, 100),
+          ev: frac(-1, 100),
+        },
+        { ...p.options[1]!, tier: 'best' as const },
+      ],
+    } as unknown as DecisionPreview;
+    sheet({ preview: swapped, selected: 'check', request: request(FLOP_HIDDEN_PAIR) });
+    const line = screen.getByTestId('flop-rule').textContent;
+    expect(line).toMatch(
+      /^Basic card: rule \(b\), a hidden pair of sevens: Bet 2x\. Perfect play prefers Check\. \(The basic card says Bet 2x here, a rare exception worth \$[\d,.]+\.\)$/,
+    );
+  });
+  it('is hidden while practice mode hides the EV, and shown after the move', () => {
+    const props = {
+      preview: FLOP_HIDDEN_PAIR.preview,
+      selected: 'play-2' as OptionKey,
+      request: request(FLOP_HIDDEN_PAIR),
+      hideEv: true,
+    };
+    sheet(props);
+    expect(screen.queryByTestId('flop-rule')).toBeNull();
+    cleanup();
+    sheet({ ...props, chosen: 'play-2' });
+    expect(screen.getByTestId('flop-rule')).toBeTruthy();
+  });
+  it('is absent on the river and without cards', () => {
+    sheet({ preview: FLOP_HIDDEN_PAIR.preview, selected: 'play-2' });
+    expect(screen.queryByTestId('flop-rule')).toBeNull();
   });
 });
 
@@ -781,6 +845,81 @@ describe('HandHistory (simulator.md 3.7)', () => {
   it('renders nothing without hands', () => {
     const { container } = render(<HandHistory records={[]} rules={rules} />);
     expect(container.textContent).toBe('');
+  });
+});
+
+describe('SessionPanel (curriculum 8.5)', () => {
+  const view = (over: Partial<SessionView> = {}): SessionView => ({
+    hands: 3,
+    scored: 2,
+    expectedCents: frac(-9176, 10),
+    mistakeCents: frac(1204, 10),
+    scoredMainCents: -3000,
+    scoredAnteCents: 20_000,
+    tripsCents: 2500,
+    tripsWageredCents: 21_000,
+    tripsExpectedCents: frac(-400),
+    decisions: 5,
+    mistakes: 3,
+    net: -3500,
+    wageredCents: 178_000,
+    perfectCents: -918 + -400,
+    mistakesRoundedCents: 120,
+    luckCents: -3500 - (-918 + -400) + 120,
+    tripsExpectedRoundedCents: -400,
+    edgePerAnte: frac(24, 1000),
+    ...over,
+  });
+  it('shows wagered, perfect, mistakes with the count, luck, the edge per Ante and the Trips line', () => {
+    const s = view();
+    render(<SessionPanel session={s} defaultOpen />);
+    expect(screen.getByTestId('session-net-detail').textContent).toBe('\u2212$35');
+    expect(screen.getByTestId('session-wagered').textContent).toBe('$1,780');
+    expect(screen.getByTestId('session-perfect').textContent).toBe('\u2212$13.18');
+    expect(screen.getByTestId('session-mistakes').textContent).toBe('3 mistakes · \u2212$1.20');
+    expect(screen.getByTestId('session-luck').textContent).toBe('\u2212$20.62');
+    expect(screen.getByTestId('session-edge').textContent).toBe('2.40% (perfect play 2.18%)');
+    expect(screen.getByTestId('session-trips').textContent).toBe(
+      'wagered $210 · expected \u2212$4 · actual +$25',
+    );
+    // The displayed split adds up to the result to the cent.
+    expect(s.perfectCents - s.mistakesRoundedCents + s.luckCents).toBe(s.net);
+    const text = screen.getByTestId('session-panel').textContent;
+    expect(text).toContain('1 hand had no EV');
+    expect(text).toMatch(/on average/);
+    expect(text).not.toMatch(/you will (win|lose)/i);
+  });
+  it('hides rows whose figures are missing or zero, and uses the singular', () => {
+    render(
+      <SessionPanel
+        session={view({ wageredCents: 0, tripsWageredCents: 0, mistakes: 1, hands: 2, scored: 2 })}
+        defaultOpen
+      />,
+    );
+    expect(screen.queryByTestId('session-wagered')).toBeNull();
+    expect(screen.queryByTestId('session-trips')).toBeNull();
+    expect(screen.getByTestId('session-mistakes').textContent).toContain('1 mistake ·');
+    expect(screen.getByTestId('session-panel').textContent).not.toContain('had no EV');
+  });
+  it('before any scored hand it asks you to play with the EV sheet, and has no edge', () => {
+    render(
+      <SessionPanel
+        session={view({ hands: 0, scored: 0, scoredAnteCents: 0, edgePerAnte: null, net: 0 })}
+        defaultOpen
+      />,
+    );
+    expect(screen.queryByTestId('session-perfect')).toBeNull();
+    expect(screen.queryByTestId('session-edge')).toBeNull();
+    expect(screen.getByTestId('session-panel').textContent).toContain(
+      'Play a hand with the EV sheet',
+    );
+  });
+  it('a negative edge (you are ahead of the house so far) keeps its sign; the toggle is a 44 px button', () => {
+    render(<SessionPanel session={view({ edgePerAnte: frac(-5, 1000) })} />);
+    const btn = screen.getByTestId('session-toggle');
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(btn);
+    expect(screen.getByTestId('session-edge').textContent).toContain('\u22120.50%');
   });
 });
 
