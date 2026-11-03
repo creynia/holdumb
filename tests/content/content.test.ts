@@ -76,3 +76,31 @@ describe('drill.json', () => {
     }
   });
 });
+
+describe('Practise this (I066)', () => {
+  const b = buildContent(process.cwd());
+  const ids = [
+    'preflop-raise',
+    'preflop-close-calls',
+    'flop-raise',
+    'flop-tricky-boards',
+    'river-call-or-fold',
+    'counting-dealer-outs',
+    'strategy-practical',
+    'trips-bet',
+  ];
+  it('lessons 7-12, 16 and 19 end with 1-3 practise links', () => {
+    for (const id of ids) {
+      const l = b.lessons.find((x) => x.id === id)!;
+      const last = l.blocks.at(-1)!;
+      expect(last.kind, id).toBe('practise');
+      if (last.kind !== 'practise') continue;
+      expect(last.links.length, id).toBeGreaterThanOrEqual(1);
+      expect(last.links.length, id).toBeLessThanOrEqual(3);
+    }
+    const all = b.lessons.flatMap((l) =>
+      l.blocks.flatMap((x) => (x.kind === 'practise' ? [l.id] : [])),
+    );
+    expect(all.sort()).toEqual([...ids].sort());
+  });
+});
