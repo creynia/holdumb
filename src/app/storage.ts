@@ -85,6 +85,8 @@ export interface LensStats {
 export interface DrillStats extends LensStats {
   lens: DrillLens;
   practical: LensStats;
+  /** "Close calls" (I068): about 60% of spots are close, streets weighted by real play. Default on. */
+  closeCalls: boolean;
 }
 
 /** Stats of the lens currently selected. */
@@ -113,7 +115,7 @@ const emptyLens = (): LensStats => ({
 });
 
 export function emptyDrill(): DrillStats {
-  return { ...emptyLens(), lens: 'perfect', practical: emptyLens() };
+  return { ...emptyLens(), lens: 'perfect', practical: emptyLens(), closeCalls: true };
 }
 
 export function defaultPersisted(): PersistedV1 {
@@ -149,9 +151,15 @@ export const LIMITS = {
   handsPerHour: { min: 1, max: 500 },
 } as const;
 
+const CONFIRM_TIERS = ['all', 'costly', 'blunder'] as const;
+
 export function sanitizeSettings(raw: unknown): Settings {
   const d = DEFAULT_SETTINGS;
   const o = isObj(raw) ? raw : {};
+  const confirmOn = oneOf(o.confirmOn, CONFIRM_ON, d.confirmOn);
+  // D40: while Confirm is on, its scope is the effective policy (confirmTiers === confirmOn).
+  const confirmTiers =
+    confirmOn !== 'never' ? confirmOn : oneOf(o.confirmTiers, CONFIRM_TIERS, d.confirmTiers);
   return {
     theme: oneOf(o.theme, ['system', 'light', 'dark'], d.theme),
     animationSpeed: oneOf(o.animationSpeed, ['normal', 'fast', 'instant'], d.animationSpeed),
@@ -162,7 +170,8 @@ export function sanitizeSettings(raw: unknown): Settings {
     evMode: oneOf(o.evMode, EV_MODES, o.practice === true ? evModeOfPractice(true) : d.evMode),
     // Old records can't tell an explicit confirmCostlyMoves from its old default: all -> 'never'.
     // The legacy skipPreview flag is dropped.
-    confirmOn: oneOf(o.confirmOn, CONFIRM_ON, d.confirmOn),
+    confirmOn,
+    confirmTiers,
     anteUnitCents: wholeDollars(
       o.anteUnitCents,
       LIMITS.anteUnitDollars.min,
@@ -226,6 +235,7 @@ function sanitizeDrill(raw: unknown): DrillStats {
     ...sanitizeLens(raw),
     lens: raw.lens === 'practical' ? 'practical' : 'perfect',
     practical: sanitizeLens(raw.practical),
+    closeCalls: raw.closeCalls !== false,
   };
 }
 

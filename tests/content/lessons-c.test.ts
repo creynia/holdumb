@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildContent } from '../../src/content/load';
 import { validateScene } from '../../src/sim/scene/validate';
 import { STRATEGY_IDS } from '../../src/sim/strategy';
+import { expandNumbers } from '../../src/content/compile';
 
 const root = process.cwd();
 const IDS = [
@@ -19,7 +20,7 @@ const IDS = [
 ];
 const dir = join(root, 'content/lessons');
 const files = readdirSync(dir).filter((f) => /^(1[5-9]|2[0-3])-/.test(f)).sort();
-const text = (id: string): string => readFileSync(join(dir, files.find((f) => f.endsWith(`-${id}.md`))!), 'utf8');
+const text = (id: string): string => expandNumbers(readFileSync(join(dir, files.find((f) => f.endsWith(`-${id}.md`))!), 'utf8'));
 const bundle = buildContent(root);
 const lessons = bundle.lessons.filter((l) => IDS.includes(l.id));
 

@@ -26,18 +26,18 @@ whether you fold. The standard table (`trips-8-6-5`):
 | Three of a kind | 3 to 1 | 1 in 20.7 |
 | Anything less | loses | 84.7% |
 
-It pays **about 1 hand in 6.5** (15.3%), or about 4.6 times an hour. The house edge is **1.90%** of the
+It pays **about 1 hand in 6.5** (15.3%), or about 4.6 times an hour. The house edge is **{{num:trips-8-6-5-edge}}** of the
 Trips bet: a little cheaper than the main game per Ante, and a fair price for the excitement.
 
 **The paytable is everything.** Casinos change the middle rows, and small changes matter a lot. The first three edges below match the Wizard of Odds Trips tables[^1], and the 8 / 7 / 4 table is printed on casino rack cards and gaming guides[^2][^3][^4]:
 
 | Table (Full house / Flush / Straight) | House edge | Cost per hour, $5 Trips | Tier |
 |---|---|---|---|
-| 9 / 7 / 4 | 0.90% | $1.35 | Good bet |
-| **8 / 6 / 5 (standard)** | **1.90%** | **$2.86** | Good bet |
-| 8 / 7 / 4 | 3.50% | $5.25 | Fair |
-| 7 / 6 / 5 | 4.50% | $6.75 | Fair |
-| 8 / 6 / 4 | 6.52% | $9.79 | Poor bet |
+| 9 / 7 / 4 | {{num:trips-9-7-4-edge}} | $1.35 | Good bet |
+| **8 / 6 / 5 (standard)** | **{{num:trips-8-6-5-edge}}** | **$2.86** | Good bet |
+| 8 / 7 / 4 | {{num:trips-8-7-4-edge}} | $5.25 | Fair |
+| 7 / 6 / 5 | {{num:trips-7-6-5-edge}} | $6.75 | Fair |
+| 8 / 6 / 4 | {{num:trips-8-6-4-edge}} | $9.79 | Poor bet |
 
 Read the felt before you bet. If the straight pays 4 and the flush 6, walk to the next table.
 
@@ -88,9 +88,14 @@ steps:
 - q: Which Trips paytable is the best for you?
   options: ["Full house 8, flush 6, straight 4", "Full house 8, flush 6, straight 5", "Full house 7, flush 6, straight 5", "Full house 8, flush 7, straight 4"]
   answer: 1
-  explain: "8-6-5 is 1.90%. The others are 6.52%, 4.50% and 3.50%."
+  explain: "8-6-5 is {{num:trips-8-6-5-edge}}. The others are {{num:trips-8-6-4-edge}}, {{num:trips-7-6-5-edge}} and {{num:trips-8-7-4-edge}}."
 - q: Should you raise more often when you have a Trips bet?
   options: ["Yes", "No, Trips doesn't depend on your decisions"]
   answer: 1
   explain: "Your Trips result is fixed by your cards. Play the main game normally."
+```
+
+```practise
+- label: "Play pocket sevens into a straight for the dealer"
+  to: "#/play?hole=7c7d&board=7hKs9dTdJc&dealer=Qh8s&street=preflop"
 ```

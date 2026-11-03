@@ -67,6 +67,11 @@ h3 {
   outline-offset: 2px;
 }
 
+:root {
+  /* Vertical space the shell takes around a landscape table: top bar + bottom padding (I030). */
+  --chrome-h: 100px;
+  --topbar-h: 66px;
+}
 .shell {
   min-height: 100vh;
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
@@ -181,6 +186,31 @@ main:has(> .page-wide) {
   max-width: 64rem;
   padding-left: 8px;
   padding-right: 8px;
+}
+/* I029 Play vertical budget: no dead band above the table, and the felt gets exactly the height the
+   fixed chrome leaves (top bar, status, action bar, tab bar), so the ActionBar sits above the tab
+   bar at scrollY 0 on every street. */
+/* Portrait only: the landscape rail layout keeps its own spacing. */
+@media not ((orientation: landscape) and (max-height: 520px)) {
+  main:has(> .page-play) {
+    padding-top: 0;
+  }
+  .page-play {
+    padding-top: 8px;
+  }
+}
+.page-play {
+  /* topbar 66.2 + 8 + status 44 + gap 8 + felt + gap 8 + action bar (67 with a wrapped sub-label)
+     + 8 + tab bar 58 */
+  --play-chrome: calc(268px + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+}
+.page-play .sim-table-portrait .sim-felt {
+  max-height: calc(100dvh - var(--play-chrome));
+}
+@media (min-width: 768px) {
+  .page-play {
+    --play-chrome: calc(210px + env(safe-area-inset-top)); /* no tab bar */
+  }
 }
 .card {
   background: var(--surface);
@@ -760,6 +790,18 @@ textarea {
 .drill-picker {
   margin-top: 0.6rem;
 }
+.drill-picker .check {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  min-height: 44px;
+  margin: 0.6rem 0;
+}
+.drill-picker .check input {
+  width: 22px;
+  height: 22px;
+  margin-top: 0.1rem;
+}
 .drill-category {
   display: flex;
   align-items: center;
@@ -873,28 +915,65 @@ textarea {
 .page .card {
   max-width: 100%;
 }
-@media (orientation: landscape) and (max-height: 500px) and (max-width: 767px) {
-  /* The bottom tab bar hides the last 48px of the landscape table (rail bottom 373 vs tab bar top
-     325 at 667x375), so the rail's EV sheet stops above it (I012; I030 reworks this chrome). */
-  .sim-table-landscape {
-    --sim-table-bottom-cover: calc(48px + env(safe-area-inset-bottom));
-  }
-}
 @media (orientation: landscape) and (max-height: 500px) {
+  /* Short landscape: one 44px bar (brand + nav inline) on every route, no bottom tab bar. */
+  :root {
+    --topbar-h: 44px;
+    --chrome-h: 60px; /* 44px bar + 8px page padding + 8px shell padding */
+  }
+  main {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
   .page {
     padding-top: 0.5rem;
   }
   .shell {
-    padding-bottom: calc(52px + env(safe-area-inset-bottom));
+    padding-bottom: 8px;
   }
-  .tabbar a {
-    min-height: 48px;
-    flex-direction: row;
-    justify-content: center;
-    gap: 6px;
+  .topbar {
+    box-sizing: border-box;
+    height: var(--topbar-h);
+    padding: 0 16px;
+    gap: 0.5rem;
+    border-bottom: 0;
+    box-shadow: inset 0 -2px 0 var(--border);
+  }
+  .topnav {
+    display: flex;
+  }
+  .tabbar {
+    display: none;
   }
 }
 
+/* I066: "Practise this" links at the end of a lesson, each a 44px tap target. */
+.practise ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.practise h2 {
+  margin-top: 0;
+}
+.practise-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.practise-link::after {
+  content: '→';
+  margin-left: auto;
+  padding-left: 0.6rem;
+}
 #main:focus:not(:focus-visible) {
   outline: none;
 }
@@ -948,6 +1027,18 @@ textarea {
   font-size: 0.75rem;
   padding: 0 0.15rem;
   min-width: 1ch;
+  position: relative;
+}
+/* Invisible hit area around the citation number; the visual size and line height are unchanged. */
+.cite-btn::before {
+  content: '';
+  position: absolute;
+  /* The button box is 0 tall (.cite has line-height 0), so centre a fixed height on it. The height
+     is capped at the line pitch (about 1.55rem), so a tap on one line never reaches the next. */
+  top: 50%;
+  height: 1.5rem;
+  margin-top: -0.75rem;
+  inset-inline: -17px;
 }
 .cite-btn:focus-visible {
   outline: 2px solid var(--focus);
@@ -1074,7 +1165,7 @@ textarea {
     order: 0;
     margin-bottom: 0.5rem;
   }
-  .drill-result > [role='status'] {
+  .drill-result > [data-testid='drill-headline'] {
     order: -1;
     margin: 0 0 0.4rem;
     font-size: 0.85rem;

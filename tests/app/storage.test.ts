@@ -37,6 +37,32 @@ describe('storage', () => {
     expect(sanitizeSettings({ persistAsked: 'yes' }).persistAsked).toBe('no');
     expect(sanitizeSettings({}).persistAsked).toBe('no');
   });
+  it('normalises confirmTiers to the effective confirmOn (D40, I088)', () => {
+    expect(sanitizeSettings({ confirmOn: 'costly' }).confirmTiers).toBe('costly');
+    expect(sanitizeSettings({ confirmOn: 'never', confirmTiers: 'blunder' })).toMatchObject({
+      confirmOn: 'never',
+      confirmTiers: 'blunder',
+    });
+    expect(sanitizeSettings({ confirmOn: 'never' }).confirmTiers).toBe('all');
+    expect(sanitizeSettings({ confirmOn: 'all', confirmTiers: 'blunder' }).confirmTiers).toBe(
+      'all',
+    );
+    expect(sanitizeSettings({ confirmOn: 'never', confirmTiers: 'nope' }).confirmTiers).toBe('all');
+    for (const raw of [
+      { confirmOn: 'costly' },
+      { confirmOn: 'never', confirmTiers: 'blunder' },
+      {},
+    ]) {
+      expect(sanitizeSettings(sanitizeSettings(raw))).toEqual(sanitizeSettings(raw));
+    }
+  });
+  it('keeps confirmTiers through an export and import round trip (I088)', () => {
+    const p = defaultPersisted();
+    p.settings = { ...p.settings, confirmOn: 'never', confirmTiers: 'costly' };
+    const back = decodeImport(encodeExport(p));
+    expect(back!.settings.confirmTiers).toBe('costly');
+    expect(back!.settings.confirmOn).toBe('never');
+  });
   it('sanitizes settings (D30) and drops prototype keys', () => {
     const p = sanitize({
       version: 1,
@@ -180,6 +206,13 @@ describe('storage', () => {
     });
     expect(decodeImport(encodeExport(p))).toEqual(p);
     expect(sanitize(JSON.parse(JSON.stringify(p)))).toEqual(p);
+  });
+  it('closeCalls defaults on, survives a round trip, and only false turns it off', () => {
+    expect(sanitize({ version: 1, drill: {} })!.drill.closeCalls).toBe(true);
+    expect(sanitize({ version: 1, drill: { closeCalls: 'no' } })!.drill.closeCalls).toBe(true);
+    const off = sanitize({ version: 1, drill: { closeCalls: false } })!;
+    expect(off.drill.closeCalls).toBe(false);
+    expect(decodeImport(encodeExport(off))!.drill.closeCalls).toBe(false);
   });
   it('export codes round-trip and reject other prefixes', () => {
     const d = defaultPersisted();
