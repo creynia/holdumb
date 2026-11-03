@@ -68,11 +68,11 @@ steps:
 - q: What's the element of risk of UTH under perfect play?
   options: ["0.53%", "1.09%", "2.18%", "4.15%"]
   answer: 0
-  explain: "Expected loss divided by the average money in action (4.15 antes)."
+  explain: "Expected loss divided by the average money in action ({{num:perfect-wager}} antes)."
 - q: What's the biggest leak?
   options: ["Using the basic card", "Checking every hand to the river", "Skipping Trips", "Betting 4x with K5o"]
   answer: 1
-  explain: "It raises the edge from 2.18% to 32%."
+  explain: "It raises the edge from {{num:perfect-edge-2}} to 32%."
 - q: Trips at an 8-6-5 table has a house edge of about…
   options: ["0.9%", "1.9%", "3.5%", "6.5%"]
   answer: 1

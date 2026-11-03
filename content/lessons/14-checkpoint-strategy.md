@@ -100,5 +100,5 @@ steps:
 - q: Over many hands, what does perfect play cost at a $10 Ante, 30 hands an hour?
   options: ["About $0.66 an hour", "About $6.55 an hour", "About $16 an hour", "Nothing"]
   answer: 1
-  explain: "30 × $10 × 2.185% ≈ $6.55."
+  explain: "30 × $10 × {{num:perfect-edge-3}} ≈ {{num:perfect-per-hour}}."
 ```

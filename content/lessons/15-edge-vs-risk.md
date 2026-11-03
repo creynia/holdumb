@@ -14,14 +14,14 @@ divide the same expected loss by different things.
 
 | Name | Divides the expected loss by | Perfect play |
 |---|---|---|
-| **House edge per Ante** | your Ante | **2.185%** |
+| **House edge per Ante** | your Ante | **{{num:perfect-edge-3}}** |
 | Edge per initial wager | your Ante + Blind | 1.092% |
-| **Element of risk** | everything you put in action, raises included (4.15 antes on average) | **0.526%** |
+| **Element of risk** | everything you put in action, raises included ({{num:perfect-wager}} antes on average) | **{{num:perfect-eor-3}}** |
 
 The 2.185% and 0.526% figures are computed exactly by the app and agree with the Wizard of Odds analysis[^1]; the Treasury Brisbane gaming guide quotes about 2.18% and 0.53%[^2].
 
 The app uses **per Ante** as its headline number, because it turns straight into money. Your expected cost
-per hand is 2.185% of your Ante, whatever happens with the raises. Element of risk is the fairer way to
+per hand is {{num:perfect-edge-3}} of your Ante, whatever happens with the raises. Element of risk is the fairer way to
 compare UTH with a game like blackjack, where most of the money you bet is the money you start with. In
 UTH you add a raise on most hands, so per dollar in action the edge is a quarter as big.
 
@@ -34,7 +34,7 @@ At the app's default of **30 hands an hour**:
 | Ante | Perfect play | Basic card (lesson 16) |
 |---|---|---|
 | $5 | $3.28 / hour | $3.57 / hour |
-| $10 | $6.55 / hour | $7.14 / hour |
+| $10 | {{num:perfect-per-hour}} / hour | {{num:basic-per-hour}} / hour |
 | $25 | $16.39 / hour | $17.86 / hour |
 
 Real tables run anywhere from about 20 to 40 hands an hour, depending on how many players there are and
@@ -55,13 +55,13 @@ A folded hand counts as 2 antes wagered.
 - q: Which number is the expected cost per hand as a share of your Ante, under perfect play?
   options: ["0.53%", "1.09%", "2.18%", "4.15%"]
   answer: 2
-  explain: "2.185% of the Ante. 0.53% is per dollar in action, and 4.15 is the average antes in action per hand."
+  explain: "{{num:perfect-edge-3}} of the Ante. {{num:perfect-eor-2}} is per dollar in action, and {{num:perfect-wager}} is the average antes in action per hand."
 - q: $10 Ante, 30 hands an hour, perfect play. Expected cost per hour?
   options: ["About $0.66", "About $1.60", "About $6.55", "About $12.45"]
   answer: 2
-  explain: "30 × $10 × 2.185% ≈ $6.55."
+  explain: "30 × $10 × {{num:perfect-edge-3}} ≈ {{num:perfect-per-hour}}."
 - q: Why is the element of risk smaller than the house edge per Ante?
   options: ["It ignores losing hands", "It divides by all the money in action, raises included", "It only counts the Blind", "It assumes you never fold"]
   answer: 1
-  explain: "Same expected loss, divided by about 4.15 antes instead of 1."
+  explain: "Same expected loss, divided by about {{num:perfect-wager}} antes instead of 1."
 ```

@@ -5,6 +5,7 @@ import { parseCards } from '../sim/engine';
 import { validateScene } from '../sim/scene';
 import { STRATEGY_IDS } from '../sim/strategy';
 import { cardsHtml, checkInline, isHandClass } from './cards';
+import { NUMBERS } from './numbers';
 import type { Block, ChartBlockData, Lesson, LessonSource, Quiz, QuizHand, SourceItem } from './types';
 
 export interface CompileOptions {
@@ -262,6 +263,21 @@ function checkSceneText(scene: unknown): void {
   }
 }
 
+/**
+ * `{{num:<id>}}` -> the computed figure from the registry (I064), before anything else is parsed, so
+ * it works in prose, tables, quizzes and scenes alike. An unknown id names the lesson line.
+ */
+export function expandNumbers(body: string, offset = 0, source = body): string {
+  return body.replace(/\{\{num:([^}]*)\}\}/g, (m, id: string, at: number) => {
+    const v = NUMBERS[id.trim()];
+    if (v === undefined) {
+      const line = source.slice(0, offset + at).split('\n').length;
+      throw new Error(`line ${line}: unknown number token "${m}"`);
+    }
+    return v;
+  });
+}
+
 type FenceLang = 'scene' | 'quiz' | 'chart';
 export type Seg =
   | { t: 'md'; text: string }
@@ -345,7 +361,8 @@ export function compileLesson(
   opts: CompileOptions = {},
 ): CompiledLesson {
   try {
-    const { data, body } = splitFrontMatter(source);
+    const { data, body: raw } = splitFrontMatter(source);
+    const body = expandNumbers(raw, source.length - raw.length, source);
     const id = str(data.id, 'front matter id');
     const min = minHeadingDepth(body);
     const sources = parseLessonSources(data.sources, opts.sources);

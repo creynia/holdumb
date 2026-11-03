@@ -26,9 +26,9 @@ paid your Ante and Blind before you saw your cards. Good play is about losing **
 with bad hands and winning **as much as possible** with good ones.
 
 **The house edge.** Average the EV of perfect play over every possible hand and you get the price of the
-game: **−0.02185 antes per hand**, a house edge of **2.185% of the Ante**. At a $10 Ante that's an expected
+game: **−0.02185 antes per hand**, a house edge of **{{num:perfect-edge-3}} of the Ante**. At a $10 Ante that's an expected
 cost of about **22¢ a hand**. No strategy does better. Every decision this course teaches is part of
-reaching that 2.18%.
+reaching that {{num:perfect-edge-2}}.
 
 Here's what decisions are worth. If you never raised early and always bet 1x at the river, never folding,
 you'd lose **40.7% of your Ante per hand**. That's almost twenty times more. The Ante and the Blind are
@@ -118,7 +118,7 @@ steps:
 - q: What is the house edge of UTH under perfect play?
   options: ["About 0.5% of the Ante", "About 2.18% of the Ante", "About 5% of the Ante", "Zero with perfect play"]
   answer: 1
-  explain: "2.185% of the Ante per hand. Nothing beats it, and Trips is extra."
+  explain: "{{num:perfect-edge-3}} of the Ante per hand. Nothing beats it, and Trips is extra."
 - q: You played a hand perfectly and lost $60. Was it a bad decision?
   options: ["Yes, you lost", "Not necessarily: EV is about the average, not one result", "Yes, you should have folded", "Only if the dealer qualified"]
   answer: 1

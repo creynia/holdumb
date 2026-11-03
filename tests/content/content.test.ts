@@ -7,6 +7,7 @@ import { formatMoney, formatPct } from '../../src/sim/engine/money';
 import { fracToNumber } from '../../src/sim/strategy/fraction';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { expandNumbers } from '../../src/content/compile';
 
 const root = process.cwd();
 const bundle = buildContent(root);
@@ -14,7 +15,7 @@ const lessonIds = new Set(bundle.lessons.map((l) => l.id));
 
 describe('content bundle', () => {
   it('lesson 18 quotes the always-bet-4x figures the engine computes', () => {
-    const text = readFileSync(join(root, 'content/lessons/18-costly-habits.md'), 'utf8');
+    const text = expandNumbers(readFileSync(join(root, 'content/lessons/18-costly-habits.md'), 'utf8'));
     const spec = (id: 'never-fold' | 'always-max') => ({ id, ante: 1000, trips: 0 });
     const rules = { tripsPaytable: 'trips-8-6-5' } as never;
     const never = strategyMetrics(spec('never-fold'), rules, 30);

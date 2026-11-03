@@ -31,11 +31,11 @@ What happens over the long run when you play this way:
 | Bet 1x on the river | 21.8% |
 | Fold on the river | 19.2% |
 
-On average you'll have **4.15 antes** in action per hand, and lose **2.185% of one Ante** per hand (the app computes this exactly; it agrees with the Wizard of Odds figure[^3]). At a $10
-Ante and 30 hands an hour, that's an expected cost of **$6.55 an hour**.
+On average you'll have **{{num:perfect-wager}} antes** in action per hand, and lose **{{num:perfect-edge-3}} of one Ante** per hand (the app computes this exactly; it agrees with the Wizard of Odds figure[^3]). At a $10
+Ante and 30 hands an hour, that's an expected cost of **{{num:perfect-per-hour}} an hour**.
 
 **What perfect means, and what it doesn't.** No decision you make can give you an edge over the house.
-"Perfect" means you lose the least possible: 2.18% of the Ante. It doesn't mean you'll win tonight, and it
+"Perfect" means you lose the least possible: {{num:perfect-edge-2}} of the Ante. It doesn't mean you'll win tonight, and it
 doesn't make Trips or any other side bet cheaper.
 
 ```chart
@@ -74,7 +74,7 @@ steps:
 - q: What's the house edge of UTH with perfect strategy (standard Blind)?
   options: ["0.53% of the Ante", "1.09% of the Ante", "2.18% of the Ante", "3.5% of the Ante"]
   answer: 2
-  explain: "2.185% of the Ante. 0.53% is the element of risk (lesson 15)."
+  explain: "{{num:perfect-edge-3}} of the Ante. {{num:perfect-eor-2}} is the element of risk (lesson 15)."
 - q: What share of hands are 4x bets under perfect play?
   options: ["About 20%", "About 38%", "About 50%", "About 60%"]
   answer: 1
@@ -82,5 +82,5 @@ steps:
 - q: Which statement is true?
   options: ["Perfect play wins in the long run", "Perfect play loses about 22¢ a hand at a $10 Ante", "Perfect play has no variance", "Perfect play makes Trips free"]
   answer: 1
-  explain: "2.185% × $10 ≈ $0.22 per hand on average."
+  explain: "{{num:perfect-edge-3}} × $10 ≈ $0.22 per hand on average."
 ```
