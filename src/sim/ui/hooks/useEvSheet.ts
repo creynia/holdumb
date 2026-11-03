@@ -12,7 +12,8 @@ import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
 import { needsConfirm, resolveConfirm } from '../settings';
 import type { EvMode } from '../types';
-import { actionOfKey, narrationText, optionKeyOf } from '../text';
+import { optionsFor } from '../ActionBar';
+import { actionOfKey, bestOf, narrationText, optionKeyOf } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
 /** The preview request for the decision on the table now, or null between decisions. */
@@ -42,6 +43,8 @@ export interface EvSheetState {
   evMode: EvMode;
   /** Tap on an ActionBar option. */
   onOption: (k: OptionKey) => void;
+  /** The status bar's Details button: opens the sheet on the best option without acting (I092). */
+  openDetails: () => void;
   /** Props for the EvSheet, or null when no sheet is shown. */
   sheet: EvSheetProps | null;
 }
@@ -128,7 +131,24 @@ export function useEvSheet(
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
     else if (r.ok && said && d.view.state.street !== 'settled') pushToast(said);
   };
+  // The sheet was opened by the status bar's Details button (I092): closing it returns focus there,
+  // and it is not a confirm step (D40).
+  const fromDetails = useRef(false);
+  const openDetails = () => {
+    const pvNow = d.view.preview.value;
+    const allowed = d.view.allowedOptions;
+    const first = optionsFor(d.view.state.street, allowed)[0];
+    const best = pvNow ? optionKeyOf(bestOf(pvNow).action) : undefined;
+    // A gated step never opens the sheet on an option it hides.
+    const k = best && (!allowed || allowed.includes(best)) ? best : first;
+    if (!k) return;
+    fromDetails.current = true;
+    setPending(false);
+    setOpen(k);
+    d.previewed(k, false);
+  };
   const openSheet = (k: OptionKey, waiting = false) => {
+    fromDetails.current = false;
     setPending(waiting);
     setOpen(k);
     d.previewed(k, false);
@@ -176,7 +196,11 @@ export function useEvSheet(
           progress: pv.progress,
           selected: sheetKey,
           variant: orientation === 'landscape' ? 'rail' : 'sheet',
-          onSelect: (k) => openSheet(k, pending),
+          // Switching options in place keeps how the sheet was opened (confirm step or Details).
+          onSelect: (k) => {
+            setOpen(k);
+            d.previewed(k, false);
+          },
           onConfirm: (k) => void confirm(k),
           onCancel: () => {
             const k = sheetKey;
@@ -184,15 +208,17 @@ export function useEvSheet(
             setReveal(null);
             setPending(false);
             // Give focus back to the button that opened the sheet.
-            setTimeout(
-              () => document.querySelector<HTMLElement>(`button[data-option="${k}"]`)?.focus(),
-              0,
-            );
+            const opener = fromDetails.current
+              ? '[data-testid="ev-details"]'
+              : `button[data-option="${k}"]`;
+            setTimeout(() => document.querySelector<HTMLElement>(opener)?.focus(), 0);
           },
           evMode,
           // Opened by a tap the policy covers (D40): Confirm acts, Mistakes get "Do it anyway".
-          confirming: true,
+          // Opened by Details: the primary reads "Confirm <label>", warnings stay inline.
+          confirming: !fromDetails.current,
           checking: pending,
+          focusOnOpen: fromDetails.current,
           alternative,
           request: sheetReq,
           chosen: reveal?.chosen ?? null,
@@ -209,5 +235,5 @@ export function useEvSheet(
           allowed: d.view.allowedOptions,
         }
       : null;
-  return { open, evMode, onOption, sheet };
+  return { open, evMode, onOption, openDetails, sheet };
 }

@@ -3269,7 +3269,7 @@ The alternative card is always the best option. The copy is templated by situati
 | River fold with < 21 outs | "**Bet 1x**: only {outs} cards beat you. You need to win just 1 time in 5 to beat folding." |
 | River fold when the board plays | "**Bet 1x**: the board is your hand and the dealer's. It's usually a tie, and folding costs $ {2·ante}." |
 | River 1x with ≥ 21 outs, no pair | "**Fold**: {outs} cards beat you. Folding costs $ {2·ante}; playing costs $ {cost} on average." |
-| Any spot where the basic rule and perfect play disagree | Add: "(The basic card says {ruleAction} here, a rare exception worth {regret}.)" |
+| Any spot where the basic rule and perfect play disagree | Add: "(This is a rare exception, worth {regret}.)" |
 
 ### 8.5 Session panel
 
