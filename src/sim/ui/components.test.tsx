@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame, equity, parseCards } from '../engine';
-import type { Card as PlayingCard } from '../engine';
+import type { Card as PlayingCard, HandRecord } from '../engine';
 import type { DecisionPreview, PreviewRequest } from '../math';
 import type { OptionKey, SessionView } from '../scene';
 import { ActionBar, optionsFor, slotOf } from './ActionBar';
@@ -11,6 +11,7 @@ import { ChipRack } from './ChipRack';
 import { EvSheet } from './EvSheet';
 import type { EvSheetProps } from './EvSheet';
 import { Felt } from './Felt';
+import { HandHistory, actionsText, costliestStreet } from './HandHistory';
 import { SessionPanel } from './SessionPanel';
 import { FoldReveal } from './FoldReveal';
 import {
@@ -932,6 +933,131 @@ describe('session net and next-hand chips (D38)', () => {
     );
     expect(container.querySelectorAll('.is-ghost')).toHaveLength(0);
     expect(container.textContent).not.toContain('Next hand');
+  });
+});
+
+describe('HandHistory (simulator.md 3.7)', () => {
+  const rec = (n: number, over: Partial<HandRecord> = {}): HandRecord => ({
+    n,
+    p: 'Qc7d',
+    d: 'TdTs',
+    b: 'KdJh9s5c2d',
+    w: [1000, 0],
+    a: [
+      ['p', 'check', 'b', '0'],
+      ['f', 'check', 'c', '1/90'],
+      ['r', 'fold', 'm', '317/990'],
+    ],
+    net: -2000,
+    ...over,
+  });
+  const rules = createGame().rules;
+  it('is one heading and a list, newest first, with cards, choices, tier words and the net', () => {
+    render(
+      <HandHistory
+        records={[rec(2, { net: 4500, a: [['p', '4x', 'b', '0']] }), rec(1)]}
+        rules={rules}
+      />,
+    );
+    const section = screen.getByTestId('hand-history');
+    expect(section.querySelectorAll('h2')).toHaveLength(1);
+    expect(section.querySelector('h2')!.textContent).toBe('Hand history');
+    const rows = screen.getAllByTestId('hand-history-row');
+    expect(rows).toHaveLength(2);
+    expect(section.querySelector('ol')).toBeTruthy();
+    expect(rows[0]!.textContent).toContain('#2');
+    expect(rows[0]!.textContent).toContain('4x (best)');
+    expect(rows[0]!.textContent).toContain('+$45');
+    expect(rows[1]!.textContent).toContain('check (best), check (close), fold (mistake)');
+    expect(rows[1]!.textContent).toContain('\u2212$20');
+    expect(
+      within(rows[1]!).getByRole('img', { name: 'You: Queen of clubs, Seven of diamonds' }),
+    ).toBeTruthy();
+    expect(
+      within(rows[1]!).getByRole('img', { name: 'Dealer: Ten of diamonds, Ten of spades' }),
+    ).toBeTruthy();
+    // Each row's button says the hand, its net and the choices in one name.
+    expect(within(rows[1]!).getByRole('button').getAttribute('aria-label')).toBe(
+      'Hand 1, net \u2212$20, check (best), check (close), fold (mistake)',
+    );
+    expect(screen.queryByRole('status')).toBeNull(); // no live region of its own
+  });
+  it('a row expands to the settlement sentence and the replay link at the costliest street', () => {
+    render(<HandHistory records={[rec(1)]} rules={rules} replayHref={(q) => `#/play?${q}`} />);
+    const btn = screen.getByRole('button', { name: /^Hand 1,/ });
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByTestId('replay-spot')).toBeNull();
+    fireEvent.click(btn);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    const row = screen.getByTestId('hand-history-row');
+    // The settlement sentence is re-derived from the deal (describeResult, I010's fold wording).
+    expect(row.textContent).toContain('Folded. Ante -$10, Blind -$10. Net -$20.');
+    const link = screen.getByTestId<HTMLAnchorElement>('replay-spot');
+    expect(link.getAttribute('href')).toBe(
+      '#/play?hole=Qc7d&board=KdJh9s5c2d&dealer=TdTs&street=river',
+    );
+    fireEvent.click(btn);
+    expect(screen.queryByTestId('replay-spot')).toBeNull();
+  });
+  it('picks the costliest scored street, falls back to the first decision, and hides the link without replayHref', () => {
+    expect(costliestStreet(rec(1))).toBe('river');
+    expect(
+      costliestStreet(
+        rec(1, {
+          a: [
+            ['p', 'check', 'm', '3/10'],
+            ['f', 'check', 'c', '1/90'],
+            ['r', '1x', 'b', '0'],
+          ],
+        }),
+      ),
+    ).toBe('preflop');
+    expect(
+      costliestStreet(
+        rec(1, {
+          a: [
+            ['p', 'check'],
+            ['f', '2x'],
+          ],
+        }),
+      ),
+    ).toBe('preflop');
+    expect(
+      actionsText(
+        rec(1, {
+          a: [
+            ['p', 'check'],
+            ['f', '2x'],
+          ],
+        }),
+      ),
+    ).toBe('check, 2x');
+    render(<HandHistory records={[rec(1)]} rules={rules} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Hand 1,/ }));
+    expect(screen.queryByTestId('replay-spot')).toBeNull();
+  });
+  it('lists the newest 10 and the rest behind "Show more"', () => {
+    const many = Array.from({ length: 23 }, (_, i) => rec(23 - i));
+    render(<HandHistory records={many} rules={rules} />);
+    expect(screen.getAllByTestId('hand-history-row')).toHaveLength(10);
+    const more = screen.getByTestId('history-more');
+    expect(more.textContent).toBe('Show 13 more');
+    fireEvent.click(more);
+    expect(screen.getAllByTestId('hand-history-row')).toHaveLength(23);
+    expect(screen.queryByTestId('history-more')).toBeNull();
+  });
+  it('a corrupt regret never crashes a row (it is skipped for the replay street)', () => {
+    const bad = rec(1, {
+      a: [
+        ['p', 'check', 'm', '1/0'],
+        ['f', 'check', 'c', '1/90'],
+      ],
+    });
+    expect(costliestStreet(bad)).toBe('flop');
+  });
+  it('renders nothing without hands', () => {
+    const { container } = render(<HandHistory records={[]} rules={rules} />);
+    expect(container.textContent).toBe('');
   });
 });
 

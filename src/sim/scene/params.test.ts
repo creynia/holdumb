@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parsePlayParams } from './params';
+import { parsePlayParams, replayQuery } from './params';
 
 const q = (s: string) => parsePlayParams(new URLSearchParams(s));
 
@@ -29,5 +29,28 @@ describe('parsePlayParams', () => {
     expect(q('hole=AsKd&board=2c3c4c&street=river').startAt).toBeUndefined();
     expect(q('hole=AsKd&dealer=As9d').startAt).toBeUndefined();
     expect(q('hole=zz&seed=abc&strategy=nope&speed=warp')).toEqual({});
+  });
+});
+
+describe('replayQuery (hand history "Replay this spot")', () => {
+  it('round-trips through parsePlayParams with the dealer preset and later cards kept', () => {
+    const hole = 'Qc7d';
+    const board = 'KdJh9s5c2d';
+    const dealer = 'TdTs';
+    for (const street of ['preflop', 'flop', 'river'] as const) {
+      const query = replayQuery({ hole, board, dealer, street });
+      const p = parsePlayParams(new URLSearchParams(query));
+      expect(p.startAt?.street).toBe(street);
+      expect(p.startAt?.deal).toEqual({
+        player: ['Qc', '7d'],
+        dealer: ['Td', 'Ts'],
+        flop: ['Kd', 'Jh', '9s'],
+        turn: '5c',
+        river: '2d',
+      });
+    }
+    expect(replayQuery({ hole, board: '', dealer: '', street: 'preflop' })).toBe(
+      'hole=Qc7d&street=preflop',
+    );
   });
 });
