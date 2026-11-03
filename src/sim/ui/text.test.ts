@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateN, parseCards } from '../engine';
+import { evaluateN, parseCards, resolveRules, settleHand } from '../engine';
 import type { HandResult } from '../engine';
 import {
   FOLDED_RESULT,
@@ -21,6 +21,7 @@ import {
   fmtCost,
   fmtFixed,
   fmtVsBest,
+  foldAnnouncement,
   foldRevealText,
   handName,
   headline,
@@ -80,14 +81,70 @@ describe('prose', () => {
       "Your pair of kings beats the dealer's pair of nines. Ante +$10, Blind push (needs a straight), Play +$40. Net +$50.",
     );
   });
-  it('says what a fold would have done (D7)', () => {
+  it('makes a fold toast carry only the money (the reveal has the rest)', () => {
+    expect(describeResult(FOLDED_RESULT)).toBe('Folded. Ante -$10, Blind -$10. Net -$20.');
+  });
+  it('says what a fold would have done (D7) with the net difference', () => {
+    // FOLDED_RESULT: folded -$20; playing would have lost $30, so folding saved $10.
     expect(foldRevealText(FOLDED_RESULT)).toBe(
-      'The dealer had a pair of tens (qualifies). You would have lost $30.',
+      'The dealer had a pair of tens (qualifies). You would have lost $30 (folding saved $10).',
     );
-    const won = { ...FOLDED_RESULT, ifPlayed: { outcome: 'win' as const, net: 2500 } };
-    expect(foldRevealText(won)).toContain('You would have won $25.');
+    // Playing would have won $40: folding cost $60 (40 - -20).
+    const won = { ...FOLDED_RESULT, ifPlayed: { outcome: 'win' as const, net: 4000 } };
+    expect(foldRevealText(won)).toContain('You would have won $40 (folding cost $60).');
+    // Playing would have pushed: folding cost the $20 it lost.
     const tie = { ...FOLDED_RESULT, ifPlayed: { outcome: 'tie' as const, net: 0 } };
-    expect(foldRevealText(tie)).toContain('You would have pushed.');
+    expect(foldRevealText(tie)).toContain('You would have pushed (folding cost $20).');
+    // Same money either way: no difference clause.
+    const same = { ...FOLDED_RESULT, ifPlayed: { outcome: 'lose' as const, net: -2000 } };
+    expect(foldRevealText(same)).toContain('You would have lost $20.');
+  });
+  it('announces the real net once, with the dealer and the would-have line', () => {
+    expect(foldAnnouncement(FOLDED_RESULT)).toBe(
+      'You folded. Net -$20. The dealer had a pair of tens (qualifies). You would have lost $30 (folding saved $10).',
+    );
+  });
+  it('compares only the ante and blind when a Trips bet is up (trips settles either way)', () => {
+    const fold = (player: string, dealer: string, board: string) => {
+      const p = parseCards(player);
+      const d = parseCards(dealer);
+      const b = parseCards(board);
+      const deal = {
+        player: [p[0]!, p[1]!] as const,
+        dealer: [d[0]!, d[1]!] as const,
+        board: [b[0]!, b[1]!, b[2]!, b[3]!, b[4]!] as const,
+        forced: true,
+      };
+      return settleHand(deal, { ante: 1000, blind: 1000, trips: 1000 }, null, true, resolveRules());
+    };
+    // Trips aces (pays 3:1 = +$30) beat the dealer's two pair. Folding lost ante + blind = -$20,
+    // so the fold's net is +$10. Playing would have won ante $10 + play $10 (blind pushes under a
+    // straight) = +$20. Folding cost $20 - (-$20) = $40. The old code gave $10.
+    const won = fold('Ah Ad', '7d 9c', 'Ac 7h 2d 9s 4c');
+    expect(won.wagers.find((w) => w.wager === 'trips')!.profit).toBe(3000);
+    expect(won.net).toBe(1000);
+    expect(foldRevealText(won)).toContain('You would have won $20 (folding cost $40).');
+    // Trips miss (-$10) and the dealer's three nines beat ace high. Ante + blind lost = -$20;
+    // playing would have lost $30 (ante, blind, play). Folding saved $30 - $20 = $10.
+    // The old code saw the trips loss and printed no difference at all.
+    const lost = fold('As Kd', '9d 9c', 'Qc 7h 2d 9s 4c');
+    expect(lost.wagers.find((w) => w.wager === 'trips')!.profit).toBe(-1000);
+    expect(lost.net).toBe(-3000);
+    expect(foldRevealText(lost)).toContain('You would have lost $30 (folding saved $10).');
+  });
+  it('does the saved/cost arithmetic in integer cents', () => {
+    // Ante and blind lost $10.50 in total, so folding saved $30.01 - $10.50... see below.
+    const odd = {
+      ...FOLDED_RESULT,
+      net: -1050,
+      wagers: [
+        { ...FOLDED_RESULT.wagers[0]!, profit: -525 },
+        { ...FOLDED_RESULT.wagers[1]!, profit: -525 },
+      ],
+      ifPlayed: { outcome: 'lose' as const, net: -2001 },
+    };
+    // -$20.01 played vs -$10.50 folded: folding saved $9.51.
+    expect(foldRevealText(odd)).toContain('You would have lost $20.01 (folding saved $9.51).');
   });
   it('uses the right article and verb for every kind of hand name', () => {
     expect(withArticle('pair of kings')).toBe('a pair of kings');

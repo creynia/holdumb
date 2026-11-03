@@ -42,7 +42,18 @@ test.describe('sandbox', () => {
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
   });
 
-  test('a blunder needs a second tap', async ({ page }) => {
+  test('by default a blunder acts on Confirm with no second tap (D39)', async ({ page }) => {
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    await ready(page);
+    await opt(page, 'check').click();
+    await page.getByTestId('confirm').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+    await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
+  });
+
+  test('a blunder needs a second tap with "Only bad bets"', async ({ page }) => {
+    await page.goto('/#/settings');
+    await page.getByRole('radio', { name: /Only bad bets/ }).check();
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);
     await opt(page, 'check').click();
@@ -61,6 +72,13 @@ test.describe('sandbox', () => {
     const reveal = page.getByTestId('fold-reveal');
     await expect(reveal).toBeVisible();
     await expect(reveal).toContainText(/would have (won|lost)|pushed/);
+    // Exactly one live region speaks the fold, and it has the real net.
+    const live = page
+      .locator('[aria-live="polite"], [role="status"], [role="log"], [role="alert"]')
+      .filter({ hasText: /folded/i });
+    await expect(live).toHaveCount(1);
+    await expect(live).toContainText('You folded. Net');
+    await expect(live).toContainText('would have');
   });
 
   test('practice mode hides the EV until you confirm', async ({ page }) => {
