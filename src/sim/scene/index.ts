@@ -5,3 +5,4 @@ export * from './gate';
 export * from './runner';
 export * from './driver';
 export * from './params';
+export * from './modes';

@@ -14,6 +14,7 @@ import {
   matchAction,
 } from './gate';
 import type { Gate } from './gate';
+import { CONFIRM_ON, EV_MODES, stepConfirmOn, stepEvMode } from './modes';
 import type { ActionMatcher, Condition, OptionKey, SceneConfig, SceneStep } from './types';
 
 export type SceneValidation = { ok: true; scene: SceneConfig } | { ok: false; errors: string[] };
@@ -33,6 +34,8 @@ const SCENE_KEYS = new Set([
   'allowedOptions',
   'highlight',
   'showEV',
+  'evMode',
+  'confirmOn',
   'evDetail',
   'whyOpen',
   'revealDealer',
@@ -56,6 +59,8 @@ const STEP_KEYS = new Set([
   'completeWhen',
   'advance',
   'showEV',
+  'evMode',
+  'confirmOn',
   'revealDealer',
 ]);
 const UI_KEYS = new Set([
@@ -509,6 +514,28 @@ function semantic(scene: SceneConfig, e: Errs): void {
   });
 }
 
+/** D39 keys: known values only, and never a legacy alias next to the new key. */
+function checkModes(e: Errs, path: string, o: Obj, legacy: readonly string[]): void {
+  if (o.evMode !== undefined && !(EV_MODES as readonly unknown[]).includes(o.evMode))
+    e.add(`${path}.evMode`, `unknown evMode "${show(o.evMode)}" (before, after or never)`);
+  if (o.confirmOn !== undefined && !(CONFIRM_ON as readonly unknown[]).includes(o.confirmOn))
+    e.add(
+      `${path}.confirmOn`,
+      `unknown confirmOn "${show(o.confirmOn)}" (all, costly, blunder or never)`,
+    );
+  if (o.evMode !== undefined)
+    for (const k of legacy)
+      if (o[k] !== undefined) e.add(path, `set evMode or ${k}, not both (${k} is a legacy alias)`);
+}
+
+function usesPreviewed(c: Condition): boolean {
+  return 'all' in c
+    ? c.all.some(usesPreviewed)
+    : 'any' in c
+      ? c.any.some(usesPreviewed)
+      : 'previewed' in c;
+}
+
 function usesBest(step: SceneStep): boolean {
   const inCond = (c: Condition): boolean =>
     'all' in c
@@ -541,6 +568,7 @@ export function validateScene(json: unknown): SceneValidation {
   if (s.startAt !== undefined) checkStartAt(e, 'scene.startAt', s.startAt);
   if (s.allowedActions !== undefined) checkActionList(e, 'scene.allowedActions', s.allowedActions);
   if (s.allowedOptions !== undefined) checkOptionList(e, 'scene.allowedOptions', s.allowedOptions);
+  checkModes(e, 'scene', s, ['practice', 'showEV']);
   if (s.rules !== undefined && !isObj(s.rules)) e.add('scene.rules', 'must be an object');
   if (s.ui !== undefined) {
     if (!isObj(s.ui)) e.add('scene.ui', 'must be an object');
@@ -589,6 +617,7 @@ export function validateScene(json: unknown): SceneValidation {
         if (typeof step.text !== 'string') e.add(`${p}.text`, 'must be a string');
         if (step.completeWhen === undefined) e.add(`${p}.completeWhen`, 'is required');
         else checkCondition(e, `${p}.completeWhen`, step.completeWhen);
+        checkModes(e, p, step, ['showEV']);
         if (step.advance !== undefined && step.advance !== 'auto' && step.advance !== 'button')
           e.add(`${p}.advance`, 'must be auto or button');
         if (step.allowedActions !== undefined)
@@ -620,11 +649,12 @@ export function validateScene(json: unknown): SceneValidation {
     const scene = json as unknown as SceneConfig;
     const steps = scene.steps ?? [];
     steps.forEach((step, i) => {
-      if (usesBest(step) && (step.showEV ?? scene.showEV) === false && !scene.practice)
-        e.add(
-          `steps[${i}] "${step.id}"`,
-          'best-decision matching needs showEV on (or practice mode)',
-        );
+      const where = `steps[${i}] "${step.id}"`;
+      if (usesBest(step) && stepEvMode(scene, step) === 'never')
+        e.add(where, "best-decision matching needs EV (evMode 'before' or 'after', not 'never')");
+      // The confirm sheet is how a learner previews an option (D39).
+      if (usesPreviewed(step.completeWhen) && stepConfirmOn(scene, step) !== 'all')
+        e.add(where, 'previewed needs confirmOn: all');
     });
     semantic(scene, e);
     if (e.list.length === 0) return { ok: true, scene };
