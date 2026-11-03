@@ -85,7 +85,7 @@ describe('AutoPlayPanel cost vs perfect and compare table (I022)', () => {
   };
   const pick = (id: string) =>
     fireEvent.change(screen.getByLabelText('Strategy'), { target: { value: id } });
-  const costText = () => screen.getByTestId('auto-play-cost').textContent!;
+  const costText = () => screen.getByTestId('auto-play-cost').textContent ?? '';
 
   it('matches decisions section 4 at $10 and 30 hands an hour', () => {
     const { evClient } = setup();
@@ -123,12 +123,10 @@ describe('AutoPlayPanel cost vs perfect and compare table (I022)', () => {
     const rows = [...screen.getByTestId('auto-play-compare').querySelectorAll('tbody tr')].map(
       (tr) => [...tr.children].map((c) => c.textContent),
     );
-    expect(rows).toEqual(
-      [
-        ['Expert', '2.27%', '-$6.81', '+$0.26'],
-        ['Basic', '2.38%', '-$7.14', '+$0.59'],
-      ].map((r) => [r[0], r[1], expect.any(String), r[3]]),
-    );
+    expect(rows).toEqual([
+      ['Expert', '2.27%', '-$6.81', '+$0.26'],
+      ['Basic', '2.38%', '-$7.14', '+$0.59'],
+    ]);
     evClient.dispose();
   });
 });
