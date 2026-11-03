@@ -137,6 +137,21 @@ h3 {
   font-size: 1.25rem;
   line-height: 1;
 }
+/* Forced colours (Windows High Contrast): the bar and links use system colours, and the current
+   page is underlined so it still stands out without the accent colour. */
+@media (forced-colors: active) {
+  .tabbar {
+    background: Canvas;
+    border-top-color: CanvasText;
+  }
+  .tabbar a {
+    color: LinkText;
+  }
+  .tabbar a[aria-current='page'] {
+    color: CanvasText;
+    text-decoration: underline;
+  }
+}
 @media (min-width: 768px) {
   .tabbar {
     display: none;
