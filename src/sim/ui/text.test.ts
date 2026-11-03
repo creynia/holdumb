@@ -204,7 +204,7 @@ describe('river dealer outs copy (lesson 12)', () => {
     expect(outsDetailText(f, hole, board)).toBe(
       'any ace (4), any king (3), any jack (3), any nine (3), any five (3), any two (3)',
     );
-    expect(hiddenPairLine(f)).toBe('Hidden pair: no');
+    expect(hiddenPairLine(f)).toBe('Hidden pair or better: no');
     expect(basicRiverLine(f)).toBe('Basic card: bet 1x (outs < 21)');
   });
   it('says fold with 21 or more outs and no hidden pair', () => {
@@ -215,7 +215,7 @@ describe('river dealer outs copy (lesson 12)', () => {
   });
   it('a hidden pair plays whatever the count, and partial ranks name the card', () => {
     const { hole, board, f } = spot('6d 5s', 'Kh 6h 8h 7c Qh');
-    expect(hiddenPairLine(f)).toBe('Hidden pair: yes');
+    expect(hiddenPairLine(f)).toBe('Hidden pair or better: yes');
     expect(basicRiverLine(f)).toBe('Basic card: bet 1x (hidden pair)');
     const groups = groupOuts(f.outCards, hole, board);
     expect(outGroupText(groups[0]!)).toBe('the ace of hearts');

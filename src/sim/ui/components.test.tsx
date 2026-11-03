@@ -207,7 +207,7 @@ describe('EvSheet river dealer outs (lesson 12)', () => {
     expect(screen.getByTestId('dealer-outs-list').textContent).toBe(
       ' (any king (3), any nine (3), any five (3), any three (3), any two (3))',
     );
-    expect(screen.getByTestId('hidden-pair').textContent).toBe('Hidden pair: no');
+    expect(screen.getByTestId('hidden-pair').textContent).toBe('Hidden pair or better: no');
     expect(screen.getByTestId('basic-river').textContent).toBe('Basic card: bet 1x (outs < 21)');
   });
   it('says fold with 21+ outs and no hidden pair', () => {
@@ -221,7 +221,7 @@ describe('EvSheet river dealer outs (lesson 12)', () => {
       'Basic card: fold (21+ outs, no hidden pair)',
     );
   });
-  it('after the move (practice result) the facts sit in the result, without the basic card', () => {
+  it('after the move (practice result) the facts, basic card included, sit in the result', () => {
     sheet({
       preview: RIVER_ACE_HIGH.preview,
       selected: 'fold',
@@ -241,10 +241,10 @@ describe('EvSheet river dealer outs (lesson 12)', () => {
     expect(outs.getAttribute('data-mode')).toBe('after');
     expect(screen.getByTestId('practice-result').contains(outs)).toBe(true);
     expect(outs.textContent).toContain('Dealer outs: 15 of 45');
-    expect(outs.textContent).toContain('Hidden pair: no');
-    expect(screen.queryByTestId('basic-river')).toBeNull();
+    expect(outs.textContent).toContain('Hidden pair or better: no');
+    expect(screen.getByTestId('basic-river').textContent).toBe('Basic card: bet 1x (outs < 21)');
   });
-  it('a read-only result sheet (drill) is after mode too', () => {
+  it('a read-only result sheet (drill) is after mode and still shows the basic card', () => {
     render(
       <EvSheet
         preview={RIVER_PLAY_BOARD.preview}
@@ -254,7 +254,9 @@ describe('EvSheet river dealer outs (lesson 12)', () => {
       />,
     );
     expect(screen.getByTestId('dealer-outs').getAttribute('data-mode')).toBe('after');
-    expect(screen.queryByTestId('basic-river')).toBeNull();
+    expect(screen.getByTestId('basic-river').textContent).toBe(
+      'Basic card: fold (21+ outs, no hidden pair)',
+    );
   });
   it('appears only on a river preview whose request is the same street', () => {
     sheet({ request: { ...request(RIVER_ACE_HIGH), street: 'preflop', board: [] } });

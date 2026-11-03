@@ -62,7 +62,7 @@ test.describe('sandbox', () => {
     await expect(outs).toBeVisible();
     await expect(outs).toContainText('Dealer outs: 27 of 45');
     await expect(outs).toContainText('any ace (3)');
-    await expect(outs).toContainText('Hidden pair: no');
+    await expect(outs).toContainText('Hidden pair or better: no');
     await expect(outs).toContainText('Basic card: fold (21+ outs, no hidden pair)');
     await page.getByTestId('confirm').click();
     const reveal = page.getByTestId('fold-reveal');

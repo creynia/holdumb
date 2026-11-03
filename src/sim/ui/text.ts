@@ -235,8 +235,9 @@ export function outsDetailText(
   if (f.outs === 0) return 'no single card beats you';
   return groupOuts(f.outCards, hole, board).map(outGroupText).join(', ');
 }
-/** "Hidden pair: yes" / "Hidden pair: no". */
-export const hiddenPairLine = (f: RiverFacts): string => `Hidden pair: ${f.hidden ? 'yes' : 'no'}`;
+/** "Hidden pair or better: yes/no" (`hidden` covers two pair and above too). */
+export const hiddenPairLine = (f: RiverFacts): string =>
+  `Hidden pair or better: ${f.hidden ? 'yes' : 'no'}`;
 /** The basic card's river rule applied here: "Basic card: bet 1x (outs < 21)". */
 export function basicRiverLine(f: RiverFacts): string {
   const why = f.hidden ? 'hidden pair' : f.outs < 21 ? 'outs < 21' : '21+ outs, no hidden pair';
