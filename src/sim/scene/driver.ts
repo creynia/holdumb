@@ -207,8 +207,13 @@ export class SimDriver {
   private rt: SceneRuntime;
   private startEq: Cents;
   private totals: SessionTotals;
-  private hand: { base: Fraction | null; regret: Fraction; scored: boolean; ante: number } | null =
-    null;
+  private hand: {
+    base: Fraction | null;
+    regret: Fraction;
+    scored: boolean;
+    ante: number;
+    mistakes: number;
+  } | null = null;
   private lastEvents: GameEvent[] = [];
   private eventSeq = 0;
   private pv: PreviewState = { key: null, status: 'idle', value: null, progress: 0 };
@@ -443,7 +448,13 @@ export class SimDriver {
   // ---------- hand tracking (luck vs mistakes) ----------
 
   private beginHandTrack(): void {
-    this.hand = { base: null, regret: ZERO_CENTS, scored: true, ante: this.game.bets.ante };
+    this.hand = {
+      base: null,
+      regret: ZERO_CENTS,
+      scored: true,
+      ante: this.game.bets.ante,
+      mistakes: 0,
+    };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
     if (!this.hand) return;
@@ -455,8 +466,8 @@ export class SimDriver {
     }
     if (this.hand.base === null) this.hand.base = pv.options[pv.bestIndex]!.evCents;
     this.hand.regret = add(this.hand.regret, scale(opt.regret, this.hand.ante));
-    if (opt.tier !== 'best' && opt.tier !== 'close')
-      this.totals = { ...this.totals, mistakes: this.totals.mistakes + 1 };
+    // Counted per hand and added only if the hand ends scored (see finishHandTrack).
+    if (opt.tier !== 'best' && opt.tier !== 'close') this.hand.mistakes += 1;
   }
   private finishHandTrack(result: HandResult): void {
     const h = this.hand;
@@ -488,6 +499,7 @@ export class SimDriver {
       t.scored += 1;
       t.expectedCents = add(t.expectedCents, h.base);
       t.mistakeCents = add(t.mistakeCents, h.regret);
+      t.mistakes = t.mistakes + h.mistakes;
       t.scoredMainCents += main;
       t.scoredAnteCents += h.ante;
     }
