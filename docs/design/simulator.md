@@ -1252,7 +1252,14 @@ dashed exact-expected line; for 100 sessions, a p10–p90 band + median +
 expected + survival; an outcome histogram (win/lose/tie/fold and final hand
 categories); a summary that labels **exact** vs **simulated** figures (§2.6):
 expected loss per hour (exact), actual (simulated), luck, bust rate, P(ahead).
-"Watch" plays ≤ 30 hands on the felt at fast speed (and allows `perfect`).
+"Watch" (I078, sandbox tools under the table) plays 10 / 20 / 30 hands (cap 30) on the felt with
+`perfect` play: every decision takes the best option of the exact EV preview (§2.3; exact ties go
+to the smaller wager), so it never uses `expert` or Monte Carlo. The move is named and highlighted on
+the locked ActionBar for a think pause (900 ms; 500 ms at fast speed or reduced motion) after the
+cards land, and a settled hand stays up for 1.8 s (1 s). A status strip with Stop takes the chip
+rack's place in portrait and sits above the table in landscape (it never covers the felt). It stops on
+Stop, when a deal is refused (not enough chips) or if a decision has no exact EV. Code:
+`ui/watch.ts` (loop), `ui/hooks/useWatch.ts`, `ui/WatchBar.tsx`.
 
 ---
 

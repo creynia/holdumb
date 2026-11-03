@@ -1,4 +1,5 @@
-// Sandbox tools under the table: the practice-mode toggle and New session.
+// Sandbox tools under the table: the practice-mode toggle, New session and Watch (I078).
+import type { ComponentChildren } from 'preact';
 import { formatMoney } from '../engine';
 import type { Cents } from '../engine';
 import type { SimDriver } from '../scene';
@@ -10,9 +11,19 @@ export interface SimToolsProps {
   /** The app's handler (settings are the source of truth); without it the table keeps its own. */
   onPracticeChange: SimulatorProps['onPracticeChange'];
   bankroll: Cents;
+  /** The table is playing itself (I078): New session waits. */
+  busy?: boolean;
+  children?: ComponentChildren;
 }
 
-export function SimTools({ d, practice, onPracticeChange, bankroll }: SimToolsProps) {
+export function SimTools({
+  d,
+  practice,
+  onPracticeChange,
+  bankroll,
+  busy,
+  children,
+}: SimToolsProps) {
   return (
     <div class="sim-tools">
       <label>
@@ -31,10 +42,12 @@ export function SimTools({ d, practice, onPracticeChange, bankroll }: SimToolsPr
       <button
         type="button"
         class="sim-btn sim-btn-secondary"
+        disabled={busy}
         onClick={() => d.newSession(bankroll)}
       >
         New session ({formatMoney(bankroll)})
       </button>
+      {children}
     </div>
   );
 }

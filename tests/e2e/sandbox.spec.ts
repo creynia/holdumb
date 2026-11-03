@@ -188,4 +188,48 @@ test.describe('sandbox', () => {
     if (vp.width > vp.height && vp.height < 520)
       expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
   });
+
+  test('Watch plays perfect hands on the felt without covering it, and Stop stops (I078)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?seed=7&speed=instant');
+    const sim = page.getByTestId('simulator');
+    await expect(sim).toHaveAttribute('data-hands', '0');
+    await page.getByTestId('watch-hands').selectOption('10');
+    await page.getByTestId('watch-start').click();
+    const status = page.getByTestId('watch-status');
+    await expect(status).toBeVisible();
+    await expect(status).toContainText('of 10');
+    await expect(page.locator('.sim-rack')).toHaveCount(0);
+    // The move is announced and highlighted on the (locked) ActionBar before it is played.
+    await expect(page.getByTestId('watch-option')).toHaveText(/Bet \dx|Check|Fold/, {
+      timeout: 15_000,
+    });
+    await expect(page.locator('button[data-option].is-hl')).toHaveCount(1);
+    await expect(page.locator('button[data-option]').first()).toBeDisabled();
+    // The strip sits below the felt (or beside it in landscape) and Stop is a full tap target.
+    const vp = page.viewportSize()!;
+    const felt = (await page.locator('svg.sim-felt').boundingBox())!;
+    const strip = (await status.boundingBox())!;
+    const overlaps =
+      strip.x < felt.x + felt.width &&
+      felt.x < strip.x + strip.width &&
+      strip.y < felt.y + felt.height &&
+      felt.y < strip.y + strip.height;
+    expect(overlaps).toBe(false);
+    const stop = (await page.getByTestId('watch-stop').boundingBox())!;
+    expect(stop.height).toBeGreaterThanOrEqual(44);
+    expect(stop.width).toBeGreaterThanOrEqual(44);
+    if (vp.width > vp.height && vp.height < 520)
+      expect(stop.y + stop.height).toBeLessThanOrEqual(vp.height);
+    await expect
+      .poll(async () => Number(await sim.getAttribute('data-hands')), { timeout: 30_000 })
+      .toBeGreaterThanOrEqual(2);
+    await page.getByTestId('watch-stop').click();
+    await expect(status).toHaveCount(0);
+    await expect(page.getByTestId('watch-summary')).toContainText(/Stopped after \d+ hands?/);
+    const hands = await sim.getAttribute('data-hands');
+    await page.waitForTimeout(2500);
+    await expect(sim).toHaveAttribute('data-hands', hands!);
+  });
 });

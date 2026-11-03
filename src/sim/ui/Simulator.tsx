@@ -18,14 +18,17 @@ import { StatusBar } from './StatusBar';
 import { StepPanel } from './StepPanel';
 import { Table, useOrientation } from './Table';
 import { Toasts } from './Toasts';
+import { WatchControls, WatchStatus } from './WatchBar';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
+import { useWatch } from './hooks/useWatch';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
+import { watchPace } from './watch';
 
 export function Simulator(props: SimulatorProps) {
   const mode: 'sandbox' | 'scene' =
@@ -52,7 +55,16 @@ export function Simulator(props: SimulatorProps) {
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
   useSandboxSync(sim, sandbox, baseScene, settings);
 
-  const timeline = buildTimeline(view.lastEvents, resolveSpeed(settings, scene));
+  const speed = resolveSpeed(settings, scene);
+  const timeline = buildTimeline(view.lastEvents, speed);
+  // I078: the table plays itself with perfect strategy; pauses wait for the cards to land.
+  const watch = useWatch(
+    d,
+    watchPace(speed),
+    () => buildTimeline(d.view.lastEvents, speed).totalMs,
+  );
+  const watching = watch.running;
+  const watchStrip = watching ? <WatchStatus watch={watch} orientation={orientation} /> : null;
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
   const bar = usePreviewBar(view.preview, decision, evShown);
 
@@ -61,7 +73,8 @@ export function Simulator(props: SimulatorProps) {
   const board = hand ? hand.deal.board.slice(0, hand.boardShown) : [];
   const onFelt = settled ? 0 : Object.values(state.bets).reduce((a, b) => a + b, 0);
   const eq = equity(state);
-  const [circleHl, optionHl] = splitHighlight(step?.highlight ?? scene.highlight ?? []);
+  const [circleHl, stepOptionHl] = splitHighlight(step?.highlight ?? scene.highlight ?? []);
+  const optionHl = watching && watch.option ? [watch.option] : stepOptionHl;
 
   const stepPanel = step ? (
     <StepPanel
@@ -110,7 +123,7 @@ export function Simulator(props: SimulatorProps) {
           nextHand={settled}
           skipped={motion.skipped}
           onSkip={motion.playing ? motion.skip : undefined}
-          onCircle={bets.onCircle}
+          onCircle={watching ? undefined : bets.onCircle}
         />
       }
       actions={
@@ -127,7 +140,7 @@ export function Simulator(props: SimulatorProps) {
             bets={{ ante: state.bets.ante, trips: state.bets.trips }}
             canDeal={!view.dealLocked && state.bets.ante > 0}
             canClear={!view.clearLocked}
-            disabled={(settled && view.dealLocked) || view.pendingStart}
+            disabled={(settled && view.dealLocked) || view.pendingStart || watching}
             onOption={ev.onOption}
             onDeal={() => void act({ type: 'deal' })}
             onClear={bets.clearBets}
@@ -138,7 +151,11 @@ export function Simulator(props: SimulatorProps) {
         </>
       }
       chips={
-        betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
+        watching ? (
+          orientation === 'portrait' ? (
+            watchStrip
+          ) : null
+        ) : betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
           <ChipRack
             chips={scene.ui?.chips ?? CHIP_DENOMS}
             selected={bets.chip}
@@ -163,6 +180,7 @@ export function Simulator(props: SimulatorProps) {
       style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
     >
       {orientation === 'portrait' || autoOnly ? stepPanel : null}
+      {orientation === 'landscape' ? watchStrip : null}
       {autoOnly ? null : table}
       {sandbox && scene.ui?.showSettings ? (
         <SimTools
@@ -170,7 +188,10 @@ export function Simulator(props: SimulatorProps) {
           practice={practice}
           onPracticeChange={props.onPracticeChange}
           bankroll={scene.bankroll ?? 50_000}
-        />
+          busy={watching}
+        >
+          <WatchControls watch={watch} disabled={view.pendingStart} />
+        </SimTools>
       ) : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />
