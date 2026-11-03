@@ -56,3 +56,26 @@ export function parsePlayParams(query: URLSearchParams): PlayParams {
   }
   return out;
 }
+
+/** A spot to replay: the inverse of `parsePlayParams` for `?hole= &board= &dealer= &street=`. */
+export interface ReplaySpot {
+  hole: string;
+  /** '' (preflop), three cards (flop) or five (river) as codes, 'Kd9h5c'. */
+  board: string;
+  dealer: string;
+  street: DecisionStreet;
+}
+
+/**
+ * The play-route query for a spot: the first NEED[street] board cards are shown, the dealer's
+ * cards are preset, and the rest of the board is dealt as recorded. Round-trips through
+ * `parsePlayParams` (tested).
+ */
+export function replayQuery(spot: ReplaySpot): string {
+  const q = new URLSearchParams();
+  q.set('hole', spot.hole);
+  if (spot.board) q.set('board', spot.board);
+  if (spot.dealer) q.set('dealer', spot.dealer);
+  q.set('street', spot.street);
+  return q.toString();
+}

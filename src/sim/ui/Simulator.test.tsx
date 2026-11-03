@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEvClient } from '../worker/client';
 import { SimDriver } from '../scene';
@@ -137,6 +137,47 @@ describe('Simulator container', () => {
     expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river');
     evClient.dispose();
   });
+  it('hand history: a settled sandbox hand adds a row when ui.showHistory; a lesson shows none', async () => {
+    const scene: SceneConfig = {
+      id: 'sandbox',
+      version: 1,
+      bets: { ante: 1000 },
+      ui: { showHistory: true },
+      startAt: {
+        street: 'river',
+        deal: {
+          player: ['3c', '4d'],
+          flop: ['Ah', 'Ks', 'Qd'],
+          turn: '9c',
+          river: '7h',
+          dealer: ['Td', 'Ts'],
+        },
+      },
+    };
+    const { evClient } = mount(scene, { replayHref: (q) => `#/play?${q}` });
+    expect(screen.queryByTestId('hand-history')).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
+    );
+    fireEvent.click(document.querySelector('[data-option="fold"]')!);
+    await flush();
+    fireEvent.click(screen.getByTestId('confirm'));
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
+    );
+    const rows = screen.getAllByTestId('hand-history-row');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.textContent).toContain('fold (best)');
+    fireEvent.click(within(rows[0]!).getByRole('button'));
+    expect(screen.getByTestId('replay-spot').getAttribute('href')).toBe(
+      '#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river',
+    );
+    evClient.dispose();
+    cleanup();
+    const lesson = mount({ ...scene, ui: {} });
+    expect(screen.queryByTestId('hand-history')).toBeNull();
+    lesson.evClient.dispose();
+  });
   it('stores the table evMode in the sandbox snapshot', async () => {
     const snaps: unknown[] = [];
     const { evClient } = mount(
@@ -177,5 +218,163 @@ describe('Simulator container', () => {
     );
     expect(screen.queryByTestId('ev-sheet')).toBeNull();
     evClient.dispose();
+  });
+
+  describe('status-bar Details (I092)', () => {
+    const FLOP: SceneConfig = {
+      id: 'sandbox',
+      version: 1,
+      startAt: {
+        street: 'flop',
+        deal: { player: ['Ah', '7c'], flop: ['7d', 'Ks', '2c'], dealer: ['9d', '9s'] },
+      },
+    };
+    const ready = () =>
+      waitFor(() => expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'), {
+        timeout: 8000,
+      });
+    it('EV before: Details sits in the third column and opens the sheet on the best option without acting', async () => {
+      const { evClient } = mount(FLOP);
+      await ready();
+      const btn = screen.getByTestId('ev-details');
+      expect(btn.getAttribute('aria-label')).toBe('EV details');
+      expect(btn.closest('div')!.textContent).toContain('EV');
+      expect(screen.getByRole('group', { name: /decision/i })).toBeTruthy();
+      fireEvent.click(btn);
+      await flush();
+      const sheet = screen.getByTestId('ev-sheet');
+      const best = document.querySelector('.is-best')!.getAttribute('data-option');
+      expect(sheet.textContent).toMatch(
+        new RegExp(`Confirm ${best === 'check' ? 'Check' : 'Bet 2x'}`),
+      );
+      // nothing was played
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('flop');
+      // the button is not offered while the sheet is open
+      expect(screen.queryByTestId('ev-details')).toBeNull();
+      fireEvent.click(screen.getByTestId('confirm'));
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
+      );
+      evClient.dispose();
+    });
+    it('Cancel gives focus back to Details', async () => {
+      const { evClient } = mount(FLOP);
+      await ready();
+      fireEvent.click(screen.getByTestId('ev-details'));
+      await flush();
+      fireEvent.keyDown(screen.getByTestId('ev-sheet'), { key: 'Escape' });
+      await act(() => new Promise((r) => setTimeout(r, 20)));
+      expect(screen.getByTestId('ev-details')).toBe(document.activeElement);
+      evClient.dispose();
+    });
+    it('in a lesson step Details feeds `previewed` like tapping an option', async () => {
+      const events: string[] = [];
+      const scene = {
+        id: 'det',
+        version: 1,
+        bankroll: 50_000,
+        bets: { ante: 1000 },
+        showEV: true,
+        steps: [
+          {
+            id: 'deal',
+            text: 'Deal.',
+            deals: [{ player: ['As', 'Ad'] }],
+            allowedActions: ['deal'],
+            completeWhen: { action: { type: 'deal' } },
+          },
+          {
+            id: 'compare',
+            text: 'Read the best line.',
+            allowedActions: ['check', 'play'],
+            confirmOn: 'all',
+            expect: [{ type: 'fold' }],
+            completeWhen: { previewed: { option: 'play-4' } },
+          },
+          {
+            id: 'end',
+            text: 'Done.',
+            allowedActions: [],
+            completeWhen: { acknowledged: true },
+            advance: 'button',
+          },
+        ],
+      } as unknown as SceneConfig;
+      const { evClient } = mount(scene, {
+        onEvent: (e) => {
+          if (e.type === 'step-completed') events.push(e.stepId);
+        },
+      });
+      fireEvent.click(screen.getByText('Deal'));
+      await waitFor(() => expect(screen.queryByTestId('ev-details')).toBeTruthy());
+      await ready();
+      expect(events).toEqual(['deal']);
+      fireEvent.click(screen.getByTestId('ev-details'));
+      await flush();
+      expect(events).toEqual(['deal', 'compare']); // previewed(play-4) fired from Details
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('preflop');
+      evClient.dispose();
+    });
+    it('a gated step never opens Details on an option it hides', async () => {
+      // AA preflop: Bet 4x is best, but the step only allows Check and Bet 3x.
+      const scene = {
+        id: 'gated',
+        version: 1,
+        bankroll: 50_000,
+        bets: { ante: 1000 },
+        showEV: true,
+        steps: [
+          {
+            id: 'deal',
+            text: 'Deal.',
+            deals: [{ player: ['As', 'Ad'] }],
+            allowedActions: ['deal'],
+            completeWhen: { action: { type: 'deal' } },
+          },
+          {
+            id: 'read',
+            text: 'Read.',
+            allowedActions: ['check', 'play'],
+            allowedOptions: ['play-3', 'check'],
+            confirmOn: 'all',
+            expect: [{ type: 'fold' }],
+            completeWhen: { previewed: { option: 'check' } },
+          },
+        ],
+      } as unknown as SceneConfig;
+      const { evClient } = mount(scene);
+      fireEvent.click(screen.getByText('Deal'));
+      await waitFor(() => expect(screen.queryByTestId('ev-details')).toBeTruthy());
+      await ready();
+      fireEvent.click(screen.getByTestId('ev-details'));
+      await flush();
+      expect(screen.getByTestId('ev-sheet')).toBeTruthy();
+      // the best option (Bet 4x) is hidden by the step, so the sheet opens on an allowed one
+      expect(screen.getByTestId('confirm').textContent).toMatch(/^Confirm (Bet 3x|Check)$/);
+      evClient.dispose();
+    });
+    it.each([['after'], ['never']] as const)('absent with EV %s', async (evMode) => {
+      const { evClient } = mount(FLOP, { settings: { ...settings, evMode } });
+      await ready();
+      expect(screen.queryByTestId('ev-details')).toBeNull();
+      expect(screen.getByTestId('hand-result').textContent).toContain('Hand');
+      evClient.dispose();
+    });
+    it('absent while betting; on a settled hand the result wins', async () => {
+      const { evClient } = mount({ id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 });
+      expect(screen.queryByTestId('ev-details')).toBeNull(); // betting
+      fireEvent.click(screen.getByText('Deal'));
+      await waitFor(() => expect(screen.queryByTestId('ev-details')).toBeTruthy());
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="play-4"]')!);
+      await flush();
+      fireEvent.click(screen.getByTestId('confirm'));
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
+      );
+      expect(screen.queryByTestId('ev-details')).toBeNull();
+      expect(screen.getByTestId('hand-result').textContent).toMatch(/Won|Lost|Push|Folded/);
+      evClient.dispose();
+    });
   });
 });

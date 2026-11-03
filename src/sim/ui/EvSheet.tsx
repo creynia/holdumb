@@ -61,6 +61,8 @@ export interface EvSheetProps {
   allowed?: readonly OptionKey[];
   /** math.betterAlternative(...) for the selected option; renders curriculum 8.4 copy. */
   alternative?: BetterAlternative | null;
+  /** Move focus into the sheet when it opens even when it is not modal (opened by Details, I092). */
+  focusOnOpen?: boolean;
   /** The cards behind the preview. On the river it adds the dealer-outs facts (lesson 12). */
   request?: PreviewRequest | null;
 }
@@ -125,6 +127,7 @@ export function EvSheet({
   allowed,
   alternative,
   request,
+  focusOnOpen,
 }: EvSheetProps) {
   const preview = isUsablePreview(rawPreview) ? rawPreview : null;
   const failed = !!error || (!!rawPreview && !preview);
@@ -156,8 +159,9 @@ export function EvSheet({
   const readOnly = !onConfirm && !onCancel;
   const modal = variant === 'sheet';
   useEffect(() => {
-    if (modal) rootRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
-  }, [modal]);
+    if (modal || focusOnOpen)
+      rootRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+  }, [modal, focusOnOpen]);
 
   const confirmed = chosen != null;
   const hidden = !!hideEv && !confirmed;

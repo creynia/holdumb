@@ -33,6 +33,7 @@ describe('Six Card with watched hands (I062 + I078)', () => {
     let sixProfit = 0;
     let ownNet = 0;
     let watchedNet = 0;
+    const watchedNs: number[] = [];
     // Independently of the driver's ledger: a hand is scored when every decision had a preview;
     // then it expects its first decision's best EV and costs the chosen options' regret x Ante.
     let expected: Fraction = ZERO;
@@ -66,6 +67,7 @@ describe('Six Card with watched hands (I062 + I078)', () => {
         mistakes = add(mistakes, regret);
       }
       const net = d.view.state.hand!.result!.net;
+      if (watched) watchedNs.push(d.view.state.hand!.n);
       if (watched) watchedNet += net;
       else ownNet += net;
     };
@@ -95,6 +97,18 @@ describe('Six Card with watched hands (I062 + I078)', () => {
     expect(s.perfectCents).toBe(perfect);
     expect(s.mistakesRoundedCents).toBe(round(mistakes));
     expect(s.luckCents).toBe(ownNet + sixProfit - perfect + round(mistakes));
+    // I055 history: every settled hand is recorded, watched ones too, but a watched hand carries
+    // no tier or regret notes (Watch's moves are not yours to grade).
+    const history = d.view.history;
+    expect(history.map((r) => r.n).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(watchedNs).toHaveLength(3);
+    for (const r of history) {
+      const noted = r.a.some((e) => e.length > 2);
+      if (watchedNs.includes(r.n)) expect(noted, `watched hand ${r.n} has notes`).toBe(false);
+    }
+    expect(history.some((r) => !watchedNs.includes(r.n) && r.a.some((e) => e.length > 2))).toBe(
+      true,
+    );
     // The split adds up exactly.
     expect(s.net).toBe(s.watchedCents + s.perfectCents - s.mistakesRoundedCents + s.luckCents);
   });
