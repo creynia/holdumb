@@ -3303,7 +3303,7 @@ you'd really face. `?street=mixed` draws categories in proportion to how often t
 |---|---|---|---|
 | `pre-premium` | preflop | pairs 77+, AK–AT, KQ, KJs | {{Ah Kd}}: 4x (+1.172 vs +0.569) |
 | `pre-ace` | preflop | A2–A9, suited or not | {{Ac 2d}}: 4x (+0.042 vs −0.082) |
-| `pre-king` | preflop | K2–KT | {{Kc 4d}}: check (−0.206 vs −0.229) |
+| `pre-king` | preflop | K2–KJ offsuit, K2–KT suited | {{Kc 4d}}: check (−0.206 vs −0.229) |
 | `pre-queen-jack` | preflop | Q2–QJ, J2–JT | {{Qc 8d}}: 4x (−0.069 vs −0.093) |
 | `pre-small-pair` | preflop | 22–66 | {{2c 2d}}: check (−0.179 vs −0.288) |
 | `pre-low` | preflop | top card T or lower, not a pair | {{Ts 9s}}: check (+0.205 vs +0.185) |

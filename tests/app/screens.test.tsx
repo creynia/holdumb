@@ -252,14 +252,45 @@ describe('Settings', () => {
       trips.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(store.settings.paytable).toBe('trips-9-7-4');
-    const boxes = [...el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
-    const practice = boxes.find((b) => b.parentElement?.textContent?.includes('Practice'))!;
+    const legends = [...el.querySelectorAll('fieldset > legend')].map((l) => l.textContent);
+    expect(legends).toEqual(['Show EV', 'Ask me to confirm']);
+    const radios = (name: string) => [
+      ...el.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${name}"]`),
+    ];
+    const labelOf = (r: HTMLInputElement) => r.closest('label')!.textContent;
+    expect(radios('ev-mode').map(labelOf)).toEqual([
+      expect.stringContaining('Before I choose'),
+      expect.stringContaining('After I choose'),
+      expect.stringContaining('Never'),
+    ]);
+    expect(radios('confirm-on').map(labelOf)).toEqual([
+      expect.stringContaining('All bets'),
+      expect.stringContaining('Medium and bad bets'),
+      expect.stringContaining('Only bad bets'),
+      expect.stringContaining('Never'),
+    ]);
+    expect(labelOf(radios('confirm-on')[1]!)).toContain('more than 0.10 Ante');
+    expect(el.querySelector('#confirm-on-note')!.textContent).toBe(
+      'Confirm options apply when EV is shown before the move.',
+    );
+    // Defaults: EV before, no confirm step.
+    expect(radios('ev-mode').find((r) => r.checked)!.value).toBe('before');
+    expect(radios('confirm-on').find((r) => r.checked)!.value).toBe('never');
     await act(() => {
-      practice.checked = true;
-      practice.dispatchEvent(new Event('change', { bubbles: true }));
+      radios('ev-mode')[2]!.click();
     });
-    expect(store.settings.practice).toBe(true);
-    expect(boxes.length).toBeGreaterThanOrEqual(5); // practice, confirm, skip, reduce motion, four-colour
+    expect(store.settings.evMode).toBe('never');
+    await act(() => {
+      radios('confirm-on')[1]!.click();
+    });
+    expect(store.settings.confirmOn).toBe('costly');
+    expect(radios('confirm-on').find((r) => r.checked)!.value).toBe('costly');
+    // The three old checkboxes are gone; reduce motion and four-colour remain.
+    const boxes = [...el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    expect(boxes.map(labelOf)).toEqual([
+      expect.stringContaining('Reduce motion'),
+      expect.stringContaining('Four-colour deck'),
+    ]);
   });
   it('applies the theme and four-colour deck to the document', async () => {
     const { store } = await mount('#/settings');

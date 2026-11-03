@@ -30,7 +30,7 @@ spike's and the simulator spike's `strat.c`/`strat2.c`), plus orchestrator spot 
 | D6b | Trips variants | `trips-9-7-4` 301629/33446140 (0.902%), **`trips-8-6-5` 48987/2572780 (1.904%, default)**, `trips-8-7-4` 233985/6689228 (3.498%), `trips-7-6-5` 115779/2572780 (4.500%), `trips-8-6-4` 545459/8361535 (6.523%). Pays 50/40/30 for Royal / SF / Quads and 3 for trips in every variant. |
 | D9 | Dealer qualify | The dealer needs a pair or better. If not, the Ante pushes. Standard rules only, no toggle. |
 | D10 | Hands per hour | 30, for every cost-per-hour figure. |
-| D11 | Practice mode | A sandbox toggle that hides EV until you confirm, off by default. Drill always grades after the answer. |
+| D11 | EV visibility | `evMode`: EV visibility `before` / `after` / `never`, default `before` (replaces the practice toggle; see D39). Drill always grades after the answer. |
 | D12 | Blind presets | One Blind preset (`blind-standard`). No sourced cheaper table exists. Ship one preflop table, but keep the generator and types parameterised by the Blind paytable so a preset can be added later (chip). Blind variants are not in the v1 settings UI. |
 | D13 | Wire format | `Fraction = { num, den }` (bigint) as in `architecture.md`'s `protocol.ts`. |
 | D15 | Practical lens | The practical strategies are `basic` and `simple` (D16). The simulator draft's old `simple` is renamed **`river-leak`**, is lesson-only, and is never offered as a practical preset. |
@@ -42,7 +42,7 @@ spike's and the simulator spike's `strat.c`/`strat2.c`), plus orchestrator spot 
 | D21 | Cross-check | Two independent exhaustive solvers plus the Opus design reviewer's own solver agree on every number in §4. |
 | D22 | Table regeneration in CI | `simulator.md` wins over `architecture.md` §8: generating the preflop table takes hours, so CI does **not** regenerate it. CI checks the shipped table against the pinned values (simulator.md Appendix A) plus Monte Carlo and sampled exact checks. |
 | D23 | Settings paytable | `Settings.paytable` is a typed preset id (simulator.md), not a free-form object. |
-| D24 | Tiers | Decision tiers on regret r (antes): `best` r = 0 (ties within 1e-9 both `best`), `close` ≤ 0.02, `small` ≤ 0.10, `costly` ≤ 0.50 (alternative card), `blunder` > 0.50 (red, second tap "Do it anyway" when `confirmCostlyMoves` is on, default on). Wager tiers for Trips use crappy's thresholds: `free` ≤ 0, `good` ≤ 2%, `fair` ≤ 5%, `poor` < 9%, `avoid` ≥ 9%. A text label always accompanies the colour. |
+| D24 | Tiers | Decision tiers on regret r (antes): `best` r = 0 (ties within 1e-9 both `best`), `close` ≤ 0.02, `small` ≤ 0.10, `costly` ≤ 0.50 (alternative card), `blunder` > 0.50 (red). `confirmOn` (default `never`): `all` | `costly`+`blunder` | `blunder` | `never`; the confirm step shows that option's EV and the best alternative (D39). Wager tiers for Trips use crappy's thresholds: `free` ≤ 0, `good` ≤ 2%, `fair` ≤ 5%, `poor` < 9%, `avoid` ≥ 9%. A text label always accompanies the colour. |
 
 ## 3. Canonical strategy definitions
 
@@ -119,7 +119,7 @@ WP0 copies all four type files verbatim (engine `types.ts`, `math/types.ts`, `st
 simulator.md §7 wins over architecture.md §9: `ui/{AutoPlayPanel,BankrollChart,OutcomeHistogram}` → strategy; `ui/{Simulator,StepPanel,persist,settings}` → integration. Content split by lesson: content-a lessons 1–6 + `content/*.json`; content-b lessons 7–14; content-c lessons 15–23.
 
 ### D30 Settings
-`paytable: PaytablePresetId` (default `trips-8-6-5`), `practice: boolean` (default false, D11), `confirmCostlyMoves: boolean` (default true), `skipPreview: boolean` (default false). The ante field is `anteUnitCents` everywhere.
+`paytable: PaytablePresetId` (default `trips-8-6-5`), `evMode: 'before' | 'after' | 'never'` (default `before`, D11), `confirmOn: 'all' | 'costly' | 'blunder' | 'never'` (default `never`, D24). These replace `practice`, `confirmCostlyMoves` and `skipPreview` (D39). The ante field is `anteUnitCents` everywhere.
 
 ### D31 Button labels
 `Bet 4x · Bet 3x · Check · Bet 2x · Bet 1x · Fold` in the simulator (`DecisionOption.label`), Drill, lessons and architecture.md. Never "Raise".
@@ -153,3 +153,11 @@ The phone target is ~1 s per flop decision. The CI hard-fail is 1.5 s at 4× CPU
 - The UI shows `equity()`, and scene bankroll conditions test equity. When a runner rebuilds a game it must pass `equity(prev)` as `bankroll` (bets are taken out of it).
 - `evaluate7` returns `EvaluatedHand`; `handValueOf` / `evalMasks` are the hot paths returning a packed `HandValue`.
 - Mid-hand starts in a running game use `startHand(state, startAt)`; `createGame` calls it. It re-bets like `deal`, keeps stats and the RNG stream, and records no fake earlier decisions.
+
+### D39 EV visibility and confirm policy
+D39 (2026-11-03, human-approved user feedback). Links D11, D24 and D30.
+- One tap acts by default: there is no confirm step unless `confirmOn` asks for one.
+- `evMode` (D11): `before` shows each option's EV before you choose; `after` hides it until you have acted, then shows the comparison; `never` shows none. Default `before`.
+- `confirmOn` (D24): `all` (every bet), `costly` ("Medium and bad bets": tiers `costly` + `blunder`, regret > 0.10 Ante), `blunder` ("Only bad bets", regret > 0.50 Ante), `never`. Default `never`. The tier thresholds are unchanged. Confirm options apply when EV is shown before the move (`evMode: 'before'`). Until the new action bar lands, only the `blunder` tier is wired (the sheet's "Do it anyway" second tap), so `all`, `costly` and `blunder` behave the same.
+- Migration (`sanitizeSettings`): stored `practice: true` → `evMode: 'after'`, otherwise `before`. Every old record → `confirmOn: 'never'` (stored records can't tell an explicit `confirmCostlyMoves` from its old default). `skipPreview` is dropped. A valid `evMode` / `confirmOn` wins over the legacy keys. A sandbox snapshot's `practice` flag maps onto `evMode` the same way.
+- Settings shows two radio groups (Show EV; Ask me to confirm). Scene `practice` / `showEV` keys keep working and map onto these modes.
