@@ -3,6 +3,7 @@
 // State lives in hooks/: the driver and toasts, the EV sheet, the bet handlers and the preview bar.
 import './sim.css';
 import './container.css';
+import { useEffect, useRef } from 'preact/hooks';
 import { equity } from '../engine';
 import type { SceneConfig } from '../scene';
 import { ActionBar } from './ActionBar';
@@ -21,17 +22,21 @@ import { StatusBar } from './StatusBar';
 import { StepPanel } from './StepPanel';
 import { Table, useOrientation } from './Table';
 import { Toasts } from './Toasts';
+import { WatchControls, WatchStatus } from './WatchBar';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
 import { useMoveLog } from './hooks/useMoveLog';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
+import { useWatch } from './hooks/useWatch';
 import { decodeMoveLog } from './moveLog';
 import { decodeSnapshot } from './persist';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
+import { optionKeyOf } from './text';
+import { watchNarration, watchPace } from './watch';
 import { isRackRejection, rackShort } from './bankroll';
 import type { Cents } from '../engine';
 
@@ -70,7 +75,15 @@ export function Simulator(props: SimulatorViewProps) {
   );
   useSandboxSync(sim, sandbox, baseScene, settings, moveLog);
 
-  const timeline = buildTimeline(view.lastEvents, resolveSpeed(settings, scene));
+  const speed = resolveSpeed(settings, scene);
+  const timeline = buildTimeline(view.lastEvents, speed);
+  // I078: the table plays itself with perfect strategy; pauses wait for the cards to land.
+  const watch = useWatch(
+    d,
+    watchPace(speed),
+    () => buildTimeline(d.view.lastEvents, speed).totalMs,
+  );
+  const watching = watch.running;
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
   const bar = usePreviewBar(view.preview, decision, evShown);
 
@@ -79,7 +92,39 @@ export function Simulator(props: SimulatorViewProps) {
   const board = hand ? hand.deal.board.slice(0, hand.boardShown) : [];
   const onFelt = settled ? 0 : Object.values(state.bets).reduce((a, b) => a + b, 0);
   const eq = equity(state);
-  const [circleHl, optionHl] = splitHighlight(step?.highlight ?? scene.highlight ?? []);
+  const [circleHl, stepOptionHl] = splitHighlight(step?.highlight ?? scene.highlight ?? []);
+  const optionHl = watching && watch.option ? [watch.option] : stepOptionHl;
+
+  // I078: a watched hand's result toast also says what perfect play did, once per hand. The line is
+  // pinned to the toast's id, so it does not change (and re-announce) when Watch ends.
+  const narrated = useRef<{ id: number; spoken: string } | null>(null);
+  if (watching && toast && hand?.result && narrated.current?.id !== toast.id) {
+    const moves = hand.decisions.map((x) => optionKeyOf(x.action));
+    narrated.current = {
+      id: toast.id,
+      spoken: `${watchNarration(watch.hand, watch.of, moves)} ${toast.spoken ?? toast.text}`,
+    };
+  }
+  const shownToast =
+    toast && narrated.current?.id === toast.id
+      ? { ...toast, spoken: narrated.current.spoken }
+      : toast;
+  // When Watch ends, the last narrated toast is not moved back onto the table (a fresh live region
+  // would announce it again): the run's summary line says how it ended instead.
+  const wasWatching = useRef(false);
+  useEffect(() => {
+    if (wasWatching.current && !watching && toast && narrated.current?.id === toast.id)
+      setToast(null);
+    wasWatching.current = watching;
+  }, [watching]);
+  // I012: the fold reveal and the toast sit below the ActionBar (portrait) or in the rail body.
+  const tableToasts =
+    shownToast || result?.outcome === 'fold' ? (
+      <>
+        {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
+        {shownToast ? <Toasts toasts={[shownToast]} onDismiss={() => setToast(null)} /> : null}
+      </>
+    ) : null;
 
   const stepPanel = step ? (
     <StepPanel
@@ -103,14 +148,7 @@ export function Simulator(props: SimulatorViewProps) {
     <Table
       orientation={orientation}
       options={sandbox && scene.ui?.showSettings ? props.options : null}
-      toasts={
-        toast || result?.outcome === 'fold' ? (
-          <>
-            {result?.outcome === 'fold' ? <FoldReveal result={result} /> : null}
-            {toast ? <Toasts toasts={[toast]} onDismiss={() => setToast(null)} /> : null}
-          </>
-        ) : null
-      }
+      toasts={watching ? null : tableToasts}
       status={
         scene.ui?.showBankroll === false ? null : (
           <StatusBar
@@ -135,12 +173,13 @@ export function Simulator(props: SimulatorViewProps) {
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
           labels={resultLabels(result, hand?.deal)}
-          quiet={result?.outcome === 'fold'}
+          // Watch announces each hand once (its toast), so the felt's card read-out stays quiet.
+          quiet={result?.outcome === 'fold' || watching}
           timeline={timeline}
           nextHand={settled}
           skipped={motion.skipped}
           onSkip={motion.playing ? motion.skip : undefined}
-          onCircle={bets.onCircle}
+          onCircle={watching ? undefined : bets.onCircle}
         />
       }
       actions={
@@ -157,7 +196,7 @@ export function Simulator(props: SimulatorViewProps) {
           bets={{ ante: state.bets.ante, trips: state.bets.trips }}
           canDeal={!view.dealLocked && state.bets.ante > 0}
           canClear={!view.clearLocked}
-          disabled={(settled && view.dealLocked) || view.pendingStart}
+          disabled={(settled && view.dealLocked) || view.pendingStart || watching}
           onOption={ev.onOption}
           onDeal={() => void act({ type: 'deal' })}
           onClear={bets.clearBets}
@@ -166,7 +205,9 @@ export function Simulator(props: SimulatorViewProps) {
         />
       }
       chips={
-        betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
+        watching ? (
+          <WatchStatus watch={watch} orientation={orientation} toast={tableToasts} />
+        ) : betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
           <ChipRack
             chips={scene.ui?.chips ?? CHIP_DENOMS}
             selected={bets.chip}
@@ -205,7 +246,10 @@ export function Simulator(props: SimulatorViewProps) {
             rackShort(street, state.bankroll, state.bets.ante, state.bets.trips) ||
             isRackRejection(view.rejection?.text)
           }
-        />
+          busy={watching}
+        >
+          <WatchControls watch={watch} disabled={view.pendingStart} />
+        </SimTools>
       ) : null}
       {sandbox && scene.ui?.showSettings ? <SixCardPanelLazy d={d} /> : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}

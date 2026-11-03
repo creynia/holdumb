@@ -14,9 +14,9 @@ describe.skipIf(!existsSync('dist/index.html'))('PWA code splitting', () => {
   it('finds the entry chunk in index.html', () => {
     expect(entry).toBeTruthy();
   });
-  it('keeps the JS the first paint needs (entry + static preloads) at or under 215 kB', () => {
+  it('keeps the JS the first paint needs (entry + static preloads) at or under 220 kB', () => {
     const total = [entry!, ...preloads].reduce((n, f) => n + size(f), 0);
-    expect(total).toBeLessThanOrEqual(215_000);
+    expect(total).toBeLessThanOrEqual(220_000); // see bundle-size.test.ts for the reasons
   });
   it('keeps the compiled lesson bundle out of the entry and its preloads', () => {
     for (const f of [entry!, ...preloads]) {

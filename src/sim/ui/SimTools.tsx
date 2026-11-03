@@ -1,5 +1,6 @@
-// Sandbox tools under the table: New session and Top up (I083). Show EV and Confirm live in the
-// table's options row (I090).
+// Sandbox tools under the table: New session, Top up (I083) and the Watch controls (I078, passed
+// as children). Show EV and Confirm live in the table's options row (I090).
+import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import { formatMoney } from '../engine';
 import type { Cents } from '../engine';
@@ -15,9 +16,12 @@ export interface SimToolsProps {
   onBankrollChange?: (cents: Cents) => void;
   /** The rack cannot cover the next bet: offer Top up. */
   short?: boolean;
+  /** The table is playing itself (I078): New session waits. */
+  busy?: boolean;
+  children?: ComponentChildren;
 }
 
-export function SimTools({ d, bankroll, onBankrollChange, short }: SimToolsProps) {
+export function SimTools({ d, bankroll, onBankrollChange, short, busy, children }: SimToolsProps) {
   const [panel, setPanel] = useState<'new' | 'top-up' | null>(null);
   const [chosen, setChosen] = useState<Cents | null>(null);
   const base = chosen ?? bankroll;
@@ -27,6 +31,7 @@ export function SimTools({ d, bankroll, onBankrollChange, short }: SimToolsProps
       <button
         type="button"
         class="sim-btn sim-btn-secondary"
+        disabled={busy}
         aria-expanded={panel === 'new'}
         data-testid="new-session"
         onClick={() => toggle('new')}
@@ -40,6 +45,7 @@ export function SimTools({ d, bankroll, onBankrollChange, short }: SimToolsProps
             type="button"
             class="sim-btn"
             aria-expanded={panel === 'top-up'}
+            disabled={busy}
             data-testid="top-up"
             onClick={() => toggle('top-up')}
           >
@@ -71,6 +77,7 @@ export function SimTools({ d, bankroll, onBankrollChange, short }: SimToolsProps
           }}
         />
       ) : null}
+      {children}
     </div>
   );
 }
