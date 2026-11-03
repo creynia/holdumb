@@ -1,4 +1,5 @@
 // Test hook: exposes the EV client to e2e. Required by tests/e2e/single-file.spec.ts.
+import { simulateUpdateAvailable } from '../pwa/register';
 import { parseCards } from '../sim/engine';
 import { createEvClient } from '../sim/worker';
 
@@ -26,3 +27,5 @@ window.__holdumb = {
 };
 // The in-thread fallback client, for perf specs (CDP CPU throttling does not reach workers).
 Object.assign(window.__holdumb, { inthread: createEvClient({ mode: 'inthread' }) });
+
+Object.assign(window.__holdumb, { simulateUpdateAvailable });

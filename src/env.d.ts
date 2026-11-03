@@ -13,6 +13,7 @@ interface Window {
   /** Test hook (WP0 worker smoke test). */
   __holdumb?: {
     client: import('./sim/worker/protocol').EvClient;
+    simulateUpdateAvailable?(): void;
     smoke(): Promise<{ mode: 'worker' | 'inthread'; settled: 'resolved' | 'rejected' }>;
   };
 }
