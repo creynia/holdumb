@@ -62,6 +62,8 @@ describe('Watch (I078)', () => {
     fireEvent.click(screen.getByTestId('watch-stop'));
     await waitFor(() => expect(screen.queryByTestId('watch-status')).toBeNull());
     expect(screen.getByTestId('watch-summary').textContent).toBe('Stopped after 1 hand.');
+    // The narrated toast is not moved back onto the table (it would be announced again).
+    expect(document.querySelector('.sim-toasts')).toBeNull();
     expect(screen.getByTestId('watch-start')).toHaveProperty('disabled', false);
     // Stop really stops: no second hand is dealt afterwards.
     await new Promise((r) => setTimeout(r, 1500));

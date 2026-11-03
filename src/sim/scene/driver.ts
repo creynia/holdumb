@@ -94,6 +94,8 @@ export interface SessionTotals {
   watchedHands: number;
   /** Their whole result (main bets and Trips). */
   watchedCents: number;
+  /** Their action (all wagers), kept out of "Total wagered". */
+  watchedWageredCents: number;
 }
 export const EMPTY_TOTALS: SessionTotals = {
   hands: 0,
@@ -109,6 +111,7 @@ export const EMPTY_TOTALS: SessionTotals = {
   mistakes: 0,
   watchedHands: 0,
   watchedCents: 0,
+  watchedWageredCents: 0,
 };
 
 export interface SessionView extends SessionTotals {
@@ -353,7 +356,8 @@ export class SimDriver {
       session: {
         ...t,
         net,
-        wageredCents: w.ante + w.blind + w.play + w.trips,
+        // Your action only: the watched hands' bets are the table's (I078).
+        wageredCents: w.ante + w.blind + w.play + w.trips - t.watchedWageredCents,
         perfectCents,
         mistakesRoundedCents,
         // Watched hands are not your play: their result is its own line, outside the luck split.
@@ -513,6 +517,8 @@ export class SimDriver {
         hands: this.totals.hands + 1,
         watchedHands: this.totals.watchedHands + 1,
         watchedCents: this.totals.watchedCents + result.net,
+        watchedWageredCents:
+          this.totals.watchedWageredCents + result.wagers.reduce((a, x) => a + x.amount, 0),
       };
       return;
     }

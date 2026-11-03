@@ -60,6 +60,10 @@ describe('watched hands (I078 AC2)', () => {
     expect(s.expectedCents).toEqual(mine.expectedCents);
     expect(s.tripsWageredCents).toBe(mine.tripsWageredCents);
     expect(s.perfectCents).toBe(mine.perfectCents);
+    // Total wagered is your action only: the watched hands' bets (two 4x hands with $5 Trips:
+    // 2 × ($10 + $10 + $40 + $5)) are counted apart.
+    expect(s.watchedWageredCents).toBe(2 * (1_000 + 1_000 + 4_000 + 500));
+    expect(s.wageredCents).toBe(mine.wageredCents);
     expect(s.luckCents).toBe(mine.luckCents);
     // Their whole result is the watched line, and the split adds up to the cent.
     expect(s.watchedCents).toBe(s.net - mine.net);

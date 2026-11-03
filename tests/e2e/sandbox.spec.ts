@@ -217,9 +217,22 @@ test.describe('sandbox', () => {
   test('Watch plays 3 perfect hands on the felt, announces them, and moves nothing (I078)', async ({
     page,
   }) => {
-    await page.goto('/#/play?seed=7&speed=instant');
+    // Normal speed (900 ms per move) and Pause: the layout is measured while the run is held, so
+    // nothing here races the run.
+    await page.goto('/#/play?seed=7&speed=normal');
     const sim = page.getByTestId('simulator');
     await expect(sim).toHaveAttribute('data-hands', '0');
+    // Every insertion into a toast's spoken text, for the announcement checks at the end.
+    await page.evaluate(() => {
+      const w = window as unknown as { __said: string[] };
+      w.__said = [];
+      new MutationObserver(() => {
+        document.querySelectorAll('.sim-toasts .sim-sr').forEach((el) => {
+          const t = el.textContent ?? '';
+          if (t && w.__said.at(-1) !== t) w.__said.push(t);
+        });
+      }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
     const vp = page.viewportSize()!;
     const landscape = vp.width > vp.height && vp.height < 520;
     // Page (document) coordinates: scrolling the window is not a layout move.
@@ -238,25 +251,21 @@ test.describe('sandbox', () => {
       Math.abs(a.y - b.y) <= 1 &&
       Math.abs(a.width - b.width) <= 1 &&
       Math.abs(a.height - b.height) <= 1;
-    const before = landscape ? await boxes() : null;
+    const before = await boxes();
     await page.getByTestId('watch-hands').selectOption('3');
     await page.getByTestId('watch-start').click();
     const status = page.getByTestId('watch-status');
-    await expect(status).toBeVisible();
+    await page.getByTestId('watch-pause').click();
+    await expect(page.getByTestId('watch-pause')).toHaveText('Resume');
     await expect(status).toContainText('of 3');
     await expect(page.locator('.sim-rack')).toHaveCount(0);
-    if (before) {
-      // Landscape: starting Watch moves neither the table nor the rail (nor the ActionBar).
-      const during = await boxes();
-      expect(near(during.table, before.table)).toBe(true);
-      expect(near(during.rail!, before.rail!)).toBe(true);
-      expect(near(during.actions, before.actions)).toBe(true);
-      // ...and Stop is on screen, above the tab bar if there is one.
-      const stop = (await page.getByTestId('watch-stop').boundingBox())!;
-      const tab = await page.locator('.tabbar').boundingBox();
-      expect(stop.y + stop.height).toBeLessThanOrEqual(tab && tab.height ? tab.y : vp.height);
-    }
-    // The strip never sits on the felt, and Pause / Stop are full tap targets.
+    // Held: starting Watch moved neither the table nor the ActionBar (nor the rail in landscape).
+    const during = await boxes();
+    expect(near(during.table, before.table)).toBe(true);
+    expect(near(during.actions, before.actions)).toBe(true);
+    if (landscape) expect(near(during.rail!, before.rail!)).toBe(true);
+    // The strip never sits on the felt; Pause / Stop are full tap targets, on screen above any
+    // tab bar.
     const felt = (await page.locator('svg.sim-felt').boundingBox())!;
     const strip = (await status.boundingBox())!;
     const overlaps =
@@ -265,24 +274,27 @@ test.describe('sandbox', () => {
       strip.y < felt.y + felt.height &&
       felt.y < strip.y + strip.height;
     expect(overlaps).toBe(false);
+    const tab = await page.locator('.tabbar').boundingBox();
     for (const id of ['watch-stop', 'watch-pause']) {
       const b = (await page.getByTestId(id).boundingBox())!;
       expect(b.height).toBeGreaterThanOrEqual(44);
       expect(b.width).toBeGreaterThanOrEqual(44);
+      expect(b.y + b.height).toBeLessThanOrEqual(tab && tab.height ? tab.y : vp.height);
     }
+    await page.getByTestId('watch-pause').click();
     await expect(page.getByTestId('watch-summary')).toHaveText('Watched 3 hands of perfect play.', {
-      timeout: 30_000,
+      timeout: 60_000,
     });
-    // Each hand is announced once through the toast's live region, with perfect play's moves; the
-    // last one stays after the run.
-    await expect(page.locator('.sim-toasts .sim-sr')).toHaveText(/^Hand 3 of 3: .*(Bet|Check)/);
     await expect(sim).toHaveAttribute('data-hands', '3');
     await expect(status).toHaveCount(0);
-    if (before) {
-      const after = await boxes();
-      expect(near(after.table, before.table)).toBe(true);
-      expect(near(after.rail!, before.rail!)).toBe(true);
-    }
+    const after = await boxes();
+    expect(near(after.table, before.table)).toBe(true);
+    expect(near(after.actions, before.actions)).toBe(true);
+    if (landscape) expect(near(after.rail!, before.rail!)).toBe(true);
+    // One announcement per hand, each naming perfect play's moves.
+    const said = await page.evaluate(() => (window as unknown as { __said: string[] }).__said);
+    expect(said).toHaveLength(3);
+    said.forEach((t, i) => expect(t).toMatch(new RegExp(`^Hand ${i + 1} of 3: .*(Bet|Check)`)));
     // Watched hands are the table's play: the session panel lists them on their own line.
     await page.getByTestId('session-toggle').click();
     await expect(page.getByTestId('session-watched')).toContainText('3 hands');

@@ -3,7 +3,7 @@
 // State lives in hooks/: the driver and toasts, the EV sheet, the bet handlers and the preview bar.
 import './sim.css';
 import './container.css';
-import { useRef } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { equity } from '../engine';
 import type { SceneConfig } from '../scene';
 import { ActionBar } from './ActionBar';
@@ -101,6 +101,14 @@ export function Simulator(props: SimulatorProps) {
     toast && narrated.current?.id === toast.id
       ? { ...toast, spoken: narrated.current.spoken }
       : toast;
+  // When Watch ends, the last narrated toast is not moved back onto the table (a fresh live region
+  // would announce it again): the run's summary line says how it ended instead.
+  const wasWatching = useRef(false);
+  useEffect(() => {
+    if (wasWatching.current && !watching && toast && narrated.current?.id === toast.id)
+      setToast(null);
+    wasWatching.current = watching;
+  }, [watching]);
   // I012: the fold reveal and the toast sit below the ActionBar (portrait) or in the rail body.
   const tableToasts =
     shownToast || result?.outcome === 'fold' ? (
