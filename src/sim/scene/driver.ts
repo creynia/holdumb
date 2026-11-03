@@ -175,6 +175,16 @@ export interface SessionView extends SessionTotals {
 /** Most recent distinct mistakes kept for "Review N mistakes". */
 export const MAX_MISTAKE_SPOTS = 20;
 
+/**
+ * One finished hand's skill-versus-luck ledger (I059): the exact expected result of the line you
+ * took (Ante, Blind, Play, Trips and Six Card, exact cents), what the cards gave, and each decision.
+ */
+export interface HandVerdict {
+  expectedCents: Fraction;
+  netCents: Cents;
+  decisions: { street: DecisionStreet; label: string; tier: DecisionTier; costCents: Fraction }[];
+}
+
 export interface PreviewState {
   key: string | null;
   status: 'idle' | 'pending' | 'ready' | 'error';
@@ -327,7 +337,12 @@ export class SimDriver {
     notes: ({ tier: HandTierCode; regret: string } | null)[];
     /** Drill spots of this hand's mistakes, in order; kept only if the hand ends scored. */
     spots: string[];
+    /** Equity before the hand and the Six Card expectation so far, for the verdict (I059). */
+    startEq: Cents;
+    sixExp0: Fraction;
+    decisions: HandVerdict['decisions'];
   } | null = null;
+  private lastVerdict: HandVerdict | null = null;
   private history: HandRecord[] = [];
   private lastEvents: GameEvent[] = [];
   private eventSeq = 0;
@@ -482,6 +497,11 @@ export class SimDriver {
     return this.cached;
   }
 
+  /** The skill-versus-luck line data for the hand that just settled; null for watched, unscored or no hand. */
+  verdict(): HandVerdict | null {
+    return this.lastVerdict;
+  }
+
   snapshotData(): {
     state: GameState;
     startEquity: Cents;
@@ -606,7 +626,11 @@ export class SimDriver {
       watched: this.watching,
       notes: Array<null>(decisionsSoFar).fill(null),
       spots: [],
+      startEq: equity(this.game),
+      sixExp0: this.totals.sixCardExpectedCents,
+      decisions: [],
     };
+    this.lastVerdict = null;
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
     if (!this.hand || this.hand.watched) return;
@@ -618,6 +642,12 @@ export class SimDriver {
       return;
     }
     this.hand.notes.push({ tier: TIER_CODE[opt.tier], regret: toRatio(opt.regret) });
+    this.hand.decisions.push({
+      street: this.game.street as DecisionStreet,
+      label: opt.label,
+      tier: opt.tier,
+      costCents: scale(opt.regret, this.hand.ante),
+    });
     if (this.hand.base === null) this.hand.base = pv.options[pv.bestIndex]!.evCents;
     this.hand.regret = add(this.hand.regret, scale(opt.regret, this.hand.ante));
     // Counted per hand and added only if the hand ends scored (see finishHandTrack).
@@ -699,6 +729,16 @@ export class SimDriver {
         );
       t.scoredMainCents += main;
       t.scoredAnteCents += h.ante;
+      // The verdict: the exact line taken (best EV at the first decision, less what the decisions
+      // gave away) plus this hand's Trips and Six Card expectations, against the whole result.
+      this.lastVerdict = {
+        expectedCents: add(
+          add(sub(h.base, h.regret), sub(t.tripsExpectedCents, this.totals.tripsExpectedCents)),
+          sub(t.sixCardExpectedCents, h.sixExp0),
+        ),
+        netCents: equity(this.game) - h.startEq,
+        decisions: h.decisions,
+      };
     }
     this.totals = t;
   }
@@ -919,6 +959,7 @@ export class SimDriver {
     this.totals = { ...EMPTY_TOTALS };
     this.history = [];
     this.mistakeSpots = [];
+    this.lastVerdict = null;
     this.hand = null;
     this.sixCardLast = null;
     this.lastEvents = [];

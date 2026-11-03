@@ -34,6 +34,7 @@ import {
   foldRevealText,
   handLabel,
   handName,
+  handVerdictText,
   narrationText,
   playerNearMiss,
   optionKeyOf,
@@ -128,6 +129,43 @@ describe('option labels (D31)', () => {
     expect(ariaForOption(PREFLOP_AA.preview.options[2]!)).toBe(
       'Check, EV plus $21.93, big mistake',
     );
+  });
+});
+
+describe('hand verdict line (I059)', () => {
+  const d = (street: 'preflop' | 'flop' | 'river', label: string, tier: string, cost: number) =>
+    ({ street, label, tier, costCents: frac(cost) }) as never;
+  it('every decision best or close: expected against what the cards gave', () => {
+    expect(
+      handVerdictText({
+        expectedCents: frac(8401, 20),
+        netCents: -3000,
+        decisions: [d('preflop', 'Bet 4x', 'best', 0), d('river', 'Bet 1x', 'close', 1)],
+      }),
+    ).toBe('Played it right. Expected +$4.20, result \u2212$30.');
+    expect(handVerdictText({ expectedCents: frac(-12), netCents: 0, decisions: [] })).toBe(
+      'Played it right. Expected \u2212$0.12, result $0.',
+    );
+  });
+  it('names only the costliest decision, with its tier word', () => {
+    expect(
+      handVerdictText({
+        expectedCents: frac(100),
+        netCents: 500,
+        decisions: [
+          d('preflop', 'Bet 3x', 'costly', 704),
+          d('flop', 'Check', 'small', 51),
+          d('river', 'Fold', 'blunder', 2000),
+        ],
+      }),
+    ).toBe('Your river Fold cost $20 on average (Big mistake).');
+    expect(
+      handVerdictText({
+        expectedCents: frac(0),
+        netCents: 0,
+        decisions: [d('flop', 'Check', 'small', 51)],
+      }),
+    ).toBe('Your flop Check cost $0.51 on average (Small mistake).');
   });
 });
 
