@@ -12,7 +12,9 @@ import type {
   TableRules,
   TripsPaytableId,
 } from '../engine';
-import type { DecisionOption, DecisionPreview, PreviewRequest } from '../math/types';
+import { tripsEdge } from '../math/edges';
+import { ZERO as ZERO_CENTS, add, div, frac, neg, round, scale, sub } from '../math/fraction';
+import type { DecisionOption, DecisionPreview, Fraction, PreviewRequest } from '../math/types';
 import type { StrategyId } from '../strategy/types';
 import { effectiveGate, gatedOptions, optionKeyOfAction, gateAllows } from './gate';
 import type { Gate } from './gate';
@@ -62,18 +64,27 @@ export type DriverEvent =
   | { type: 'scene-completed'; sceneId: string }
   | { type: 'auto-play-completed'; hands: number; strategy: string };
 
-/** The luck vs mistake ledger (cents; floats because EV is rational). */
+/**
+ * The luck vs mistake ledger (curriculum 8.5). Expected values are exact cents (Fractions) and are
+ * rounded once, in the view, so the figures on screen add up to the result to the cent.
+ */
 export interface SessionTotals {
   hands: number;
   /** Hands where every decision had an EV preview (only these feed the luck split). */
   scored: number;
-  /** Sum of the best EV at each scored hand's first decision. */
-  expectedCents: number;
-  /** Sum of regrets at the decisions taken. */
-  mistakeCents: number;
+  /** Sum of the best EV at each scored hand's first decision (exact cents). */
+  expectedCents: Fraction;
+  /** Sum of regrets at the decisions taken (exact cents). */
+  mistakeCents: Fraction;
   /** Actual Ante+Blind+Play result of the scored hands. */
   scoredMainCents: number;
+  /** Antes of the scored hands: the denominator of "your edge per Ante". */
+  scoredAnteCents: number;
   tripsCents: number;
+  /** Trips action over every hand. */
+  tripsWageredCents: number;
+  /** Expected Trips result, −edge × wager per hand (exact cents). */
+  tripsExpectedCents: Fraction;
   decisions: number;
   mistakes: number;
   /** Money added to the rack mid-session (I083). Net = equity - (start + topUps). */
@@ -82,10 +93,13 @@ export interface SessionTotals {
 export const EMPTY_TOTALS: SessionTotals = {
   hands: 0,
   scored: 0,
-  expectedCents: 0,
-  mistakeCents: 0,
+  expectedCents: ZERO_CENTS,
+  mistakeCents: ZERO_CENTS,
   scoredMainCents: 0,
+  scoredAnteCents: 0,
   tripsCents: 0,
+  tripsWageredCents: 0,
+  tripsExpectedCents: ZERO_CENTS,
   decisions: 0,
   mistakes: 0,
   topUpCents: 0,
@@ -93,8 +107,17 @@ export const EMPTY_TOTALS: SessionTotals = {
 
 export interface SessionView extends SessionTotals {
   net: Cents;
-  /** scoredMain - (expected - mistakes): what the cards did beyond your decisions. */
-  luckCents: number;
+  /** Ante+Blind+Play+Trips action over the session (the engine's stats). */
+  wageredCents: Cents;
+  /** round(expected + expected Trips): "Perfect play expects", rounded once. */
+  perfectCents: Cents;
+  /** round(mistakeCents): what the decisions cost against perfect play. */
+  mistakesRoundedCents: Cents;
+  /** net − perfect + mistakes: the displayed split adds up to the result to the cent. */
+  luckCents: Cents;
+  tripsExpectedRoundedCents: Cents;
+  /** −(expected − mistakes) / antes of the scored hands; null before the first scored hand. */
+  edgePerAnte: Fraction | null;
 }
 
 export interface PreviewState {
@@ -153,7 +176,6 @@ export interface DriverOptions {
 const ZERO = { ante: 0, blind: 0, play: 0, trips: 0 } as const;
 const isDecision = (s: string): s is DecisionStreet =>
   s === 'preflop' || s === 'flop' || s === 'river';
-const num = (f: { num: bigint; den: bigint }): number => Number(f.num) / Number(f.den);
 
 function sameOption(o: DecisionOption, a: Action): boolean {
   return o.action.type === a.type && optionKeyOfAction(o.action) === optionKeyOfAction(a);
@@ -188,7 +210,7 @@ export class SimDriver {
   private rt: SceneRuntime;
   private startEq: Cents;
   private totals: SessionTotals;
-  private hand: { base: number | null; regret: number; scored: boolean; ante: number } | null =
+  private hand: { base: Fraction | null; regret: Fraction; scored: boolean; ante: number } | null =
     null;
   private lastEvents: GameEvent[] = [];
   private eventSeq = 0;
@@ -273,6 +295,9 @@ export class SimDriver {
     const allowedOptions = decision && gate.options ? opts : undefined;
     const t = this.totals;
     const net = equity(this.game) - this.startEq - t.topUpCents;
+    const perfectCents = round(add(t.expectedCents, t.tripsExpectedCents));
+    const mistakesRoundedCents = round(t.mistakeCents);
+    const w = this.game.stats.wagered;
     this.cached = {
       version: this.version,
       state: this.game,
@@ -301,7 +326,15 @@ export class SimDriver {
       session: {
         ...t,
         net,
-        luckCents: t.scoredMainCents - (t.expectedCents - t.mistakeCents),
+        wageredCents: w.ante + w.blind + w.play + w.trips,
+        perfectCents,
+        mistakesRoundedCents,
+        luckCents: net - perfectCents + mistakesRoundedCents,
+        tripsExpectedRoundedCents: round(t.tripsExpectedCents),
+        edgePerAnte:
+          t.scoredAnteCents > 0
+            ? div(neg(sub(t.expectedCents, t.mistakeCents)), frac(t.scoredAnteCents))
+            : null,
       },
       startEquity: this.startEq,
       result: this.game.hand?.result ?? null,
@@ -413,7 +446,7 @@ export class SimDriver {
   // ---------- hand tracking (luck vs mistakes) ----------
 
   private beginHandTrack(): void {
-    this.hand = { base: null, regret: 0, scored: true, ante: this.game.bets.ante };
+    this.hand = { base: null, regret: ZERO_CENTS, scored: true, ante: this.game.bets.ante };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
     if (!this.hand) return;
@@ -423,8 +456,8 @@ export class SimDriver {
       this.hand.scored = false;
       return;
     }
-    if (this.hand.base === null) this.hand.base = num(pv.options[pv.bestIndex]!.evCents);
-    this.hand.regret += num(opt.regret) * this.hand.ante;
+    if (this.hand.base === null) this.hand.base = pv.options[pv.bestIndex]!.evCents;
+    this.hand.regret = add(this.hand.regret, scale(opt.regret, this.hand.ante));
     if (opt.tier !== 'best' && opt.tier !== 'close')
       this.totals = { ...this.totals, mistakes: this.totals.mistakes + 1 };
   }
@@ -433,20 +466,33 @@ export class SimDriver {
     this.hand = null;
     let main = 0;
     let trips = 0;
+    let tripsBet = 0;
     for (const w of result.wagers) {
-      if (w.wager === 'trips') trips += w.profit;
-      else main += w.profit;
+      if (w.wager === 'trips') {
+        trips += w.profit;
+        tripsBet += w.amount;
+      } else main += w.profit;
     }
     const t = {
       ...this.totals,
       hands: this.totals.hands + 1,
       tripsCents: this.totals.tripsCents + trips,
+      tripsWageredCents: this.totals.tripsWageredCents + tripsBet,
+      // Trips pays on your own hand whatever you decide, so its expectation is −edge × wager.
+      tripsExpectedCents:
+        tripsBet > 0
+          ? add(
+              this.totals.tripsExpectedCents,
+              scale(neg(tripsEdge(this.game.rules.tripsPaytable).edge), tripsBet),
+            )
+          : this.totals.tripsExpectedCents,
     };
     if (h && h.scored && h.base !== null) {
       t.scored += 1;
-      t.expectedCents += h.base;
-      t.mistakeCents += h.regret;
+      t.expectedCents = add(t.expectedCents, h.base);
+      t.mistakeCents = add(t.mistakeCents, h.regret);
       t.scoredMainCents += main;
+      t.scoredAnteCents += h.ante;
     }
     this.totals = t;
   }

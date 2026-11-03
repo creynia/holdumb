@@ -106,11 +106,17 @@
 }
 .sim-session-body dt {
   color: var(--muted);
+  flex-shrink: 0;
 }
+/* Long values ("200.00% (perfect play 2.18%)") wrap on the right between their parts (each
+   amount is a nowrap .sim-money span); the label never wraps. */
 .sim-session-body dd {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .sim-session-body p {
   margin: 4px 0 0;
