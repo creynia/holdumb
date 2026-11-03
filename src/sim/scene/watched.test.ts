@@ -86,3 +86,37 @@ describe('watched hands (I078 AC2)', () => {
     expect(d.view.session.decisions).toBe(1);
   });
 });
+
+describe('Watch taken mid-hand (I097)', () => {
+  it("backs the hand's decisions out of the count when Watch takes it", async () => {
+    const d = driver();
+    await d.act({ type: 'deal' });
+    await d.currentPreview();
+    // A scored decision on your own hand (2-7 offsuit, bet 4x: a mistake), then Watch starts.
+    await d.act({ type: 'play', multiple: 4 });
+    expect(d.view.session.decisions).toBe(1);
+    d.setWatching(true);
+    // Play the rest of the hand: checks, then a fold on the river.
+    while (d.view.state.street !== 'settled') {
+      const street = d.view.state.street;
+      await d.currentPreview();
+      await d.act(street === 'river' ? { type: 'fold' } : { type: 'check' });
+    }
+    const s = d.view.session;
+    expect(s.hands).toBe(1);
+    expect(s.watchedHands).toBe(1);
+    expect(s.decisions).toBe(0);
+    expect(s.mistakes).toBe(0);
+    expect(s.scored).toBe(0);
+  });
+  it('counts your own decisions again once Watch is off', async () => {
+    const d = driver();
+    d.setWatching(true);
+    await play4(d);
+    d.setWatching(false);
+    expect(d.view.session.decisions).toBe(0);
+    await play4(d);
+    expect(d.view.session.decisions).toBe(1);
+    expect(d.view.session.mistakes).toBe(1);
+  });
+});

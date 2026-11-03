@@ -327,6 +327,8 @@ export class SimDriver {
     notes: ({ tier: HandTierCode; regret: string } | null)[];
     /** Drill spots of this hand's mistakes, in order; kept only if the hand ends scored. */
     spots: string[];
+    /** Decisions this hand added to totals.decisions (backed out if Watch takes the hand, I097). */
+    decided: number;
   } | null = null;
   private history: HandRecord[] = [];
   private lastEvents: GameEvent[] = [];
@@ -606,10 +608,12 @@ export class SimDriver {
       watched: this.watching,
       notes: Array<null>(decisionsSoFar).fill(null),
       spots: [],
+      decided: 0,
     };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
     if (!this.hand || this.hand.watched) return;
+    this.hand.decided += 1;
     this.totals = { ...this.totals, decisions: this.totals.decisions + 1 };
     const opt = pv?.options.find((o) => sameOption(o, action));
     if (!pv || !opt) {
@@ -656,6 +660,8 @@ export class SimDriver {
       this.totals = {
         ...this.totals,
         hands: this.totals.hands + 1,
+        // Watch took the hand mid-way: its decisions leave the count with their regret (I097).
+        decisions: this.totals.decisions - h.decided,
         watchedHands: this.totals.watchedHands + 1,
         watchedCents: this.totals.watchedCents + result.net,
         watchedWageredCents:
