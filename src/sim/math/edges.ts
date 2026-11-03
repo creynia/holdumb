@@ -39,6 +39,9 @@ export function tripsEdge(id: TripsPaytableId): WagerEdge {
   return { edge, tier: wagerTier(edge), pWin: frac(won, SEVEN_CARD_TOTAL) };
 }
 
+// I062: the Six Card Bonus edge lives in ./sixcardEdge.ts, imported directly (never re-exported)
+// so it loads with the Six Card UI only, not in the first-paint bundle.
+
 /** EV per hand (antes) under perfect play, Trips excluded (decisions.md §4). */
 export const GAME_EV: Fraction = frac(-50643648973n, 2317817502000n);
 /** House edge per Ante = −EV (2.18497%). */

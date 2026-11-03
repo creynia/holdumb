@@ -16,11 +16,21 @@ spike's and the simulator spike's `strat.c`/`strat2.c`), plus orchestrator spot 
 | D2 | Offline file vs EV speed | Keep the single file small (target ≤ 600 kB, hard fail 800 kB). Exact decision EV computed on device, in a Web Worker, ≤ ~1 s per decision. |
 | D3 | Orientation | Portrait first, plus a landscape layout that keeps Deal / Check / Bet visible at 844×390. |
 | D4 | Tab bar | **Learn · Play · Drill · More.** Drill is a quick-fire decision trainer (`#/drill`). There is no Strategy tab: the strategy chart (`#/strategy`) is the top card in Learn, the first item in More, and linked from every Drill answer. |
-| D5 | Side bets | Simulate **Trips only**. Six Card Bonus, Progressive and Bad Beat are explained in lessons with their edges, not simulated. |
+| D5 | Side bets | Simulate **Trips only**. Six Card Bonus, Progressive and Bad Beat are explained in lessons with their edges, not simulated. **Amended by D5a: Six Card Bonus is also simulated, as an optional sandbox side bet.** |
 | D6 | Paytables | Blind 500/50/10/3/3:2/1 (Royal / SF / Quads / Full house / Flush / Straight; less pushes). Trips default **50/40/30/8/6/5/3**, with a variants menu in Settings. |
 | D7 | Fold | After a fold the dealer's cards are revealed, with "you would have won / lost / pushed". |
 | D8 | Poker basics | One short hand-rankings refresher lesson plus an always-available hand-ranking card (More → Hand rankings, and a link from the table). No from-zero hand-ranking course. |
 | D14 | Merging | The orchestrator merges PRs (merge commit) after an Opus review and green CI on the latest head. The repo is public; Pages source must be set to GitHub Actions by the user. |
+
+### D5a Six Card Bonus is simulated (I062)
+D5a (2026-11-03, human-approved idea I062). Amends D5; Progressive and Bad Beat stay lesson-only.
+- **Where:** an optional side bet in the Play sandbox (a panel under the table), off by default, not in scenes. It never sits on the felt and adds no ActionBar button.
+- **Cards:** best five of six: your two hole cards plus **four bonus cards** dealt to a separate area (the New Jersey layout, lesson 20's source). They come from the 43 cards the main deal left unseen, through their own seeded stream (game seed + hand number), so the game's RNG stream and every seeded replay are unchanged. As curriculum.md's sources note says, the edge does not depend on which four unseen cards are used.
+- **Paytables:** `six-card-1000-200-100` (default; 1000/200/100/20/15/10/7) and `six-card-1000-200-50` (1000/200/50/20/15/10/5), "to 1". Exact edges from the 6-card counts over C(52,6) = 20,358,520 (royal 188, SF 1,656, quads 14,664, FH 165,984, flush 205,792, straight 361,620, trips 732,160): **12816/149695 (8.5614%, Poor bet)** and **70366/363545 (19.3555%, Sucker bet)**. `math/sixcardEdge.ts sixCardEdge`; re-derived by an independent exhaustive count in `engine/sixcard.test.ts`.
+- **Limits:** whole dollars, $1–$25 (offered: $1, $5, $10, $25).
+- **Settlement:** at the deal, because the bet does not depend on play, so no money is pending mid-hand and a snapshot is always whole. The bet is taken only if the rack still covers a 4x Play afterwards; otherwise that hand's Six Card is skipped and says so.
+- **Contracts:** the engine's frozen `WagerId` and types are unchanged. The bet lives in the SimDriver (`setSixCard`), and the profit goes straight into the bankroll, so equity (D38) is right. The session ledger adds `sixCardCents`, `sixCardWageredCents` and `sixCardExpectedCents` (−edge × wager, exact). "Perfect play expects" includes it, so luck still adds up to the cent. "Total wagered" includes it too. The setting is not persisted: it is off again after a reload.
+- **Auto-play:** with the bet on, auto-play settles it at every deal through the same rule (`engine/sixcard.ts applySixCard`), so a seeded run matches the same hands at the table to the cent. `SimulateRequest.sixCard` and `SessionSeries.sixCard` carry it: two optional fields, an approved frozen-contract change.
 
 ## 2. Orchestrator calls
 

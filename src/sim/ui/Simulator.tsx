@@ -15,6 +15,7 @@ import { MoveLog } from './MoveLog';
 import { SessionPanel } from './SessionPanel';
 import { SimAutoPlay } from './SimAutoPlay';
 import { SimTools } from './SimTools';
+import { SixCardPanelLazy } from './SixCardPanelLazy';
 import { StatusBar } from './StatusBar';
 import { StepPanel } from './StepPanel';
 import { Table, useOrientation } from './Table';
@@ -57,6 +58,8 @@ export function Simulator(props: SimulatorViewProps) {
   const practice = sandbox ? resolvePractice(settings, baseScene) : view.practice;
 
   const ev = useEvSheet(sim, practice, orientation, evShown, decision);
+  // I092: Details is the way into the EV sheet that does not act (EV shown before the move).
+  const detailsOpen = decision && evShown && !practice && ev.open === null && !view.pendingStart;
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
   // The move log is the sandbox's (Play); a restored session brings its log back.
   const moveLog = useMoveLog(view, () =>
@@ -112,6 +115,7 @@ export function Simulator(props: SimulatorViewProps) {
             onFelt={onFelt}
             sessionNet={state.stats.hands ? view.session.net : undefined}
             hand={settled && result ? result : null}
+            onDetails={detailsOpen ? ev.openDetails : undefined}
           />
         )
       }
@@ -200,6 +204,7 @@ export function Simulator(props: SimulatorViewProps) {
           }
         />
       ) : null}
+      {sandbox && scene.ui?.showSettings ? <SixCardPanelLazy d={d} /> : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
       {sandbox ? <MoveLog hands={moveLog} evMode={settings.evMode} /> : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />

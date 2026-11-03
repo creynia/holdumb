@@ -30,6 +30,8 @@ export interface SimulateRequest {
   stopWin?: Cents; stopLoss?: Cents;
   /** Compare mode: run these too on the same seeds (same cards hand by hand). */
   compare?: StrategySpec[];
+  /** I062: the table's Six Card Bonus, settled at each deal exactly as at the table. */
+  sixCard?: { bet: Cents; paytable: 'six-card-1000-200-100' | 'six-card-1000-200-50' };
 }
 export interface SessionSeries {
   strategy: StrategySpec;
@@ -44,6 +46,8 @@ export interface SessionSeries {
   outcomes: { win: number; lose: number; tie: number; fold: number };
   byCategory: Int32Array;            // final player hand category counts (10)
   blindBonusHits: number; tripsHits: number;
+  /** I062, only when the request had `sixCard` (summed over sessions). */
+  sixCard?: { taken: number; skipped: number; wageredCents: Cents; profitCents: Cents; hits: number };
 }
 export interface SimulateResult { series: SessionSeries[]; ms: number }
 

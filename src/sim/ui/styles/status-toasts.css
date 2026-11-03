@@ -144,3 +144,32 @@
   height: 20px;
   margin: 0;
 }
+/* A text button that reads as a link: the status bar's EV Details (I092). */
+.sim-btn-link {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* The button's 44px hit area overflows its 24px slot so the status bar keeps its height. */
+.sim-status [data-testid='ev-details-column'] dd {
+  position: relative;
+  height: 24px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.sim-status [data-testid='ev-details-column'] .sim-btn-link {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+}
