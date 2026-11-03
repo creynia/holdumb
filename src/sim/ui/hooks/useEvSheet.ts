@@ -126,6 +126,7 @@ export function useEvSheet(
           ),
           hideEv: practice,
           alternative,
+          request: sheetReq,
           chosen: reveal?.chosen ?? null,
           onContinue: () => {
             setReveal(null);
