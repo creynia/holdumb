@@ -5,7 +5,7 @@ import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
 import { randomSeed, resolvePractice } from '../settings';
-import { describeResult, foldAnnouncement } from '../text';
+import { foldAnnouncement, settledToastText } from '../text';
 import type { SimulatorProps } from '../types';
 
 export interface Toast {
@@ -76,7 +76,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
       if (e.type === 'hand-settled')
         // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
         pushToast(
-          describeResult(e.result),
+          settledToastText(e),
           e.result.net > 0 ? 'good' : undefined,
           e.result.outcome === 'fold' ? foldAnnouncement(e.result) : undefined,
         );
