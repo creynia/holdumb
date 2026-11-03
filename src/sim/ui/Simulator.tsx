@@ -11,6 +11,7 @@ import { CHIP_DENOMS } from './ChipStack';
 import { EvSheet } from './EvSheet';
 import { Felt } from './Felt';
 import { FoldReveal } from './FoldReveal';
+import { HandHistory } from './HandHistory';
 import { SessionPanel } from './SessionPanel';
 import { SimAutoPlay } from './SimAutoPlay';
 import { SimTools } from './SimTools';
@@ -78,6 +79,8 @@ export function Simulator(props: SimulatorProps) {
 
   const autoOnly = autoOnlyOf(scene);
   const showSession = scene.ui?.showSession ?? sandbox;
+  // Off unless the scene asks (Play.tsx does); lessons stay focused on the hand being taught.
+  const showHistory = !!scene.ui?.showHistory;
   const betting = street === 'betting' || settled;
   const table = (
     <Table
@@ -173,6 +176,9 @@ export function Simulator(props: SimulatorProps) {
         />
       ) : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}
+      {showHistory ? (
+        <HandHistory records={view.history} rules={state.rules} replayHref={props.replayHref} />
+      ) : null}
       <SimAutoPlay d={d} scene={scene} sandbox={sandbox} settings={settings} evClient={evClient} />
     </div>
   );

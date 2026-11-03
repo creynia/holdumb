@@ -1,18 +1,29 @@
 // SimDriver: the framework-free heart of the Simulator container. It owns the engine state, the
 // scene runtime and the EV previews, so the same code runs in the browser (wrapped by
 // ui/Simulator.tsx) and in the every-scene-completes test (tests/sim/lessons.test.ts).
-import { applyAction, createGame, equity, startHand, visibleView } from '../engine';
+import {
+  applyAction,
+  createGame,
+  equity,
+  handRecord,
+  pushRecord,
+  startHand,
+  visibleView,
+} from '../engine';
 import type {
   Action,
   Cents,
   DecisionStreet,
   GameEvent,
   GameState,
+  HandRecord,
   HandResult,
+  HandTierCode,
   TableRules,
   TripsPaytableId,
 } from '../engine';
-import type { DecisionOption, DecisionPreview, PreviewRequest } from '../math/types';
+import { toRatio } from '../math/fraction';
+import type { DecisionOption, DecisionPreview, DecisionTier, PreviewRequest } from '../math/types';
 import type { StrategyId } from '../strategy/types';
 import { effectiveGate, gatedOptions, optionKeyOfAction, gateAllows } from './gate';
 import type { Gate } from './gate';
@@ -133,6 +144,8 @@ export interface DriverView {
   session: SessionView;
   startEquity: Cents;
   result: HandResult | null;
+  /** The last HISTORY_LIMIT settled hands, newest first (engine/log.ts HandRecord). */
+  history: readonly HandRecord[];
 }
 
 export interface DriverOptions {
@@ -144,8 +157,21 @@ export interface DriverOptions {
   paytable?: TripsPaytableId;
   practice?: boolean;
   onEvent?: (e: DriverEvent) => void;
-  restore?: { state: GameState; startEquity: Cents; totals: SessionTotals };
+  restore?: {
+    state: GameState;
+    startEquity: Cents;
+    totals: SessionTotals;
+    history?: readonly HandRecord[];
+  };
 }
+
+const TIER_CODE: Record<DecisionTier, HandTierCode> = {
+  best: 'b',
+  close: 'c',
+  small: 's',
+  costly: 'm',
+  blunder: 'x',
+};
 
 const ZERO = { ante: 0, blind: 0, play: 0, trips: 0 } as const;
 const isDecision = (s: string): s is DecisionStreet =>
@@ -185,8 +211,15 @@ export class SimDriver {
   private rt: SceneRuntime;
   private startEq: Cents;
   private totals: SessionTotals;
-  private hand: { base: number | null; regret: number; scored: boolean; ante: number } | null =
-    null;
+  private hand: {
+    base: number | null;
+    regret: number;
+    scored: boolean;
+    ante: number;
+    /** One entry per decision taken: its tier and exact regret when a preview scored it. */
+    notes: ({ tier: HandTierCode; regret: string } | null)[];
+  } | null = null;
+  private history: HandRecord[] = [];
   private lastEvents: GameEvent[] = [];
   private eventSeq = 0;
   private pv: PreviewState = { key: null, status: 'idle', value: null, progress: 0 };
@@ -211,6 +244,7 @@ export class SimDriver {
       this.game = opts.restore.state;
       this.startEq = opts.restore.startEquity;
       this.totals = { ...EMPTY_TOTALS, ...opts.restore.totals };
+      this.history = [...(opts.restore.history ?? [])];
       // A restored hand has no earlier previews: it stays out of the luck split.
       if (this.game.hand && !this.game.hand.result) {
         this.beginHandTrack();
@@ -302,6 +336,7 @@ export class SimDriver {
       },
       startEquity: this.startEq,
       result: this.game.hand?.result ?? null,
+      history: this.history,
     };
     return this.cached;
   }
@@ -311,12 +346,14 @@ export class SimDriver {
     startEquity: Cents;
     totals: SessionTotals;
     practice: boolean;
+    history: readonly HandRecord[];
   } {
     return {
       state: this.game,
       startEquity: this.startEq,
       totals: this.totals,
       practice: this.practice,
+      history: this.history,
     };
   }
 
@@ -410,7 +447,7 @@ export class SimDriver {
   // ---------- hand tracking (luck vs mistakes) ----------
 
   private beginHandTrack(): void {
-    this.hand = { base: null, regret: 0, scored: true, ante: this.game.bets.ante };
+    this.hand = { base: null, regret: 0, scored: true, ante: this.game.bets.ante, notes: [] };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
     if (!this.hand) return;
@@ -418,8 +455,10 @@ export class SimDriver {
     const opt = pv?.options.find((o) => sameOption(o, action));
     if (!pv || !opt) {
       this.hand.scored = false;
+      this.hand.notes.push(null);
       return;
     }
+    this.hand.notes.push({ tier: TIER_CODE[opt.tier], regret: toRatio(opt.regret) });
     if (this.hand.base === null) this.hand.base = num(pv.options[pv.bestIndex]!.evCents);
     this.hand.regret += num(opt.regret) * this.hand.ante;
     if (opt.tier !== 'best' && opt.tier !== 'close')
@@ -428,6 +467,15 @@ export class SimDriver {
   private finishHandTrack(result: HandResult): void {
     const h = this.hand;
     this.hand = null;
+    // The history row (auto-play never comes through here: it runs in the EV client's simulate job).
+    const settledHand = this.game.hand;
+    if (settledHand) {
+      const { ante, trips } = this.game.bets;
+      this.history = pushRecord(
+        this.history,
+        handRecord(settledHand, result, { ante, trips }, h?.notes ?? []),
+      );
+    }
     let main = 0;
     let trips = 0;
     for (const w of result.wagers) {
@@ -624,6 +672,7 @@ export class SimDriver {
     });
     this.startEq = bankroll;
     this.totals = { ...EMPTY_TOTALS };
+    this.history = [];
     this.hand = null;
     this.lastEvents = [];
     this.eventSeq++;

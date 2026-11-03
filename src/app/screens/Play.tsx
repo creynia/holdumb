@@ -48,6 +48,7 @@ export function Play({ query }: { query: URLSearchParams }) {
         snapshot={preset ? undefined : store.sandbox}
         onSnapshot={preset ? undefined : (snap) => store.setSandbox(snap)}
         onPracticeChange={(on) => store.updateSettings({ evMode: on ? 'after' : 'before' })}
+        replayHref={(q) => `#/play?${q}`}
       />
       <p class="muted">
         <a href="#/hands" class="inline-link">

@@ -65,4 +65,9 @@ export interface SimulatorProps {
   onSnapshot?: (snapshot: unknown) => void;
   /** Sandbox: the table's Practice checkbox (on = EV after). The app writes evMode to settings. */
   onPracticeChange?: (on: boolean) => void;
+  /**
+   * Hand history (ui.showHistory): builds the href of "Replay this spot" from the play-route query
+   * (`hole=&board=&dealer=&street=`). Without it the rows have no replay link.
+   */
+  replayHref?: (query: string) => string;
 }

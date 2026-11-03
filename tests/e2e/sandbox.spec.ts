@@ -117,6 +117,11 @@ test.describe('sandbox', () => {
     expect(keys.filter((k) => k.startsWith('holdumb'))).toEqual(['holdumb:v1']);
     await page.reload();
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-hands', '1');
+    // The hand history survives the reload (I055): one row, expandable, with a replay link.
+    const rows = page.getByTestId('hand-history-row');
+    await expect(rows).toHaveCount(1);
+    await rows.first().getByRole('button').click();
+    await expect(page.getByTestId('replay-spot')).toHaveAttribute(/href/, /#\/play\?hole=/);
   });
 
   test('reloading on the river restores the same cards and bets', async ({ page }) => {
