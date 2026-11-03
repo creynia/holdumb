@@ -50,7 +50,15 @@ export type Block =
   | { kind: 'scene'; scene: SceneConfig }
   | { kind: 'chart'; chart: ChartBlockData }
   | { kind: 'progressive'; progressive: ProgressiveBlockData }
-  | { kind: 'quiz'; quiz: Quiz };
+  | { kind: 'quiz'; quiz: Quiz }
+  | { kind: 'practise'; links: PractiseLink[] };
+
+/** A "Practise this" link (I066): a Drill category or a preset table spot from the lesson. */
+export interface PractiseLink {
+  label: string;
+  /** In-app route, e.g. '/drill?category=flop-board-pair' or '/play?hole=Qc7d&board=KdJh9s5c2d'. */
+  to: string;
+}
 
 /** One entry of content/sources.json (shown on #/sources and cited by lessons). */
 export interface SourceItem {

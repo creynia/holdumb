@@ -4,7 +4,15 @@ import type { Card, RngState } from '../engine/types';
 import { categorize } from './categories';
 import { preflopRow } from '../math/preflop';
 import { previewJob } from '../math/preview';
-import { gradeSpot, nextSpot, secondBestRegret, spotCode, spotFromCode } from './drill';
+import {
+  MIXED_STREET_WEIGHTS,
+  gradeSpot,
+  nextSpot,
+  secondBestRegret,
+  spotCode,
+  spotFromCode,
+} from './drill';
+import { classRep, classWeight } from './ranks';
 import { matchesAny } from './predicates';
 import { handClass } from './ranks';
 import { PREFLOP_4X_PERFECT, RULE_DEFS } from './rules';
@@ -235,5 +243,106 @@ describe('preflop classes match curriculum 9.1', () => {
     }
     const kjo = parseCards('Kh Jd');
     expect(categorize([kjo[0]!, kjo[1]!], [])).toBe('pre-king');
+  });
+});
+
+describe('Close calls (I068)', () => {
+  const regret = (sp: DrillSpot): number => {
+    const g = previewJob({
+      street: sp.street,
+      hole: sp.hole,
+      board: sp.board,
+      blindPaytable: 'blind-standard',
+      ante: 100,
+    });
+    let st = g.next();
+    while (!st.done) st = g.next();
+    return secondBestRegret(st.value);
+  };
+  it('500 seeded preflop spots: 55-65% have a second-best regret under 0.25 antes', () => {
+    const spots = many({ street: 'preflop', interesting: true }, 500, 2024);
+    const close = spots.filter((sp) => regret(sp) < 0.25).length;
+    expect(close / 500).toBeGreaterThanOrEqual(0.55);
+    expect(close / 500).toBeLessThanOrEqual(0.65);
+  });
+
+  it('Mixed street weights are the exact real-play frequencies', () => {
+    // The chart checks every class it does not 4x; combos over C(52,2) = 1,326.
+    const all = new Set<string>();
+    const RANKS = 'AKQJT98765432';
+    for (let i = 0; i < 13; i++)
+      for (let j = i; j < 13; j++) {
+        if (i === j) all.add(`${RANKS[i]}${RANKS[j]}`);
+        else {
+          all.add(`${RANKS[i]}${RANKS[j]}s`);
+          all.add(`${RANKS[i]}${RANKS[j]}o`);
+        }
+      }
+    const fourX = new Set(PREFLOP_4X_PERFECT);
+    let check = 0;
+    for (const c of all) if (!fourX.has(c)) check += classWeight(c);
+    expect(all.size).toBe(169);
+    expect(check).toBe(826);
+    // P(check preflop) = 826/1326 = 413/663; P(4x) = 250/663 (decisions.md)
+    const D = 6_497_400n; // 663 x 9,800
+    expect(BigInt(MIXED_STREET_WEIGHTS.preflop)).toBe(D);
+    expect(BigInt(MIXED_STREET_WEIGHTS.flop) * 1326n).toBe(D * 826n);
+    // River spots need a preflop check and then a flop check under the basic card. P(check
+    // preflop AND the basic flop rule bets 2x) is enumerated over the check classes (suit
+    // symmetry: one representative hole per class, weighted by its combos) x all 19,600 flops.
+    let fires = 0;
+    for (const c of all) {
+      if (fourX.has(c)) continue;
+      const hole = classRep(c);
+      const rest: number[] = [];
+      for (let k = 0; k < 52; k++) if (k !== hole[0] && k !== hole[1]) rest.push(k);
+      let n = 0;
+      for (let a = 0; a < rest.length; a++)
+        for (let b = a + 1; b < rest.length; b++)
+          for (let d = b + 1; d < rest.length; d++)
+            if (matchesAny(RULE_DEFS.basic.flop2x, hole, [rest[a]!, rest[b]!, rest[d]!])) n++;
+      fires += classWeight(c) * n;
+    }
+    expect(fires).toBe(5_527_172); // of 1,326 x 19,600 = 25,989,600 = 4 x 6,497,400
+    expect(MIXED_STREET_WEIGHTS.river).toBe(MIXED_STREET_WEIGHTS.flop - fires / 4);
+    expect(MIXED_STREET_WEIGHTS.river).toBe(2_665_607);
+  });
+
+  it('Mixed with close calls draws streets by those weights', () => {
+    const n = 1200;
+    const counts = { preflop: 0, flop: 0, river: 0 };
+    for (const sp of many({ street: 'mixed', interesting: true }, n, 77)) counts[sp.street]++;
+    const total = 6_497_400 + 4_047_400 + 2_665_607;
+    for (const st of ['preflop', 'flop', 'river'] as const) {
+      const p = MIXED_STREET_WEIGHTS[st] / total;
+      // river and flop are accepted by closeness, which skews the mix a little: a wide band
+      expect(Math.abs(counts[st] / n - p)).toBeLessThan(0.08);
+    }
+    expect(counts.river).toBeLessThan(counts.preflop);
+  });
+
+  it('toggle off keeps the pre-I068 sequences (fixed seed 12345)', () => {
+    const seq = (street: 'mixed' | 'preflop') => many({ street }, 8, 12345).map((sp) => sp.code);
+    // Captured from the generator before the change.
+    expect(seq('mixed')).toEqual([
+      'p:JhAc.',
+      'p:KsQs.',
+      'f:4h6c.8sKd4d',
+      'f:Qh2c.Kc6sAh',
+      'f:3sJd.5cAsAc',
+      'p:6h9s.',
+      'f:2s7c.6sQcJc',
+      'f:5c4c.TdAh6d',
+    ]);
+    expect(seq('preflop')).toEqual([
+      'p:8cAc.',
+      'p:4h5h.',
+      'p:KsQs.',
+      'p:5sAd.',
+      'p:6d3c.',
+      'p:3hAh.',
+      'p:Qh2h.',
+      'p:4sQd.',
+    ]);
   });
 });
