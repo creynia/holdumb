@@ -54,7 +54,7 @@ export function isHandRecord(v: unknown): v is HandRecord {
   const { p, d, b } = v;
   if (!cardsOf(p, 2) || !cardsOf(d, 2) || !cardsOf(b, 5)) return false;
   try {
-    parseCards(`${p}${d}${b}`); // disjoint
+    parseCards(`${p as string}${d as string}${b as string}`); // disjoint
   } catch {
     return false;
   }

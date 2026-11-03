@@ -121,7 +121,7 @@ test.describe('sandbox', () => {
     const rows = page.getByTestId('hand-history-row');
     await expect(rows).toHaveCount(1);
     await rows.first().getByRole('button').click();
-    await expect(page.getByTestId('replay-spot')).toHaveAttribute(/href/, /#\/play\?hole=/);
+    await expect(page.getByTestId('replay-spot')).toHaveAttribute('href', /#\/play\?hole=/);
   });
 
   test('reloading on the river restores the same cards and bets', async ({ page }) => {

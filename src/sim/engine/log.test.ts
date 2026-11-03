@@ -10,8 +10,9 @@ import {
   recordPlay,
   recordResult,
 } from './log';
+import type { HandRecord } from './log';
 import { DEFAULT_RULES } from './rules';
-import type { Card, HandRecord, HandState } from './types';
+import type { Card, HandState } from './types';
 
 /** Plays a forced hand to the end with the given decisions and returns its settled state. */
 function settle(
@@ -19,7 +20,7 @@ function settle(
   decisions: readonly ('check' | 'fold' | 1 | 2 | 3 | 4)[],
   bets = { ante: 1000, trips: 500 },
 ) {
-  const b = parseCards(deal.board) as Card[];
+  const b = parseCards(deal.board);
   const c = (i: number) => b[i]!;
   const [p1, p2] = parseCards(deal.player) as [Card, Card];
   const [d1, d2] = parseCards(deal.dealer) as [Card, Card];
@@ -106,11 +107,13 @@ describe('HandRecord (engine/log.ts)', () => {
       'check',
       1,
     ]);
-    // Preflop regrets come from the table with denominators like 2317817502000.
+    // The longest exact regrets each street can produce (in antes, unreduced): preflop over the
+    // table's check denominator 20975724000 (regret < 3 antes), the flop over 1081 turn-river
+    // pairs x 990 dealer hands = 1070190, the river over 990 dealer hands.
     const r = handRecord(hand, hand.result, { ante: 50_000, trips: 10_000 }, [
-      { tier: 'x', regret: '1234567890123/2317817502000' },
-      { tier: 'm', regret: '1234567890123/2317817502000' },
-      { tier: 's', regret: '1234567890123/2317817502000' },
+      { tier: 'x', regret: '62927171999/20975724000' },
+      { tier: 'm', regret: '2140379/1070190' },
+      { tier: 's', regret: '1979/990' },
     ]);
     const bytes = new TextEncoder().encode(JSON.stringify(r)).length;
     expect(bytes).toBeLessThanOrEqual(HISTORY_RECORD_BYTES);
