@@ -17,7 +17,11 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "paths": { "#ev-worker": ["./src/sim/worker/transport-url.ts"] },
+    "paths": {
+      "#ev-worker": ["./src/sim/worker/transport-url.ts"],
+      "#screens": ["./src/app/screens-lazy.tsx"],
+      "#content": ["./src/app/content-none.ts"]
+    },
     "types": ["vite/client", "node"]
   },
   "include": ["src", "tests/**/*.ts", "tests/**/*.tsx", "build/seo/**/*.ts"]

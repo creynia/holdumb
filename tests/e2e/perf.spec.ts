@@ -179,3 +179,28 @@ for (const vp of VIEWPORTS) {
     expect(samples).toBeGreaterThan(20);
   });
 }
+
+test('Home shows its heading within 100 ms of first contentful paint at 4x CPU (I039)', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __h1At?: number };
+    new MutationObserver((_m, obs) => {
+      if (document.querySelector('main h1')) {
+        w.__h1At = performance.now();
+        obs.disconnect();
+      }
+    }).observe(document, { childList: true, subtree: true });
+  });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  await page.goto('/');
+  await expect(page.locator('main h1').first()).toBeVisible();
+  const { fcp, h1 } = await page.evaluate(() => ({
+    fcp: performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? -1,
+    h1: (window as unknown as { __h1At?: number }).__h1At ?? -1,
+  }));
+  expect(h1).toBeGreaterThan(0);
+  // main h1 is rendered by the app, so its time is the first real content; FCP can only be earlier.
+  expect(h1 - Math.min(fcp, h1)).toBeLessThan(100);
+});
