@@ -4,8 +4,8 @@
 import { useRef } from 'preact/hooks';
 import type { DecisionPreview } from '../../math';
 import type { DriverView } from '../../scene';
-import { appendEvents, eventsForHandInProgress } from '../moveLog';
-import type { LoggedHand } from '../moveLog';
+import { appendEvents, eventsForHandInProgress } from '../moveLogData';
+import type { LoggedHand } from '../moveLogData';
 import { isUsablePreview } from '../text';
 
 export function useMoveLog(view: DriverView, initial: () => LoggedHand[]): readonly LoggedHand[] {

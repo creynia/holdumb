@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { seedSettings } from './settings-seed';
 
 // I030: in short landscape the shell shows one 44px top bar (no bottom tab bar) and the whole
 // table fits the viewport at scrollY 0, with nothing fixed on top of it.
@@ -66,10 +67,12 @@ for (const vp of VIEWPORTS) {
     test('the EV sheet keeps Confirm and Cancel on screen without page scroll', async ({
       page,
     }) => {
+      // One tap acts by default (D40); confirmOn 'all' makes the tap open the confirm sheet.
+      await seedSettings(page, { confirmOn: 'all' });
       await page.goto('/#/play?street=flop&hole=AhTc&board=7dKs2c&dealer=9d9s&speed=instant');
       await expect(page.getByTestId('felt')).toBeVisible();
       await page.locator('.sim-rail-actions button').filter({ hasText: 'Check' }).click();
-      const confirm = page.getByRole('button', { name: /^Confirm/ });
+      const confirm = page.getByTestId('confirm');
       await expect(confirm).toBeVisible();
       for (const b of [confirm, page.getByRole('button', { name: 'Cancel' })]) {
         const box = (await b.boundingBox())!;

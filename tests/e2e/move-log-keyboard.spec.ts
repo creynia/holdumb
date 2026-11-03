@@ -6,12 +6,11 @@ const sim = (page: Page) => page.getByTestId('simulator');
 const ready = (page: Page) =>
   page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 20_000 });
 
+/** One tap acts with the default confirm policy (D40): no sheet. */
 async function act(page: Page, option: string) {
   await ready(page);
   await page.locator(`button[data-option="${option}"]`).click();
-  const confirm = page.getByTestId('confirm');
-  await confirm.click();
-  if (await page.getByTestId('blunder-warning').isVisible()) await confirm.click();
+  await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
 }
 
 /** One hand: check, check, fold (I087). The first hand is dealt, later ones are re-bet. */
@@ -31,6 +30,8 @@ async function openLog(page: Page): Promise<Locator> {
 }
 
 test('the move-log list scrolls with the keyboard (I087)', async ({ page }) => {
+  // 60 decisions to fill the log; each waits out the 450 ms double-tap guard (D40).
+  test.setTimeout(120_000);
   await page.goto('/#/play?speed=instant');
   for (let i = 0; i < 20; i++) await playHand(page, i === 0);
   const log = await openLog(page);
