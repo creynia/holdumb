@@ -106,3 +106,45 @@ for (const vp of [
     expect(Math.abs(card.y - card2.y)).toBeLessThanOrEqual(1);
   });
 }
+
+// I031: in short landscape the spot, every answer button, the verdict and Next all fit above the
+// tab bar at scrollY 0, before and after answering.
+for (const vp of [
+  { width: 667, height: 375 },
+  { width: 844, height: 390 },
+]) {
+  for (const street of ['preflop', 'flop', 'river'] as const) {
+    test(`drill ${street} fits above the tab bar at ${vp.width}x${vp.height}`, async ({ page }) => {
+      await page.setViewportSize(vp);
+      await page.goto(`/#/drill?street=${street}`);
+      await expect(page.getByTestId('drill-spot')).toBeVisible();
+      const fold = async (what: string, loc: import('@playwright/test').Locator) => {
+        // the tab bar is only shown below 768px wide; otherwise the viewport edge is the fold
+        const tabTop = (await page.locator('.tabbar').boundingBox())?.y ?? vp.height;
+        for (const el of await loc.all()) {
+          const b = (await el.boundingBox())!;
+          expect(b.y, `${what} starts on screen`).toBeGreaterThanOrEqual(0);
+          expect(b.y + b.height, `${what} ends above the tab bar (${tabTop})`).toBeLessThanOrEqual(
+            tabTop,
+          );
+        }
+      };
+      const buttons = page.locator('.choice-row button');
+      expect(await buttons.count()).toBeGreaterThan(1);
+      for (const b of await buttons.all()) {
+        expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      }
+      await fold('cards', page.locator('.drill-cards'));
+      await fold('answer buttons', buttons);
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+      await buttons.first().click();
+      const res = page.getByTestId('drill-result');
+      await expect(res).toBeVisible();
+      await fold('cards after answering', page.locator('.drill-cards'));
+      await fold('answer buttons after answering', buttons);
+      await fold('result verdict', res.locator('[role="status"]'));
+      await fold('Next hand', page.getByRole('button', { name: 'Next hand' }));
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    });
+  }
+}
