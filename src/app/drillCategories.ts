@@ -1,7 +1,7 @@
 // Drill category labels (curriculum.md §9.1) and the stats helpers behind the picker (I016).
 import { DRILL_CATEGORY_IDS, DRILL_STREET_OF } from '../sim/strategy';
 import type { DrillCategoryId } from '../sim/strategy';
-import type { DrillStats, DrillStreet } from './storage';
+import { lensStats, type DrillStats, type DrillStreet } from './storage';
 
 export const DRILL_CATEGORY_LABELS: Readonly<Record<DrillCategoryId, string>> = {
   'pre-premium': 'Premium hands',
@@ -38,7 +38,7 @@ export function weakestCategory(
 ): { id: DrillCategoryId; pct: number; answered: number } | null {
   let best: { id: DrillCategoryId; correct: number; answered: number } | null = null;
   for (const id of DRILL_CATEGORY_IDS) {
-    const v = d.byCategory[id];
+    const v = lensStats(d).byCategory[id];
     if (!v || v.answered < MIN_WEAKEST_ANSWERS) continue;
     // exact comparison v.correct/v.answered < best.correct/best.answered
     const lhs = v.correct * (best?.answered ?? 1);

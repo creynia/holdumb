@@ -1,4 +1,5 @@
 import { Link } from '../components/Link';
+import { InstallButton } from '../components/InstallButton';
 import { OfflineLink } from '../components/OfflineLink';
 
 export function More() {
@@ -36,6 +37,7 @@ export function More() {
         </Link>
       </div>
       <OfflineLink />
+      <InstallButton />
     </div>
   );
 }

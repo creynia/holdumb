@@ -215,7 +215,8 @@ function Demo({ id }: { id: string }) {
     setRunKey((k) => k + 1);
     setOpen(null);
     const settled = r.events.find((e) => e.type === 'hand-settled');
-    if (settled && settled.type === 'hand-settled') setToast(describeResult(settled.result));
+    if (settled && settled.type === 'hand-settled')
+      setToast(describeResult(settled.result, undefined, r.state.hand?.deal));
   };
   const sheet =
     open && decision ? (
@@ -242,6 +243,7 @@ function Demo({ id }: { id: string }) {
         }
         handsPerHour={30}
         whyOpen={q.get('why') === '1'}
+        request={req}
       />
     ) : null;
   const settled = state.street === 'settled';

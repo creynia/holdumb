@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateN, parseCards, resolveRules, settleHand } from '../engine';
+import { PAYTABLE_PRESET_IDS } from '../engine/paytables';
 import type { HandResult } from '../engine';
 import {
   FOLDED_RESULT,
@@ -9,13 +10,21 @@ import {
   WON_RESULT,
   frac,
 } from './fixtures';
+import { groupOuts, riverFacts } from '../math';
+import type { Card } from '../engine';
 import {
   withArticle,
   OPTION_LABELS,
   OPTION_ORDER,
   actionOfKey,
   ariaForOption,
+  basicRiverLine,
+  dealerOutsLine,
   describeResult,
+  tablesFor,
+  hiddenPairLine,
+  outGroupText,
+  outsDetailText,
   fmtAnteUnits,
   fmtCentsFraction,
   fmtCost,
@@ -23,8 +32,10 @@ import {
   fmtVsBest,
   foldAnnouncement,
   foldRevealText,
+  handLabel,
   handName,
   headline,
+  playerNearMiss,
   optionKeyOf,
 } from './text';
 
@@ -49,6 +60,55 @@ describe('exact fraction formatting', () => {
     expect(fmtVsBest(frac(1, 10))).toBe('less than 1¢');
     expect(fmtVsBest(frac(1408))).toBe('−$14.08');
     expect(fmtCost(frac(0))).toBe('$0');
+  });
+});
+
+describe('near-miss notes in the hand result (I005)', () => {
+  const settle = (player: string, dealer: string, board: string, folded = false) => {
+    const p = parseCards(player);
+    const d = parseCards(dealer);
+    const b = parseCards(board);
+    const deal = {
+      player: [p[0]!, p[1]!] as const,
+      dealer: [d[0]!, d[1]!] as const,
+      board: [b[0]!, b[1]!, b[2]!, b[3]!, b[4]!] as const,
+      forced: true,
+    };
+    return {
+      deal,
+      result: settleHand(
+        deal,
+        { ante: 1000, blind: 1000, trips: 0 },
+        { multiple: 1 },
+        folded,
+        resolveRules(),
+      ),
+    };
+  };
+  it('a losing pair of threes with four clubs says why it is not a flush', () => {
+    const { deal, result } = settle('Ac 3d', 'Td Ts', 'Kc 8c 2c 3h 7d');
+    const text = describeResult(result, undefined, deal);
+    expect(text).toContain(
+      "The dealer's pair of tens beats your pair of threes (four clubs, one short of a flush).",
+    );
+    expect(handLabel(result.player, playerNearMiss(result, deal))).toBe(
+      'pair of threes (four clubs, one short of a flush)',
+    );
+    expect(handLabel(result.dealer)).toBe('pair of tens');
+  });
+  it('a winning hand carries the note too, and four to a straight reads the same either way', () => {
+    const { deal, result } = settle('9h 3d', '5c 3s', '8c 7s 6d 2h Kh');
+    expect(describeResult(result, undefined, deal)).toContain(
+      '(four to a straight, one short) beats',
+    );
+  });
+  it('shows no note without the deal, on a fold, or when nothing is one short', () => {
+    const lost = settle('Ac 3d', 'Td Ts', 'Kc 8c 2c 3h 7d');
+    expect(describeResult(lost.result)).not.toContain('one short');
+    const folded = settle('Ac 3d', 'Td Ts', 'Kc 8c 2c 3h 7d', true);
+    expect(describeResult(folded.result, undefined, folded.deal)).not.toContain('one short');
+    const plain = settle('Ah Kd', '7c 2s', 'Qs 9d 4c 6h 2d');
+    expect(describeResult(plain.result, undefined, plain.deal)).not.toContain('one short');
   });
 });
 
@@ -79,6 +139,110 @@ describe('prose', () => {
   it('describes a settled hand', () => {
     expect(describeResult(WON_RESULT)).toBe(
       "Your pair of kings beats the dealer's pair of nines. Ante +$10, Blind push (needs a straight), Play +$40. Net +$50.",
+    );
+  });
+  it('names the paying hand and its odds on blind and trips wins (I011)', () => {
+    const withWager = (
+      category: HandResult['player']['category'],
+      wager: 'blind' | 'trips',
+      result: 'win' | 'lose',
+      profit: number,
+    ): HandResult => ({
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category },
+      wagers: [
+        {
+          wager,
+          amount: 1000,
+          result,
+          profit,
+          reason: wager === 'blind' ? 'blind-bonus' : 'trips-pays',
+        },
+      ],
+      net: profit,
+    });
+    expect(describeResult(withWager('royal-flush', 'blind', 'win', 500000))).toContain(
+      'Blind +$5,000 (royal flush pays 500 to 1)',
+    );
+    expect(describeResult(withWager('straight', 'blind', 'win', 1000))).toContain(
+      'Blind +$10 (straight pays 1 to 1)',
+    );
+    expect(describeResult(withWager('trips', 'trips', 'win', 3000))).toContain(
+      'Trips +$30 (three of a kind pays 3 to 1 on Trips 8/6/5)',
+    );
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).toContain('Trips -$5');
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).not.toContain('pays');
+  });
+  it('reads the odds from the active Trips preset, not a fixed string (I011)', () => {
+    const fullHouseTrips: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'full-house' },
+      wagers: [{ wager: 'trips', amount: 1000, result: 'win', profit: 9000, reason: 'trips-pays' }],
+      net: 9000,
+    };
+    expect(describeResult(fullHouseTrips, tablesFor('trips-9-7-4'))).toContain(
+      'full house pays 9 to 1 on Trips 9/7/4',
+    );
+  });
+  it('a straight flush is never named as a flush (I011 review)', () => {
+    const sf: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'straight-flush' },
+      wagers: [
+        { wager: 'blind', amount: 1000, result: 'win', profit: 50000, reason: 'blind-bonus' },
+      ],
+      net: 50000,
+    };
+    const text = describeResult(sf);
+    expect(text).toContain('Blind +$500 (straight flush pays 50 to 1)');
+    expect(text).not.toContain('(flush pays');
+  });
+  it('each Trips preset names itself and its own odds (I011 review)', () => {
+    for (const id of PAYTABLE_PRESET_IDS) {
+      const t = tablesFor(id);
+      const odds = t.trips.pays['trips'];
+      const r: HandResult = {
+        ...WON_RESULT,
+        player: { ...WON_RESULT.player, category: 'trips' },
+        wagers: [
+          { wager: 'trips', amount: 1000, result: 'win', profit: 3000, reason: 'trips-pays' },
+        ],
+        net: 3000,
+      };
+      expect(describeResult(r, t)).toContain(
+        `Trips +$30 (three of a kind pays ${odds![0]} to ${odds![1]} on ${t.trips.label})`,
+      );
+    }
+  });
+  it('a Blind push adds no odds (I011 review)', () => {
+    const push: HandResult = {
+      ...WON_RESULT,
+      wagers: [
+        {
+          wager: 'blind',
+          amount: 1000,
+          result: 'push',
+          profit: 0,
+          reason: 'blind-push-under-straight',
+        },
+      ],
+      net: 0,
+    };
+    expect(describeResult(push)).toContain('Blind push (needs a straight).');
+    expect(describeResult(push)).not.toContain('pays');
+  });
+  it('the odds come from the preset the hand settled at, not a different one (I011 review)', () => {
+    const win: HandResult = {
+      ...WON_RESULT,
+      player: { ...WON_RESULT.player, category: 'full-house' },
+      wagers: [{ wager: 'trips', amount: 1000, result: 'win', profit: 9000, reason: 'trips-pays' }],
+      net: 9000,
+    };
+    expect(describeResult(win, tablesFor('trips-8-6-5'))).toContain(
+      'full house pays 8 to 1 on Trips 8/6/5',
+    );
+    expect(describeResult(win, tablesFor('trips-9-7-4'))).toContain(
+      'full house pays 9 to 1 on Trips 9/7/4',
     );
   });
   it('makes a fold toast carry only the money (the reveal has the rest)', () => {
@@ -239,5 +403,47 @@ describe('result text names the deciding card', () => {
     expect(describeResult(r)).toMatch(
       /^Your king-queen-jack-nine-six high beats the dealer's king-queen-jack-nine-five high\. /,
     );
+  });
+});
+
+describe('river dealer outs copy (lesson 12)', () => {
+  const spot = (h: string, b: string) => {
+    const hole = parseCards(h) as [Card, Card];
+    const board = parseCards(b);
+    return { hole, board, f: riverFacts(hole, board) };
+  };
+  it('names the count out of 45, the ranks grouped, the hidden pair and the basic card', () => {
+    const { hole, board, f } = spot('Qc 7d', 'Kd Jh 9s 5c 2d');
+    expect(dealerOutsLine(f)).toBe('Dealer outs: 19 of 45');
+    expect(outsDetailText(f, hole, board)).toBe(
+      'any ace (4), any king (3), any jack (3), any nine (3), any five (3), any two (3)',
+    );
+    expect(hiddenPairLine(f)).toBe('Hidden pair or better: no');
+    expect(basicRiverLine(f)).toBe('Basic card: bet 1x (outs < 21)');
+  });
+  it('says fold with 21 or more outs and no hidden pair', () => {
+    const { hole, board, f } = spot('Jc 9d', '8s 8h 5c 3d 2s');
+    expect(dealerOutsLine(f)).toBe('Dealer outs: 23 of 45');
+    expect(outsDetailText(f, hole, board)).toContain('any eight (2)');
+    expect(basicRiverLine(f)).toBe('Basic card: fold (21+ outs, no hidden pair)');
+  });
+  it('a hidden pair plays whatever the count, and partial ranks name the card', () => {
+    const { hole, board, f } = spot('6d 5s', 'Kh 6h 8h 7c Qh');
+    expect(hiddenPairLine(f)).toBe('Hidden pair or better: yes');
+    expect(basicRiverLine(f)).toBe('Basic card: bet 1x (hidden pair)');
+    const groups = groupOuts(f.outCards, hole, board);
+    expect(outGroupText(groups[0]!)).toBe('the ace of hearts');
+    expect(outGroupText(groups[1]!)).toBe('any king (3)');
+    expect(outGroupText({ rank: 7, all: false, cards: parseCards('9h 9c') })).toBe(
+      'the nine of hearts or clubs',
+    );
+    expect(outGroupText({ rank: 7, all: false, cards: parseCards('9h 9d 9c') })).toBe(
+      'the nine of hearts, diamonds or clubs',
+    );
+  });
+  it('says so when nothing beats you', () => {
+    const { hole, board, f } = spot('4c 3d', 'As Ks Qs Jd Th');
+    expect(dealerOutsLine(f)).toBe('Dealer outs: 0 of 45');
+    expect(outsDetailText(f, hole, board)).toBe('no single card beats you');
   });
 });

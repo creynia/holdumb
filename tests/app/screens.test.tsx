@@ -1,6 +1,6 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +10,15 @@ import { formatMoney } from '../../src/sim';
 import type { DecisionPreview, DrillSpot } from '../../src/sim';
 import { App } from '../../src/app/App';
 import { AppProviders } from '../../src/app/context';
-import { DRILL_CATEGORY_IDS, nextSpot as realNextSpot } from '../../src/sim';
+import {
+  DRILL_CATEGORY_IDS,
+  gradeSpot as realGradeSpot,
+  nextSpot as realNextSpot,
+} from '../../src/sim';
+import { spotFromCode } from '../../src/sim';
+import { createEvClient } from '../../src/sim/worker';
+import { waitFor } from '@testing-library/preact';
+import { weakestCategory } from '../../src/app/drillCategories';
 import { Drill, rngFromSeed, type DrillDeps } from '../../src/app/screens/Drill';
 import { About } from '../../src/app/screens/About';
 import { MemoryStorage } from '../../src/app/storage';
@@ -441,6 +449,7 @@ describe('Drill', () => {
   function setup(bestIdx: 0 | 1, deps?: Partial<DrillDeps>) {
     const d: DrillDeps = {
       nextSpot: (rng) => [spot('flop', 'f:x'), rng],
+      gradeSpot: realGradeSpot,
       preview: () => Promise.resolve(preview(bestIdx)),
       ...deps,
     };
@@ -569,7 +578,7 @@ describe('Drill', () => {
     });
     const el = await mountDrill(store, d);
     expect(el.querySelector('[data-testid="drill-unavailable"]')).toBeTruthy();
-    expect(el.querySelectorAll('.segmented .seg').length).toBe(4);
+    expect(el.querySelectorAll('[aria-label="Street"] .seg').length).toBe(4);
     expect(el.querySelector('[data-testid="drill-stats"]')).toBeTruthy();
   });
   it('street filter is read from the query', async () => {
@@ -577,6 +586,102 @@ describe('Drill', () => {
     const { store, d } = setup(0, { nextSpot });
     await mountDrill(store, d, 'street=river&focus=a,b');
     expect(nextSpot.mock.calls[0]![1]).toEqual({ street: 'river', focus: ['a', 'b'] });
+  });
+  describe('grading lens', () => {
+    // Bet 2x is perfect-best by 0.300 antes over Check, which is what the basic card plays here.
+    const differing = (): DecisionPreview => {
+      const p = preview(0);
+      p.options[1]!.regret = frac(30);
+      p.options[1]!.tier = 'costly';
+      return p;
+    };
+    const btnIn = (el: HTMLElement, group: string, name: string) =>
+      [...el.querySelectorAll<HTMLButtonElement>(`[aria-label="${group}"] button`)].find(
+        (b) => b.textContent === name,
+      )!;
+
+    it('defaults to perfect: the basic card play is a Mistake', async () => {
+      const { store, d } = setup(0, { preview: () => Promise.resolve(differing()) });
+      const el = await mountDrill(store, d);
+      expect(store.drill.lens).toBe('perfect');
+      await act(() => btn(el, 'Check').click());
+      await tick();
+      expect(el.querySelector('[data-testid="drill-result"]')!.getAttribute('data-tier')).toBe(
+        'costly',
+      );
+    });
+    it('practical: the basic card play is Correct! and names perfect play and its regret', async () => {
+      const { store, d } = setup(0, { preview: () => Promise.resolve(differing()) });
+      const el = await mountDrill(store, d);
+      await act(() => btnIn(el, 'Grade by', 'Basic card').click());
+      expect(store.drill.lens).toBe('practical');
+      await act(() => btn(el, 'Check').click());
+      await tick();
+      const res = el.querySelector('[data-testid="drill-result"]')!;
+      expect(res.getAttribute('data-tier')).toBe('best');
+      expect(res.querySelector('[role="status"]')!.textContent).toMatch(
+        /^Correct! Check is the card's play\. Perfect play says Bet 2x here, by 0\.300 antes \(\$[\d.,]+ per hand\)\. The card's rule is still the one to remember\.$/,
+      );
+      expect(store.drill.practical.byStreet.flop).toEqual({ answered: 1, correct: 1 });
+      expect(store.drill.byStreet.flop).toEqual({ answered: 0, correct: 0 });
+    });
+    describe('pinned spot f:2dJd.4h6d9d (flush draw: the card bets 2x, perfect checks)', () => {
+      // The real engine: Check 26929/142692 is best; Bet 2x 273331/2140380 costs 0.061 antes.
+      const run = async (choice: string) => {
+        const ev = createEvClient({ mode: 'inthread' });
+        const spot = spotFromCode('f:2dJd.4h6d9d');
+        const { store, d } = setup(1, {
+          nextSpot: (r) => [spot, r],
+          preview: (req) => ev.run('preview', req),
+        });
+        const el = await mountDrill(store, d);
+        await act(() => btnIn(el, 'Grade by', 'Basic card').click());
+        await act(() => btn(el, choice).click());
+        await waitFor(() => expect(el.querySelector('[data-testid="drill-result"]')).toBeTruthy(), {
+          timeout: 60_000,
+        });
+        ev.dispose();
+        return el.querySelector('[data-testid="drill-result"] [role="status"]')!.textContent;
+      };
+      it("choosing the card's action names perfect play, exactly", async () => {
+        expect(await run('Bet 2x')).toBe(
+          "Correct! Bet 2x is the card's play. Perfect play says Check here, by 0.061 antes ($0.61 per hand). The card's rule is still the one to remember.",
+        );
+      }, 90_000);
+      it('choosing the perfect action does not claim it is the card play', async () => {
+        expect(await run('Check')).toBe(
+          'Correct! Check is the best play (the card says Bet 2x here).',
+        );
+      }, 90_000);
+    });
+    it('lenses never mix: categories, misses, streaks and the weakest line are per lens', () => {
+      const store = new Store(new MemoryStorage());
+      store.setDrillLens('practical');
+      for (let i = 0; i < 5; i++) store.recordDrill('flop', false, `f:${i}`, 'flop-flush-draw');
+      expect(store.drill.practical.byCategory['flop-flush-draw']).toEqual({
+        answered: 5,
+        correct: 0,
+      });
+      expect(store.drill.practical.recentMisses).toHaveLength(5);
+      expect(store.drill.byCategory).toEqual({});
+      expect(store.drill.recentMisses).toEqual([]);
+      expect(weakestCategory(store.drill)?.id).toBe('flop-flush-draw');
+      store.setDrillLens('perfect');
+      expect(weakestCategory(store.drill)).toBeNull();
+      store.recordDrill('flop', true, 'f:9', 'flop-flush-draw');
+      expect(store.drillStreak).toBe(1);
+      store.setDrillLens('practical');
+      expect(store.drillStreak).toBe(0);
+      expect(store.drill.bestStreak).toBe(1);
+      expect(store.drill.practical.bestStreak).toBe(0);
+    });
+    it('the lens persists in the store and survives a reload', () => {
+      const mem = new MemoryStorage();
+      const a = new Store(mem);
+      a.setDrillLens('practical');
+      a.flush();
+      expect(new Store(mem).drill.lens).toBe('practical');
+    });
   });
   it("?category= restricts the filter and lists only that street's categories", async () => {
     const nextSpot = vi.fn<DrillDeps['nextSpot']>((r) => [spot('flop', 'f:1'), r]);
@@ -720,6 +825,7 @@ describe('Drill', () => {
       const store = new Store(new MemoryStorage());
       const el = await mountDrill(store, {
         nextSpot: (r) => [spot('flop', `f:${i}`), r],
+        gradeSpot: realGradeSpot,
         preview: () => Promise.resolve(pv),
       });
       await act(() => btn(el, 'Check').click());
@@ -728,4 +834,48 @@ describe('Drill', () => {
       expect(text, `case ${i}`).toContain(`(${formatMoney(cost)} per hand)`);
     }
   }, 120_000);
+});
+
+describe('persistent storage in the app (I076)', () => {
+  const stubStorage = (api: Record<string, unknown> | undefined) => {
+    Object.defineProperty(navigator, 'storage', { value: api, configurable: true });
+  };
+  afterEach(() => stubStorage(undefined));
+  it('asks once ever: not on render, once after the first completion, never again', async () => {
+    const persist = vi.fn(() => Promise.resolve(true));
+    stubStorage({ persist, persisted: () => Promise.resolve(false) });
+    const [first, second] = content.lessons.filter((l) => l.blocks.length > 0);
+    const { el, store } = await mount(`#/learn/${first!.id}`);
+    expect(persist).toHaveBeenCalledTimes(0);
+    await act(() => btn(el, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(1);
+    const { el: el2 } = await mount(`#/learn/${second!.id}`, store);
+    await act(() => btn(el2, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+  it('a stored answer is not asked again after a reload', async () => {
+    const persist = vi.fn(() => Promise.resolve(false));
+    stubStorage({ persist, persisted: () => Promise.resolve(false) });
+    const store = new Store(new MemoryStorage());
+    store.updateSettings({ persistAsked: 'denied' });
+    const lesson = content.lessons.find((l) => l.blocks.length > 0)!;
+    const { el } = await mount(`#/learn/${lesson.id}`, store);
+    await act(() => btn(el, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(0);
+  });
+  it.each([
+    ['persistent', true, 'Storage: persistent'],
+    ['may be cleared', false, 'Storage: may be cleared by the browser'],
+  ])('Settings shows the %s state', async (_label, persisted, text) => {
+    stubStorage({ persisted: () => Promise.resolve(persisted) });
+    const { el } = await mount('#/settings');
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(el.querySelector('[data-testid="storage-state"]')!.textContent).toContain(text);
+  });
+  it('Settings shows no storage text when the API is missing', async () => {
+    stubStorage(undefined);
+    const { el } = await mount('#/settings');
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(el.querySelector('[data-testid="storage-state"]')!.textContent?.trim()).toBe('');
+  });
 });
