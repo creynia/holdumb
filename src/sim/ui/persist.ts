@@ -4,7 +4,7 @@ import { PAYTABLE_PRESET_IDS } from '../engine';
 import type { Cents, GameState, TripsPaytableId } from '../engine';
 import { frac } from '../math/fraction';
 import type { Fraction } from '../math';
-import { EMPTY_TOTALS } from '../scene';
+import { EMPTY_TOTALS, MAX_MISTAKE_SPOTS } from '../scene';
 import type { SessionTotals, SimDriver } from '../scene';
 import { EV_MODES, evModeOfPractice } from './settings';
 import type { EvMode } from './types';
@@ -24,6 +24,8 @@ export interface SandboxSnapshot {
   state: GameState;
   startEquity: Cents;
   totals: SessionTotalsJson;
+  /** Drill spot codes of table mistakes, newest first (I056). Older snapshots lack it. */
+  mistakeSpots?: string[];
   /** The table's EV visibility (D39). Older snapshots carry a boolean `practice` instead. */
   evMode: EvMode;
 }
@@ -47,6 +49,7 @@ export function encodeSnapshot(d: SimDriver, evMode?: EvMode): SandboxSnapshot {
     state: s.state,
     startEquity: s.startEquity,
     totals: encodeTotals(s.totals),
+    mistakeSpots: s.mistakeSpots,
     evMode: evMode ?? s.evMode,
   };
 }
@@ -81,12 +84,27 @@ export function decodeTotals(raw: Record<string, unknown>): SessionTotals {
   return totals as unknown as SessionTotals;
 }
 
+/** Saved mistake spot codes: only well-formed strings, at most MAX_MISTAKE_SPOTS, no repeats. */
+function decodeSpots(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const c of raw) {
+    if (typeof c === 'string' && /^[pfr]:[^.]*\.[^.]*$/.test(c) && !out.includes(c)) out.push(c);
+  }
+  return out.slice(0, MAX_MISTAKE_SPOTS);
+}
+
 /** Restores the saved table as it was. The paytable follows the current setting. */
 export function decodeSnapshot(
   raw: unknown,
   paytable: TripsPaytableId,
 ): {
-  restore: { state: GameState; startEquity: Cents; totals: SessionTotals };
+  restore: {
+    state: GameState;
+    startEquity: Cents;
+    totals: SessionTotals;
+    mistakeSpots: string[];
+  };
   evMode: EvMode;
 } | null {
   try {
@@ -117,7 +135,12 @@ export function decodeSnapshot(
       if (!ok) return null;
     }
     return {
-      restore: { state, startEquity: raw.startEquity, totals: decodeTotals(raw.totals) },
+      restore: {
+        state,
+        startEquity: raw.startEquity,
+        totals: decodeTotals(raw.totals),
+        mistakeSpots: decodeSpots(raw.mistakeSpots),
+      },
       // A valid evMode wins; a legacy snapshot's `practice: true` maps to 'after' (D39).
       evMode: (EV_MODES as readonly unknown[]).includes(raw.evMode)
         ? (raw.evMode as EvMode)

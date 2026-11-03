@@ -688,6 +688,29 @@ describe('session net and next-hand chips (D38)', () => {
 });
 
 describe('SessionPanel (curriculum 8.5)', () => {
+  it('links the table mistakes to Drill (I056)', () => {
+    const base = {
+      hands: 2,
+      scored: 2,
+      mistakes: 2,
+      mistakesRoundedCents: 500,
+      edgePerAnte: null,
+    } as Partial<SessionView>;
+    const spots = ['p:AsAh.', 'f:2dJd.4h6d9d'];
+    const { unmount } = render(
+      <SessionPanel session={view({ ...base, mistakeSpots: spots })} defaultOpen />,
+    );
+    const a = screen.getByTestId('session-review');
+    expect(a.textContent).toBe('Review 2 mistakes');
+    expect(a.getAttribute('href')).toBe('#/drill?focus=p:AsAh.,f:2dJd.4h6d9d');
+    unmount();
+    render(<SessionPanel session={view({ ...base, mistakeSpots: [spots[0]!] })} defaultOpen />);
+    expect(screen.getByTestId('session-review').textContent).toBe('Review 1 mistake');
+    cleanup();
+    render(<SessionPanel session={view({ ...base, mistakeSpots: [] })} defaultOpen />);
+    expect(screen.queryByTestId('session-review')).toBeNull();
+  });
+
   const view = (over: Partial<SessionView> = {}): SessionView => ({
     hands: 3,
     scored: 2,
@@ -707,6 +730,7 @@ describe('SessionPanel (curriculum 8.5)', () => {
     luckCents: -3500 - (-918 + -400) + 120,
     tripsExpectedRoundedCents: -400,
     edgePerAnte: frac(24, 1000),
+    mistakeSpots: [],
     ...over,
   });
   it('shows wagered, perfect, mistakes with the count, luck, the edge per Ante and the Trips line', () => {

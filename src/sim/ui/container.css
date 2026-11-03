@@ -191,3 +191,11 @@
 .sim-rail > * {
   flex: none;
 }
+/* "Review N mistakes": a link to Drill with the table mistakes (I056). */
+.sim-session-review {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+  font-weight: 600;
+}

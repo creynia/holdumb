@@ -71,6 +71,19 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
                 <dd data-testid="session-mistakes">
                   {s.mistakes} {s.mistakes === 1 ? 'mistake' : 'mistakes'} ·{' '}
                   <span class="sim-money">{m(0 - s.mistakesRoundedCents, true)}</span>
+                  {s.mistakeSpots.length > 0 ? (
+                    <>
+                      {' '}
+                      <a
+                        class="sim-session-review"
+                        data-testid="session-review"
+                        href={`#/drill?focus=${s.mistakeSpots.join(',')}`}
+                      >
+                        Review {s.mistakeSpots.length}{' '}
+                        {s.mistakeSpots.length === 1 ? 'mistake' : 'mistakes'}
+                      </a>
+                    </>
+                  ) : null}
                 </dd>
               </div>
               <div>

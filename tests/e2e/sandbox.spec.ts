@@ -42,6 +42,48 @@ test.describe('sandbox', () => {
     await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
   });
 
+  test('a table mistake is reviewable in Drill from the Session panel (I056)', async ({ page }) => {
+    await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+    const sim = page.getByTestId('simulator');
+    await ready(page);
+    // Check preflop with aces: a Big mistake. Then check the flop and bet the river.
+    for (const [street, option] of [
+      ['preflop', 'check'],
+      ['flop', 'check'],
+      ['river', 'play-1'],
+    ] as const) {
+      await expect(sim).toHaveAttribute('data-street', street);
+      await ready(page);
+      await opt(page, option).click();
+      await page.getByTestId('confirm').click();
+    }
+    await expect(sim).toHaveAttribute('data-street', 'settled');
+    await page.getByTestId('session-toggle').click();
+    const link = page.getByTestId('session-review');
+    await expect(link).toHaveText(/^Review \d+ mistakes?$/);
+    expect(await link.getAttribute('href')).toContain('p:AsAh.');
+    await link.click();
+    await expect(page.getByTestId('drill-spot')).toBeVisible();
+    await expect(page).toHaveURL(/#\/drill\?focus=.*p:AsAh\./);
+    // Drill deals only the table's mistakes; the aces spot comes up, and Check grades as the table did.
+    const cards = page.locator('[data-testid="drill-spot"] .drill-cards .cards').first();
+    let seen = false;
+    for (let i = 0; i < 40 && !seen; i++) {
+      const spot = page.getByTestId('drill-spot');
+      if ((await spot.getAttribute('data-street')) === 'preflop') {
+        const label = (await cards.getAttribute('aria-label')) ?? '';
+        seen = /Ace of spades.*Ace of hearts|Ace of hearts.*Ace of spades/i.test(label);
+      }
+      if (!seen) {
+        await spot.locator('.choice-row button').first().click();
+        await page.getByRole('button', { name: 'Next hand' }).click();
+      }
+    }
+    expect(seen, 'the aces spot is dealt from the table mistakes').toBe(true);
+    await page.locator('.choice-row button', { hasText: 'Check' }).click();
+    await expect(page.getByTestId('drill-result')).toHaveAttribute('data-tier', 'blunder');
+  });
+
   test('by default a blunder acts on Confirm with no second tap (D39)', async ({ page }) => {
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);
