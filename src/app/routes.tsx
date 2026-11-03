@@ -18,10 +18,12 @@ import { Strategy } from './screens/Strategy';
 
 type Render = (p: Record<string, string>, r: ParsedHash) => VNode;
 /** The screen's name for the document title; undefined keeps the SEO title (Home). */
-type Name = (
-  p: Record<string, string>,
-  lessonTitle: (id: string) => string | undefined,
-) => string | undefined;
+/** What a route name can look up in the loaded content. */
+export interface NameContext {
+  lessonTitle(id: string): string | undefined;
+  wagerName(id: string): string | undefined;
+}
+type Name = (p: Record<string, string>, c: NameContext) => string | undefined;
 
 export const ROUTES: { pattern: string; render: Render; name: Name }[] = [
   { pattern: '/', render: () => <Home />, name: () => undefined },
@@ -29,8 +31,8 @@ export const ROUTES: { pattern: string; render: Render; name: Name }[] = [
   {
     pattern: '/learn/:lessonId',
     render: (p) => <LessonView id={p.lessonId!} />,
-    name: (p, lessonTitle) =>
-      lessonTitle(p.lessonId!) ? `${lessonTitle(p.lessonId!)} · Learn` : 'Learn',
+    name: (p, c) =>
+      c.lessonTitle(p.lessonId!) ? `${c.lessonTitle(p.lessonId!)} · Learn` : 'Learn',
   },
   { pattern: '/play', render: (_p, r) => <Play query={r.query} />, name: () => 'Practice table' },
   { pattern: '/drill', render: (_p, r) => <Drill query={r.query} />, name: () => 'Drill' },
@@ -44,7 +46,7 @@ export const ROUTES: { pattern: string; render: Render; name: Name }[] = [
   {
     pattern: '/bets/:wagerId',
     render: (p) => <BetDetail id={p.wagerId!} />,
-    name: () => 'Paytable detail',
+    name: (p, c) => c.wagerName(p.wagerId!) ?? 'Not found',
   },
   { pattern: '/glossary', render: (_p, r) => <Glossary query={r.query} />, name: () => 'Glossary' },
   { pattern: '/settings', render: () => <Settings />, name: () => 'Settings' },
@@ -65,13 +67,10 @@ export function renderRoute(route: ParsedHash): VNode {
  * The screen name for the document title ("Drill · holdumb"), or undefined on Home, which keeps
  * the SEO title. Unknown paths name the not-found screen.
  */
-export function routeName(
-  route: ParsedHash,
-  lessonTitle: (id: string) => string | undefined,
-): string | undefined {
+export function routeName(route: ParsedHash, c: NameContext): string | undefined {
   for (const r of ROUTES) {
     const params = matchPath(r.pattern, route.path);
-    if (params) return r.name(params, lessonTitle);
+    if (params) return r.name(params, c);
   }
   return 'Not found';
 }

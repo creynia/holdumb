@@ -4,6 +4,7 @@ import { Shell } from './components/Shell';
 import { useContent, useStore } from './context';
 import { consumeFreshNav, useRoute } from './router';
 import { renderRoute, routeName } from './routes';
+import { wagerName } from './screens/Bets';
 import { applyTheme, onReducedMotionChange } from './theme';
 
 const SCROLL_KEY = 'holdumb:scroll';
@@ -45,7 +46,10 @@ export function App() {
   // The document title names the screen, so tabs, history and screen readers can tell pages apart.
   // Runs before the page view, which records document.title.
   useEffect(() => {
-    const name = routeName(route, (id) => content.lessons.find((l) => l.id === id)?.title);
+    const name = routeName(route, {
+      lessonTitle: (id) => content.lessons.find((l) => l.id === id)?.title,
+      wagerName: (id) => wagerName(id, content.bets),
+    });
     document.title = name ? `${name} · holdumb` : HOME_TITLE;
   }, [route.path, content]);
   // One anonymous page view per route (path only; query strings are dropped).
