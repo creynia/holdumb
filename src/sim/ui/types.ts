@@ -68,4 +68,9 @@ export interface SimulatorProps {
    * rendered when the scene shows its settings (Play), never in a lesson.
    */
   options?: ComponentChildren;
+  /**
+   * Hand history (ui.showHistory): builds the href of "Replay this spot" from the play-route query
+   * (`hole=&board=&dealer=&street=`). Without it the rows have no replay link.
+   */
+  replayHref?: (query: string) => string;
 }

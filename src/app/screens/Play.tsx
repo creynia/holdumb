@@ -50,6 +50,7 @@ export function Play({ query }: { query: URLSearchParams }) {
         onSnapshot={preset ? undefined : (snap) => store.setSandbox(snap)}
         onBankrollChange={(cents) => store.updateSettings({ defaultBankrollCents: cents })}
         options={<TableOptions />}
+        replayHref={(q) => `#/play?${q}`}
       />
       <p class="muted">
         <a href="#/hands" class="inline-link">

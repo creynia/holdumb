@@ -25,7 +25,26 @@ export { DEFAULT_RULES, resolveRules } from './rules';
 export { WAGER_IDS, WAGERS, settleHand } from './wagers';
 export type { SettleBets } from './wagers';
 export { dealHand } from './deck';
-export { applyLogged, replayLog } from './log';
+export {
+  applyLogged,
+  replayLog,
+  HISTORY_LIMIT,
+  HISTORY_RECORD_BYTES,
+  STREET_CODE,
+  STREET_OF_CODE,
+  choiceOf,
+  handRecord,
+  recordPlay,
+  recordResult,
+  pushRecord,
+} from './log';
+export type {
+  HandRecord,
+  HandDecisionRecord,
+  HandChoice,
+  HandTierCode,
+  DecisionStreetCode,
+} from './log';
 export { formatMoney, formatPct } from './money';
 export {
   startHand,

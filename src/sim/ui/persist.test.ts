@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../engine';
 import { EMPTY_TOTALS, SimDriver } from '../scene';
+import { HISTORY_LIMIT, HISTORY_RECORD_BYTES } from '../engine';
+import type { HandRecord } from '../engine';
 import { ZERO, eq, frac } from '../math/fraction';
 import { riverPreview } from '../math/preview';
-import { decodeSnapshot, decodeTotals, encodeSnapshot, encodeTotals } from './persist';
+import {
+  decodeHistory,
+  decodeSnapshot,
+  decodeTotals,
+  encodeSnapshot,
+  encodeTotals,
+  isHandRecord,
+} from './persist';
 
 const driver = (state?: ReturnType<typeof createGame>) =>
   new SimDriver({
@@ -70,6 +79,88 @@ describe('sandbox snapshot', () => {
       'after',
     );
     expect(encodeSnapshot(d, 'never').evMode).toBe('never');
+  });
+});
+
+describe('hand history in the snapshot (simulator.md 3.7)', () => {
+  const record = (n: number): HandRecord => ({
+    n,
+    p: 'Qc7d',
+    d: 'TdTs',
+    b: 'KdJh9s5c2d',
+    w: [1000, 500],
+    a: [
+      ['p', 'check', 'b', '0'],
+      ['f', 'check'],
+      ['r', 'fold', 'm', '317/990'],
+    ],
+    net: -2000,
+  });
+  it('round-trips the last hands, newest first, each within the byte budget', async () => {
+    const d = driver();
+    expect((await d.act({ type: 'fold' })).ok).toBe(true);
+    const snap = JSON.parse(JSON.stringify(encodeSnapshot(d))) as {
+      history: { v: number; items: HandRecord[] };
+    };
+    expect(snap.history.v).toBe(1);
+    expect(snap.history.items).toHaveLength(1);
+    expect(snap.history.items[0]!.p).toBe('3c4d');
+    expect(JSON.stringify(snap.history.items[0]).length).toBeLessThanOrEqual(HISTORY_RECORD_BYTES);
+    const back = decodeSnapshot(snap, 'trips-8-6-5')!;
+    expect(back.restore.history).toEqual(d.view.history);
+  });
+  it('ignores an unknown history version and a missing block, and caps at 50', () => {
+    expect(decodeHistory(undefined)).toEqual([]);
+    expect(decodeHistory({ v: 2, items: [record(1)] })).toEqual([]);
+    expect(decodeHistory({ v: 1, items: 'nope' })).toEqual([]);
+    const many = Array.from({ length: 60 }, (_, i) => record(i + 1));
+    expect(decodeHistory({ v: 1, items: many })).toHaveLength(HISTORY_LIMIT);
+    const d = driver();
+    const snap = JSON.parse(JSON.stringify(encodeSnapshot(d))) as Record<string, unknown>;
+    delete snap.history;
+    expect(decodeSnapshot(snap, 'trips-8-6-5')!.restore.history).toEqual([]);
+  });
+  it('drops repeated hand numbers and rows over the byte budget', () => {
+    const big: HandRecord = {
+      ...record(7),
+      n: 999_999_999,
+      w: [100_000_000, 100_000_000],
+      net: -999_999_999_999,
+      a: [
+        ['p', 'check', 'x', '62927171999/20975724000'],
+        ['f', 'check', 'm', '5149580311/20975724000'],
+        ['r', 'fold', 'm', '999999999999999/999999999999999'],
+      ],
+    };
+    expect(new TextEncoder().encode(JSON.stringify(big)).length).toBeLessThanOrEqual(
+      HISTORY_RECORD_BYTES,
+    );
+    expect(decodeHistory({ v: 1, items: [record(3), record(3), big] }).map((r) => r.n)).toEqual([
+      3, 999_999_999,
+    ]);
+    const huge = { ...record(4), p: 'Qc7d', extra: 'x'.repeat(300) };
+    expect(isHandRecord(huge)).toBe(true);
+    expect(decodeHistory({ v: 1, items: [huge] })).toEqual([]);
+  });
+  it('drops malformed records and keeps the good ones', () => {
+    const bad: unknown[] = [
+      { ...record(2), p: 'QcQc' }, // duplicate card
+      { ...record(3), b: 'KdJh9s' }, // short board
+      { ...record(4), d: 'Qc2c' }, // dealer shares a hole card
+      { ...record(5), a: [['x', 'fold']] }, // bad street
+      { ...record(6), a: [['r', 'raise']] }, // bad choice
+      { ...record(7), a: [['r', 'fold', 'z', '1/2']] }, // bad tier
+      { ...record(8), a: [['r', 'fold', 'm', '0.32']] }, // not a ratio
+      { ...record(12), a: [['r', 'fold', 'm', '1/0']] }, // zero denominator
+      { ...record(13), a: [['r', 'fold', 'm', `${'9'.repeat(100_000)}/7`]] }, // 100 kB regret
+      { ...record(14), a: [['r', 'fold', 'm', '1234567890123456/7']] }, // over 15 digits
+      { ...record(9), w: [1000] },
+      { ...record(10), net: 1.5 },
+      'junk',
+    ];
+    const out = decodeHistory({ v: 1, items: [record(1), ...bad, record(11)] });
+    expect(out.map((r) => r.n)).toEqual([1, 11]);
+    expect(isHandRecord(record(1))).toBe(true);
   });
 });
 

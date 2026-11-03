@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEvClient } from '../worker/client';
 import { SimDriver } from '../scene';
@@ -161,6 +161,47 @@ describe('Simulator container', () => {
     );
     expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river');
     evClient.dispose();
+  });
+  it('hand history: a settled sandbox hand adds a row when ui.showHistory; a lesson shows none', async () => {
+    const scene: SceneConfig = {
+      id: 'sandbox',
+      version: 1,
+      bets: { ante: 1000 },
+      ui: { showHistory: true },
+      startAt: {
+        street: 'river',
+        deal: {
+          player: ['3c', '4d'],
+          flop: ['Ah', 'Ks', 'Qd'],
+          turn: '9c',
+          river: '7h',
+          dealer: ['Td', 'Ts'],
+        },
+      },
+    };
+    const { evClient } = mount(scene, { replayHref: (q) => `#/play?${q}` });
+    expect(screen.queryByTestId('hand-history')).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
+    );
+    fireEvent.click(document.querySelector('[data-option="fold"]')!);
+    await flush();
+    fireEvent.click(screen.getByTestId('confirm'));
+    await waitFor(() =>
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('settled'),
+    );
+    const rows = screen.getAllByTestId('hand-history-row');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.textContent).toContain('fold (best)');
+    fireEvent.click(within(rows[0]!).getByRole('button'));
+    expect(screen.getByTestId('replay-spot').getAttribute('href')).toBe(
+      '#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river',
+    );
+    evClient.dispose();
+    cleanup();
+    const lesson = mount({ ...scene, ui: {} });
+    expect(screen.queryByTestId('hand-history')).toBeNull();
+    lesson.evClient.dispose();
   });
   it('stores the table evMode in the sandbox snapshot', async () => {
     const snaps: unknown[] = [];
