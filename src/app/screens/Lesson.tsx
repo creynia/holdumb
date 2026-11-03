@@ -9,6 +9,7 @@ import { SourceEntry } from '../components/SourceEntry';
 import { useContent, useStore } from '../context';
 import { FINAL_EXAM_ID, finalExamScore } from '../store';
 import { NotFound } from './NotFound';
+import { requestPersistOnce } from '../persist';
 
 /** Click on a `[^n]` marker: scroll to, and focus, that entry in the lesson's Sources list. */
 function onCite(e: MouseEvent) {
@@ -122,6 +123,7 @@ export function LessonView({ id }: { id: string }) {
           onClick={() => {
             if (!done) trackEvent(`lesson-complete/${lesson.id}`);
             store.completeLesson(lesson.id, !done);
+            if (!done) void requestPersistOnce();
           }}
         >
           {done ? '✓ Completed (tap to undo)' : 'Mark complete'}
