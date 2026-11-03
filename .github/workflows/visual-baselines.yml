@@ -1,0 +1,86 @@
+# Regenerates the visual baselines (tests/visual/__screenshots__) in the same Playwright container
+# as the `visual` CI job, so nobody needs Docker. Two ways to start it:
+#   - add the label `update-visual` to a pull request from this repository, or
+#   - Actions > Visual baselines > Run workflow, choosing the branch (and `push`).
+# It always uploads the new PNGs as the artifact `visual-baselines`. When pushing, it commits
+# only files under tests/visual/__screenshots__/ as "chore(visual): update baselines", then
+# re-runs CI on that commit. A PR that changes baselines must say why in its description.
+name: Visual baselines
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: Commit the new baselines to the branch
+        type: boolean
+        default: false
+
+concurrency:
+  group: visual-baselines-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'update-visual' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    permissions:
+      contents: write # pushes the baseline commit; the step below refuses any other path
+      actions: write # re-runs ci.yml on the pushed commit
+      pull-requests: write # removes the label
+    env:
+      CI: '1'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      PUSH: ${{ github.event_name == 'pull_request' || inputs.push }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+      - run: npm ci
+      - name: Regenerate changed baselines
+        run: npx playwright test -c playwright.visual.config.ts --update-snapshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: tests/visual/__screenshots__
+          retention-days: 14
+      - name: Commit and push the baselines
+        if: env.PUSH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          other=$(git status --porcelain --untracked-files=all | grep -v ' tests/visual/__screenshots__/' || true)
+          if [ -n "$other" ]; then echo "Refusing to commit files outside the baselines:"; echo "$other"; exit 1; fi
+          git add tests/visual/__screenshots__
+          if git diff --cached --quiet; then
+            echo "Baselines already up to date." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --stat >> "$GITHUB_STEP_SUMMARY"
+          git commit -m 'chore(visual): update baselines'
+          git push origin "HEAD:$BRANCH"
+          curl -fsS -X POST -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" \
+            -d "{\"ref\":\"$BRANCH\"}"
+      - name: Remove the label
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues
+              .removeLabel({ ...context.repo, issue_number: context.issue.number, name: 'update-visual' })
+              .catch(() => {});

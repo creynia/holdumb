@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets visual-baselines.yml re-run CI on the commit it pushes (GITHUB_TOKEN pushes trigger nothing).
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -52,3 +54,48 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report
+
+  # Screenshot comparison at 4 viewports x light/dark (playwright.visual.config.ts). Runs in the
+  # Playwright image that matches @playwright/test 1.56.1, so fonts and rasterisation are the same
+  # as when the baselines were generated. Baselines: tests/visual/__screenshots__/.
+  visual:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    permissions:
+      contents: read
+      pull-requests: write # the sticky failure comment only
+    env:
+      CI: '1'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npx playwright test -c playwright.visual.config.ts
+      - if: failure()
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diff
+          path: |
+            playwright-report
+            test-results
+            visual-report.json
+          retention-days: 14
+      - if: failure()
+        run: node scripts/visual-summary.mjs visual-report.json "${{ steps.upload.outputs.artifact-url }}" | tee visual-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - if: failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- holdumb-visual-diff -->';
+            const body = `${marker}\n${fs.readFileSync('visual-summary.md', 'utf8')}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find((c) => c.body?.startsWith(marker));
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });

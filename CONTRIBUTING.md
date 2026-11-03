@@ -22,6 +22,7 @@ npm run dev
 | `npm run preview`      | Serve `dist/`                                               |
 | `npm test`             | Unit tests (Vitest)                                         |
 | `npm run test:e2e`     | Playwright end-to-end tests                                 |
+| `npm run test:visual`  | Screenshot comparison against the committed baselines       |
 | `npm run lint`         | ESLint                                                      |
 | `npm run typecheck`    | TypeScript                                                  |
 | `npm run format`       | Prettier (write)                                            |
@@ -44,6 +45,20 @@ PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
 npx playwright install chromium          # or: export PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers
 npm run test:e2e
 ```
+
+## Visual tests
+
+The `visual` CI job (`tests/visual/visual.spec.ts`, `playwright.visual.config.ts`) screenshots about a dozen scenes (play on each street, a settled win, a lesson scene, a Drill result, an auto-play chart, Learn, More, Settings, Hand rankings, Strategy) at 360x740, 390x844, 844x390 and 667x375, in light and dark, and compares them with the PNGs in `tests/visual/__screenshots__/<project>/<scene>.png`. Every scene is deterministic: fixed seeds in the URL, `speed=instant`, reduced motion, no CSS animations or transitions, a frozen `Date`, and fonts loaded before the shot.
+
+Baselines are only valid when they come from the container that CI uses, `mcr.microsoft.com/playwright:v1.56.1-noble`, because fonts and rasterisation differ between machines. Never commit baselines generated on your own machine outside that container.
+
+When a PR changes the UI on purpose, regenerate the baselines in one of these ways:
+
+1. **In CI (no Docker needed).** On a PR from this repository, add the label `update-visual`. The `Visual baselines` workflow regenerates the baselines in the CI container, uploads them as the artifact `visual-baselines`, commits only `tests/visual/__screenshots__/` as `chore(visual): update baselines`, and re-runs CI. You can also start it from Actions > Visual baselines > Run workflow on your branch, and either tick `push` or download the `visual-baselines` artifact and commit its PNGs yourself (unzip it over `tests/visual/__screenshots__/`).
+2. **With Docker:** `npm run test:visual:update`.
+3. **Without Docker, as root on Linux:** extract the image into a directory and `chroot` into it. Download the amd64 manifest and layers for `playwright:v1.56.1-noble` from `https://mcr.microsoft.com/v2/playwright/` and untar each layer in order into `rootfs/`. Add `127.0.0.1 localhost` to `rootfs/etc/hosts`. Then, from a shell started with `unshare -m`, bind-mount your checkout at `rootfs/w`, mount `proc`, `/dev` and `/sys`, and run `chroot rootfs env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright CI=1 bash -c 'cd /w && npx playwright test -c playwright.visual.config.ts --update-snapshots'`.
+
+A PR that changes baselines must say why in its description, and reviewers look at the changed images. When the job fails, it uploads the artifact `visual-diff` (open `playwright-report/index.html` in it for the expected, actual and diff images), lists each failed snapshot and its diff pixel count in the job summary, and posts one sticky comment on the PR that links the artifact.
 
 ## Ideas to pick up
 
