@@ -61,3 +61,14 @@ describe('track*', () => {
     expect(img).not.toHaveBeenCalled();
   });
 });
+
+describe('errorHit', () => {
+  it('keeps the route and a short, digit-masked, single-line message', async () => {
+    const { errorHit } = await import('../../src/app/analytics');
+    const h = errorHit('/play', 'bad\nvalue 1234567 ' + 'x'.repeat(200));
+    expect(h.path).toBe('holdumb:error/play');
+    expect(h.event).toBe(true);
+    expect(h.title).toHaveLength(80);
+    expect(h.title).toMatch(/^bad value # x+$/);
+  });
+});

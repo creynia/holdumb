@@ -18,6 +18,8 @@ export const TABS = [
 export function Shell(props: {
   path: string;
   banner?: ComponentChildren;
+  /** Extra top-bar notice (error toast); lives in the top bar row like UpdateToast. */
+  toast?: ComponentChildren;
   children: ComponentChildren;
 }) {
   return (
@@ -34,6 +36,7 @@ export function Shell(props: {
           ))}
         </nav>
         <UpdateToast />
+        {props.toast}
       </header>
       {props.banner}
       <main id="main" tabIndex={-1}>

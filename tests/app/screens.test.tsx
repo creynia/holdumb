@@ -59,6 +59,61 @@ beforeEach(() => {
   document.body.innerHTML = '';
 });
 
+describe('error boundary', () => {
+  /** A store whose sandbox snapshot is corrupt: /play throws while rendering, until it is reset. */
+  class BrokenSandboxStore extends Store {
+    broken = true;
+    override get sandbox(): unknown {
+      if (this.broken) throw new Error('corrupt sandbox');
+      return undefined;
+    }
+    override setSandbox(snap: unknown) {
+      if (snap === undefined) this.broken = false;
+      super.setSandbox(snap);
+    }
+  }
+
+  it('shows the fallback, keeps the tab bar alive, and Reset table remounts /play', async () => {
+    const store = new BrokenSandboxStore(new MemoryStorage());
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { el } = await mount('#/play', store);
+    const screen = el.querySelector('[data-testid="error-screen"]');
+    expect(screen?.textContent).toContain('This screen hit a problem');
+    expect(el.querySelector('[data-testid="error-build-sha"]')?.textContent).toBeTruthy();
+    expect(el.querySelector('[data-testid="simulator"]')).toBeNull();
+    // The tab bar still renders and responds to clicks.
+    expect(el.querySelectorAll('nav.tabbar a')).toHaveLength(4);
+    await act(() => {
+      el.querySelector<HTMLElement>('nav.tabbar a[href="#/learn"]')!.click();
+    });
+    await waitFor(() => expect(location.hash).toBe('#/learn'));
+    await waitFor(() => expect(el.querySelector('[data-testid="error-screen"]')).toBeNull());
+    // Back on /play it fails again; Reset table clears the snapshot and remounts the table.
+    await act(() => {
+      location.hash = '#/play';
+    });
+    await waitFor(() => expect(el.querySelector('[data-testid="error-screen"]')).not.toBeNull());
+    store.setSandbox({ stale: true });
+    store.broken = true;
+    await act(() => {
+      btn(el, 'Reset table').click();
+    });
+    expect(store.broken).toBe(false);
+    expect(store.sandbox).toBeUndefined();
+    expect(el.querySelector('[data-testid="error-screen"]')).toBeNull();
+    expect(el.querySelector('nav.tabbar')).not.toBeNull();
+  });
+
+  it('shows a toast for an uncaught window error', async () => {
+    const { el } = await mount('#/more');
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+    await act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')?.textContent).toContain('went wrong');
+  });
+});
+
 describe('shell', () => {
   it('has exactly the four D4 tabs, in order, and marks the current one', async () => {
     const { el } = await mount('#/learn');
