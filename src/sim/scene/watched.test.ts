@@ -92,9 +92,10 @@ describe('Watch taken mid-hand (I097)', () => {
     const d = driver();
     await d.act({ type: 'deal' });
     await d.currentPreview();
-    // A scored decision on your own hand (2-7 offsuit, bet 4x: a mistake), then Watch starts.
-    await d.act({ type: 'play', multiple: 4 });
+    // A scored preflop decision (a check leaves the flop to play), then Watch starts on the flop.
+    await d.act({ type: 'check' });
     expect(d.view.session.decisions).toBe(1);
+    expect(d.view.state.street).toBe('flop');
     d.setWatching(true);
     // Play the rest of the hand: checks, then a fold on the river.
     while (d.view.state.street !== 'settled') {
