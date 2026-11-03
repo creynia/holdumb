@@ -3,6 +3,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SceneConfig, SimDriver } from '../../scene';
 import { createEvClient } from '../../worker/client';
+import { evShownOf, isDecisionStreet } from '../simView';
 import { DEFAULT_SIM_SETTINGS } from '../types';
 import type { SimulatorProps } from '../types';
 import { useBetHandlers } from './useBetHandlers';
@@ -109,6 +110,8 @@ describe('useBetHandlers', () => {
 });
 
 describe('usePreviewBar', () => {
+  const usePreviewBarOf = (v: SimDriver['view']) =>
+    usePreviewBar(v.preview, isDecisionStreet(v.state.street), evShownOf(v));
   type View = SimDriver['view'];
   const view = (street: string, status: string, showEV?: boolean): View =>
     ({
@@ -119,25 +122,25 @@ describe('usePreviewBar', () => {
     }) as unknown as View;
 
   it('passes the ready preview and status on a decision street', () => {
-    const { result } = renderHook(() => usePreviewBar(view('flop', 'ready')));
+    const { result } = renderHook(() => usePreviewBarOf(view('flop', 'ready')));
     expect(result.current.barStatus).toBe('ready');
     expect(result.current.showPreviewOnBar).toEqual({ street: 'flop' });
   });
   it('shows pending and error, hides idle', () => {
-    expect(renderHook(() => usePreviewBar(view('river', 'pending'))).result.current.barStatus).toBe(
-      'pending',
-    );
-    expect(renderHook(() => usePreviewBar(view('river', 'error'))).result.current.barStatus).toBe(
+    expect(
+      renderHook(() => usePreviewBarOf(view('river', 'pending'))).result.current.barStatus,
+    ).toBe('pending');
+    expect(renderHook(() => usePreviewBarOf(view('river', 'error'))).result.current.barStatus).toBe(
       'error',
     );
     expect(
-      renderHook(() => usePreviewBar(view('river', 'idle'))).result.current.barStatus,
+      renderHook(() => usePreviewBarOf(view('river', 'idle'))).result.current.barStatus,
     ).toBeUndefined();
   });
   it('shows nothing between decisions or when EV is hidden', () => {
-    const between = renderHook(() => usePreviewBar(view('betting', 'ready'))).result.current;
+    const between = renderHook(() => usePreviewBarOf(view('betting', 'ready'))).result.current;
     expect(between.barStatus).toBeUndefined();
-    const hidden = renderHook(() => usePreviewBar(view('flop', 'ready', false))).result.current;
+    const hidden = renderHook(() => usePreviewBarOf(view('flop', 'ready', false))).result.current;
     expect(hidden.barStatus).toBeUndefined();
     expect(hidden.showPreviewOnBar).toBeNull();
   });

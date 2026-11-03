@@ -1,7 +1,6 @@
 // What the ActionBar shows of the running EV preview: the ready value and the status badge.
 import type { DecisionPreview } from '../../math';
 import type { SimDriver } from '../../scene';
-import { evShownOf, isDecisionStreet } from '../tableView';
 import type { EvStatus } from '../text';
 
 export interface PreviewBar {
@@ -11,10 +10,12 @@ export interface PreviewBar {
   barStatus: EvStatus | undefined;
 }
 
-export function usePreviewBar(view: SimDriver['view']): PreviewBar {
-  const pv = view.preview;
-  const decision = isDecisionStreet(view.state.street);
-  const evShown = evShownOf(view);
+/** `decision`: a decision street; `evShown`: the scene or step shows EVs. */
+export function usePreviewBar(
+  pv: SimDriver['view']['preview'],
+  decision: boolean,
+  evShown: boolean,
+): PreviewBar {
   const showPreviewOnBar = evShown && pv.status === 'ready' ? pv.value : null;
   const barStatus =
     !decision || !evShown

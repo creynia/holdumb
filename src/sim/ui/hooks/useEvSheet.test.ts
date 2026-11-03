@@ -2,6 +2,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SceneConfig } from '../../scene';
 import { createEvClient } from '../../worker/client';
+import { evShownOf, isDecisionStreet } from '../simView';
 import { DEFAULT_SIM_SETTINGS } from '../types';
 import type { SimulatorProps } from '../types';
 import { useEvSheet } from './useEvSheet';
@@ -28,7 +29,13 @@ function mount(practice: boolean) {
   const props: SimulatorProps = { settings, evClient, scene: preflop };
   return renderHook(() => {
     const sim = useSimDriver(props, 'sandbox');
-    const ev = useEvSheet(sim, { settings, sandbox: true, practice, orientation: 'portrait' });
+    const ev = useEvSheet(
+      sim,
+      practice,
+      'portrait',
+      evShownOf(sim.d.view),
+      isDecisionStreet(sim.d.view.state.street),
+    );
     return { sim, ev };
   });
 }

@@ -3,6 +3,7 @@
 // State lives in hooks/: the driver and toasts, the EV sheet, the bet handlers and the preview bar.
 import './sim.css';
 import './container.css';
+import { equity } from '../engine';
 import type { SceneConfig } from '../scene';
 import { ActionBar } from './ActionBar';
 import { ChipRack } from './ChipRack';
@@ -23,7 +24,7 @@ import { useEvSheet } from './hooks/useEvSheet';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
 import { resolvePractice, resolveSpeed } from './settings';
-import { tableView } from './tableView';
+import { autoOnlyOf, evShownOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
 
 export function Simulator(props: SimulatorProps) {
@@ -36,29 +37,31 @@ export function Simulator(props: SimulatorProps) {
 
   const view = d.view;
   const { settings, evClient } = props;
-  const scene = view.scene;
-  const step = view.step;
+  const { scene, step, state } = view;
   const orientation = useOrientation(scene.ui?.orientation ?? 'auto');
-  const speed = resolveSpeed(settings, scene);
-  const state = view.state;
   const hand = state.hand;
   const street = state.street;
   const settled = street === 'settled';
+  const decision = isDecisionStreet(street);
+  const evShown = evShownOf(view);
   // The app's settings are the source of truth for practice mode; the table follows them at once.
   const practice =
     sandbox && props.onPracticeChange ? resolvePractice(settings, baseScene) : view.practice;
-  const pv = view.preview;
 
-  const ev = useEvSheet(sim, { settings, sandbox, practice, orientation });
+  const ev = useEvSheet(sim, practice, orientation, evShown, decision);
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
-
   useSandboxSync(sim, sandbox, baseScene, settings);
 
-  const timeline = buildTimeline(view.lastEvents, speed);
+  const timeline = buildTimeline(view.lastEvents, resolveSpeed(settings, scene));
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
-  const { showPreviewOnBar, barStatus } = usePreviewBar(view);
+  const bar = usePreviewBar(view.preview, decision, evShown);
 
-  const { result, dealerShown, labels, board, onFelt, eq, circleHl, optionHl } = tableView(view);
+  const result = hand?.result ?? null;
+  const dealerShown = settled || !!(step?.revealDealer ?? scene.revealDealer);
+  const board = hand ? hand.deal.board.slice(0, hand.boardShown) : [];
+  const onFelt = settled ? 0 : Object.values(state.bets).reduce((a, b) => a + b, 0);
+  const eq = equity(state);
+  const [circleHl, optionHl] = splitHighlight(step?.highlight ?? scene.highlight ?? []);
 
   const stepPanel = step ? (
     <StepPanel
@@ -73,12 +76,9 @@ export function Simulator(props: SimulatorProps) {
     />
   ) : null;
 
-  const ap = scene.autoPlay;
-  const autoOnly =
-    !!ap?.enabled && scene.allowedActions?.length === 0 && !scene.deals && !scene.startAt;
+  const autoOnly = autoOnlyOf(scene);
   const showSession = scene.ui?.showSession ?? sandbox;
   const betting = street === 'betting' || settled;
-  const bank = scene.bankroll ?? 50_000;
   const table = (
     <Table
       orientation={orientation}
@@ -104,7 +104,7 @@ export function Simulator(props: SimulatorProps) {
           playMultiple={hand?.play?.multiple ?? null}
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
-          labels={labels}
+          labels={resultLabels(result)}
           timeline={timeline}
           nextHand={settled}
           skipped={motion.skipped}
@@ -117,9 +117,9 @@ export function Simulator(props: SimulatorProps) {
           <ActionBar
             street={street}
             layout={orientation === 'landscape' ? 'rail' : 'bar'}
-            preview={showPreviewOnBar}
+            preview={bar.showPreviewOnBar}
             hideEv={practice}
-            evStatus={barStatus}
+            evStatus={bar.barStatus}
             selected={ev.open}
             allowed={view.allowedOptions}
             highlight={optionHl}
@@ -157,7 +157,7 @@ export function Simulator(props: SimulatorProps) {
       data-street={street}
       data-hands={state.stats.hands}
       data-mode={mode}
-      data-ev={pv.status}
+      data-ev={view.preview.status}
       data-equity={eq}
       style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
     >
@@ -165,12 +165,10 @@ export function Simulator(props: SimulatorProps) {
       {autoOnly ? null : table}
       {sandbox && scene.ui?.showSettings ? (
         <SimTools
+          d={d}
           practice={practice}
-          onPractice={(on) =>
-            props.onPracticeChange ? props.onPracticeChange(on) : d.setPractice(on)
-          }
-          bankroll={bank}
-          onNewSession={() => d.newSession(bank)}
+          onPracticeChange={props.onPracticeChange}
+          bankroll={scene.bankroll ?? 50_000}
         />
       ) : null}
       {showSession ? <SessionPanel session={view.session} onTap={() => d.tap('session')} /> : null}

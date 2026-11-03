@@ -5,10 +5,9 @@ import type { OptionKey, SimDriver } from '../../scene';
 import { betterAlternative } from '../../math';
 import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../../math';
 import type { EvSheetProps } from '../EvSheet';
-import { evShownOf, isDecisionStreet } from '../tableView';
+import { isDecisionStreet } from '../simView';
 import type { Orientation } from '../Table';
 import { actionOfKey, headline, optionKeyOf } from '../text';
-import type { SimSettings } from '../types';
 import type { SimDriverHandle } from './useSimDriver';
 
 /** The preview request for the decision on the table now, or null between decisions. */
@@ -31,14 +30,6 @@ export interface Reveal {
   req: PreviewRequest | null;
 }
 
-export interface EvSheetInput {
-  settings: SimSettings;
-  sandbox: boolean;
-  /** Practice mode (D11): confirming shows the reveal card before the sheet closes. */
-  practice: boolean;
-  orientation: Orientation;
-}
-
 export interface EvSheetState {
   /** The option whose sheet is open (null when closed). */
   open: OptionKey | null;
@@ -48,12 +39,22 @@ export interface EvSheetState {
   sheet: EvSheetProps | null;
 }
 
-export function useEvSheet(sim: SimDriverHandle, i: EvSheetInput): EvSheetState {
+/**
+ * `practice` (D11): confirming shows the reveal card before the sheet closes. The sheet is a modal
+ * in portrait and a rail panel in landscape. `evShown`: the scene or step shows EVs; `decision`:
+ * the hand is on a decision street (an open sheet only shows there).
+ */
+export function useEvSheet(
+  sim: SimDriverHandle,
+  practice: boolean,
+  orientation: Orientation,
+  evShown: boolean,
+  decision: boolean,
+): EvSheetState {
   const { d, pushToast, act } = sim;
-  const { settings, sandbox, practice } = i;
+  const settings = sim.latest.current.settings;
+  const sandbox = d.mode === 'sandbox';
   const { scene, state, preview: pv } = d.view;
-  const evShown = evShownOf(d.view);
-  const decision = isDecisionStreet(state.street);
   // Changes on every new hand or street; closes an open (non-reveal) sheet.
   const handKey = `${state.hand?.n ?? 0}:${state.street}`;
   const [open, setOpen] = useState<OptionKey | null>(null);
@@ -110,7 +111,7 @@ export function useEvSheet(sim: SimDriverHandle, i: EvSheetInput): EvSheetState 
           error: !reveal && pv.status === 'error',
           progress: pv.progress,
           selected: sheetKey,
-          variant: i.orientation === 'landscape' ? 'rail' : 'sheet',
+          variant: orientation === 'landscape' ? 'rail' : 'sheet',
           onSelect: (k) => {
             setOpen(k);
             d.previewed(k, false);
