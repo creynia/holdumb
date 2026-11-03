@@ -1,5 +1,6 @@
 import { Say } from '../../sim';
 import { useState } from 'preact/hooks';
+import { InstallButton } from '../components/InstallButton';
 import { Link } from '../components/Link';
 import { UPDATE_MESSAGE, checkForUpdates } from '../update';
 import type { UpdateCheck } from '../update';
@@ -60,6 +61,7 @@ export function About(props: { check?: () => Promise<UpdateCheck> }) {
         Rules, figures and strategies come from published sources, credited on the{' '}
         <Link to="/sources">Sources</Link> screen.
       </p>
+      <InstallButton />
     </div>
   );
 }
