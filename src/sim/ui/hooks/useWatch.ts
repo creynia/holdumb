@@ -4,8 +4,8 @@
 // Marks the driver's hands as watched while it runs. Stops on Stop, on unmount and at the end.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { OptionKey } from '../../scene';
-import { sleep, watchHands } from '../watchCore';
-import type { WatchDriver, WatchEnd, WatchPace } from '../watchCore';
+import { runWatch, sleep, watchHands } from '../watch';
+import type { WatchDriver, WatchEnd, WatchPace } from '../watch';
 
 export interface WatchState {
   running: boolean;
@@ -82,29 +82,23 @@ export function useWatch(
     const of = watchHands(hands);
     d.setWatching?.(true);
     setS({ ...IDLE, running: true, of, hand: 1 });
-    // The loop is loaded on demand (first-paint budget); Stop before it arrives just ends the run.
-    void import('../watch')
-      .then(({ runWatch }) => {
-        if (ctl.signal.aborted) return { played: 0, end: 'stopped' as const };
-        return runWatch(d, {
-          hands: of,
-          pace: latest.current.pace,
-          signal: ctl.signal,
-          sleep: wait,
-          animMs: () => latest.current.animMs(),
-          resume: () =>
-            hold.current.paused && !ctl.signal.aborted
-              ? new Promise<void>((r) => hold.current.waiters.push(r))
-              : Promise.resolve(),
-          onProgress: (p) => {
-            if (!ctl.signal.aborted) setS((cur) => ({ ...cur, ...p }));
-          },
-        });
-      })
-      .then(
-        (r) => finish(ctl, { played: r.played, end: r.end, message: r.message }),
-        () => finish(ctl, { end: 'blocked' }),
-      );
+    void runWatch(d, {
+      hands: of,
+      pace: latest.current.pace,
+      signal: ctl.signal,
+      sleep: wait,
+      animMs: () => latest.current.animMs(),
+      resume: () =>
+        hold.current.paused && !ctl.signal.aborted
+          ? new Promise<void>((r) => hold.current.waiters.push(r))
+          : Promise.resolve(),
+      onProgress: (p) => {
+        if (!ctl.signal.aborted) setS((cur) => ({ ...cur, ...p }));
+      },
+    }).then(
+      (r) => finish(ctl, { played: r.played, end: r.end, message: r.message }),
+      () => finish(ctl, { end: 'blocked' }),
+    );
   };
   const pause = () => {
     if (!ac.current || hold.current.paused) return;

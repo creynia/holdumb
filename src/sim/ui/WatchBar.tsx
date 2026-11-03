@@ -1,9 +1,11 @@
 // I078 Watch: the controls (under the table, with the sandbox tools) and the status strip that takes
 // the chip rack's place while the table plays itself. Neither covers the felt or moves the ActionBar.
 import './styles/watch.css';
-import { useState } from 'preact/hooks';
-import { WATCH_DEFAULT_HANDS, WATCH_HAND_OPTIONS } from './watchCore';
+import type { ComponentChildren } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { WATCH_DEFAULT_HANDS, WATCH_HAND_OPTIONS } from './watch';
 import type { WatchHandle } from './hooks/useWatch';
+import { OPTION_LABELS } from './text';
 
 const plural = (n: number) => `${n} hand${n === 1 ? '' : 's'}`;
 
@@ -63,6 +65,70 @@ export function WatchControls({ watch, disabled }: WatchControlsProps) {
           {summary}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Running: which hand, what perfect play does next, Pause / Resume and Stop. It sits where the chip
+ * rack goes (portrait: below the ActionBar; landscape: the rail's scrolling body), so it covers
+ * nothing and moves nothing. Not a live region: each watched hand is announced once, through the
+ * table's toast (see watchNarration), which renders below the controls while Watch runs.
+ */
+export function WatchStatus({
+  watch,
+  orientation,
+  toast,
+}: {
+  watch: WatchHandle;
+  orientation: 'portrait' | 'landscape';
+  /** The table's toast while Watch runs: below the controls, so it never pushes Stop down. */
+  toast?: ComponentChildren;
+}) {
+  const el = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Watch is started from below the table: scroll the window (never the layout, never the rail's
+    // own scroller) so the strip sits at the bottom of the screen, clear of the tab bar (its scroll
+    // margin), without taking the top of the table off screen.
+    const node = el.current;
+    if (!node || typeof window.scrollBy !== 'function') return;
+    const r = node.getBoundingClientRect();
+    const margin = parseFloat(getComputedStyle(node).scrollMarginBottom) || 0;
+    const top = node.closest('.sim-table')?.getBoundingClientRect().top ?? r.top;
+    window.scrollBy(0, Math.min(r.bottom + margin - window.innerHeight, top));
+  }, []);
+  return (
+    <div class={`sim-watch-status sim-watch-${orientation}`} data-testid="watch-status" ref={el}>
+      <div class="sim-watch-row">
+        <p class="sim-watch-line">
+          <span class="sim-watch-hand">
+            Perfect play · hand {Math.min(watch.hand, watch.of)} of {watch.of}
+            {watch.paused ? ' · paused' : ''}
+          </span>
+          <span class="sim-watch-option" data-testid="watch-option">
+            {watch.option ? OPTION_LABELS[watch.option] : ' '}
+          </span>
+        </p>
+        <div class="sim-watch-buttons">
+          <button
+            type="button"
+            class="sim-btn sim-btn-secondary"
+            onClick={watch.paused ? watch.resume : watch.pause}
+            data-testid="watch-pause"
+          >
+            {watch.paused ? 'Resume' : 'Pause'}
+          </button>
+          <button
+            type="button"
+            class="sim-btn sim-btn-secondary"
+            onClick={watch.stop}
+            data-testid="watch-stop"
+          >
+            Stop
+          </button>
+        </div>
+      </div>
+      {toast}
     </div>
   );
 }
