@@ -1,5 +1,6 @@
 // Test hook: exposes the EV client to e2e. Required by tests/e2e/single-file.spec.ts.
 // Clients are created on first access, so a cold load constructs no worker (I042).
+import { simulateUpdateAvailable } from '../pwa/register';
 import { parseCards } from '../sim/engine';
 import { createEvClient } from '../sim/worker';
 import type { EvClient } from '../sim';
@@ -15,6 +16,8 @@ window.__holdumb = {
   get inthread() {
     return (inthread ??= createEvClient({ mode: 'inthread' }));
   },
+  /** Pretends a new service worker is waiting, so e2e can show the update notice (I037). */
+  simulateUpdateAvailable,
   // Runs one river preview through the client: the round trip proves the transport, `mode` says
   // which one served it, and `settled` says whether the job resolved.
   async smoke() {
