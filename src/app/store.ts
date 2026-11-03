@@ -7,7 +7,10 @@ import {
   encodeExport,
   loadDetailed,
   save,
+  type DrillLens,
   type DrillStats,
+  type LensStats,
+  lensStats,
   type DrillStreet,
   type LessonProgress,
   type PersistedV1,
@@ -26,7 +29,8 @@ export class Store {
   private listeners = new Set<() => void>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   /** consecutive correct Drill answers this visit (not persisted; the best is) */
-  private streak = 0;
+  // Deliberately per lens, like bestStreak: a Basic card run never extends or breaks a Perfect run.
+  private streaks: Record<DrillLens, number> = { perfect: 0, practical: 0 };
   private unavailable = false; // localStorage missing: memory only
   private readOnly = false; // stored data is from a newer app: never overwrite it
   private saveFailed = false; // a write was refused (quota)
@@ -67,7 +71,7 @@ export class Store {
     return this.data.sandbox;
   }
   get drillStreak(): number {
-    return this.streak;
+    return this.streaks[this.data.drill.lens];
   }
 
   subscribe = (fn: () => void) => {
@@ -178,38 +182,49 @@ export class Store {
     spotCode?: string,
     category?: DrillCategoryId,
   ) {
-    this.streak = correct ? this.streak + 1 : 0;
     const d = this.data.drill;
-    const cur = d.byStreet[street];
+    const lens = d.lens;
+    const streak = correct ? this.streaks[lens] + 1 : 0;
+    this.streaks[lens] = streak;
+    const cur = lensStats(d);
+    const row = cur.byStreet[street];
+    const cat = category ? cur.byCategory[category] : undefined;
     const misses = spotCode
       ? correct
-        ? d.recentMisses.filter((c) => c !== spotCode)
-        : [spotCode, ...d.recentMisses.filter((c) => c !== spotCode)].slice(0, MAX_RECENT_MISSES)
-      : d.recentMisses;
+        ? cur.recentMisses.filter((c) => c !== spotCode)
+        : [spotCode, ...cur.recentMisses.filter((c) => c !== spotCode)].slice(0, MAX_RECENT_MISSES)
+      : cur.recentMisses;
+    const next: LensStats = {
+      bestStreak: Math.max(cur.bestStreak, streak),
+      byStreet: {
+        ...cur.byStreet,
+        [street]: { answered: row.answered + 1, correct: row.correct + (correct ? 1 : 0) },
+      },
+      byCategory: category
+        ? {
+            ...cur.byCategory,
+            [category]: {
+              answered: (cat?.answered ?? 0) + 1,
+              correct: (cat?.correct ?? 0) + (correct ? 1 : 0),
+            },
+          }
+        : cur.byCategory,
+      recentMisses: misses,
+    };
     this.commit({
       ...this.data,
-      drill: {
-        bestStreak: Math.max(d.bestStreak, this.streak),
-        byStreet: {
-          ...d.byStreet,
-          [street]: { answered: cur.answered + 1, correct: cur.correct + (correct ? 1 : 0) },
-        },
-        byCategory: category
-          ? {
-              ...d.byCategory,
-              [category]: {
-                answered: (d.byCategory[category]?.answered ?? 0) + 1,
-                correct: (d.byCategory[category]?.correct ?? 0) + (correct ? 1 : 0),
-              },
-            }
-          : d.byCategory,
-        recentMisses: misses,
-      },
+      drill: lens === 'practical' ? { ...d, practical: next } : { ...d, ...next },
     });
   }
 
+  /** Drill: choose the grading lens (kept across visits; accuracy is tracked per lens). */
+  setDrillLens(lens: DrillLens) {
+    if (lens === this.data.drill.lens) return;
+    this.commit({ ...this.data, drill: { ...this.data.drill, lens } });
+  }
+
   resetDrill() {
-    this.streak = 0;
+    this.streaks = { perfect: 0, practical: 0 };
     this.commit({ ...this.data, drill: emptyDrill() });
   }
 
@@ -235,7 +250,7 @@ export class Store {
   importCode(code: string): boolean {
     const d = decodeImport(code);
     if (!d) return false;
-    this.streak = 0;
+    this.streaks = { perfect: 0, practical: 0 };
     this.commit(d);
     return true;
   }
@@ -243,7 +258,7 @@ export class Store {
   /** Clear lesson and drill progress (keeps settings unless `settings` is true). */
   reset(settings = false) {
     const fresh = defaultPersisted();
-    this.streak = 0;
+    this.streaks = { perfect: 0, practical: 0 };
     this.commit(settings ? fresh : { ...fresh, settings: this.data.settings });
   }
 }

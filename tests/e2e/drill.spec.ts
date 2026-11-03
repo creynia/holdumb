@@ -20,6 +20,19 @@ test('a drill answer is graded and recorded', async ({ page }) => {
   expect(answered).toMatch(/river\s*\d+%/);
 });
 
+test('the grading lens toggle persists across a reload', async ({ page }) => {
+  await page.goto('/#/drill?street=river');
+  const basic = page.getByTestId('drill-lens').getByRole('button', { name: 'Basic card' });
+  await expect(basic).toHaveAttribute('aria-pressed', 'false');
+  await basic.click();
+  await expect(basic).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(800);
+  await page.reload();
+  await expect(basic).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.choice-row button').first().click();
+  await expect(page.getByTestId('drill-result')).toBeVisible();
+});
+
 // Drill "See the chart" lands on the matching section, not at the top of the page (I019).
 for (const [width, height] of [
   [390, 844],
@@ -80,6 +93,9 @@ for (const vp of [
     // the picker sits below the action buttons, so it cannot push them
     const sel = (await page.getByTestId('drill-categories').boundingBox())!;
     expect(sel.y).toBeGreaterThan(plain);
+    // the lens toggle lives in the same picker block, below the buttons
+    const lens = (await page.getByTestId('drill-lens').boundingBox())!;
+    expect(lens.y).toBeGreaterThan(plain);
     // Mixed has the same stack above the spot card as every street (no picker row)
     await page.goto('/#/drill');
     await expect(page.getByTestId('drill-spot')).toBeVisible();
