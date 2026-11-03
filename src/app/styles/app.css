@@ -694,6 +694,9 @@ textarea {
   background: var(--accent);
   color: var(--accent-ink);
 }
+.drill-picker {
+  margin-top: 0.6rem;
+}
 .drill-category {
   display: flex;
   align-items: center;

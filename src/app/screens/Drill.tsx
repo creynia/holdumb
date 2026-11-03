@@ -187,27 +187,6 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         ))}
       </div>
 
-      {street !== 'mixed' && (
-        <label class="drill-category">
-          <span>Category</span>
-          <select
-            data-testid="drill-categories"
-            value={category ?? ''}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              navigate(v ? `/drill?street=${street}&category=${v}` : `/drill?street=${street}`);
-            }}
-          >
-            <option value="">All</option>
-            {categoriesOf(street).map((c) => (
-              <option key={c} value={c}>
-                {DRILL_CATEGORY_LABELS[c]}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
       <section class="card drill-stats" aria-label="Your drill stats" data-testid="drill-stats">
         <span>
           Streak <strong data-testid="streak">{store.drillStreak}</strong>
@@ -227,12 +206,6 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
           );
         })}
       </section>
-      {weakest && (
-        <p class="muted" data-testid="drill-weakest">
-          Your weakest: {DRILL_CATEGORY_LABELS[weakest.id]} {weakest.pct}% ({weakest.answered})
-        </p>
-      )}
-
       {unavailable && (
         <section class="card" data-testid="drill-unavailable" role="status">
           <h2>Spots are on their way</h2>
@@ -312,6 +285,37 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
           </Link>
         </p>
       )}
+
+      <div class="drill-picker">
+        {street !== 'mixed' && (
+          <label class="drill-category">
+            <span>Category</span>
+            <select
+              data-testid="drill-categories"
+              value={category ?? ''}
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                const qs = new URLSearchParams({ street });
+                if (v) qs.set('category', v);
+                if (focusKey) qs.set('focus', focusKey);
+                navigate(`/drill?${qs.toString().replace(/%2C/g, ',')}`);
+              }}
+            >
+              <option value="">All</option>
+              {categoriesOf(street).map((c) => (
+                <option key={c} value={c}>
+                  {DRILL_CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {weakest && (
+          <p class="muted" data-testid="drill-weakest">
+            Your weakest: {DRILL_CATEGORY_LABELS[weakest.id]} {weakest.pct}% ({weakest.answered})
+          </p>
+        )}
+      </div>
     </div>
   );
 }
