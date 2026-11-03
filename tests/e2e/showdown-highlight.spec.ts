@@ -32,3 +32,38 @@ test('a settled showdown marks the five cards that play on each side', async ({ 
       .evaluate((e) => getComputedStyle(e).transitionDuration),
   ).toBe('0s');
 });
+
+// Through the real Simulator: folding on the river leaves your own cards unlabelled, and only the
+// dealer's best five counts (the board cards in it play, the others do not).
+test('folding on the river marks only the dealer five', async ({ page }) => {
+  await page.goto(
+    '/#/play?seed=7&hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river&speed=instant',
+  );
+  await page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 20_000 });
+  await page.locator('button[data-option="fold"]').click();
+  await expect(page.getByTestId('fold-reveal')).toBeVisible();
+  const label = (name: string) =>
+    page
+      .locator('g.sim-card')
+      .filter({ has: page.locator(`xpath=self::*[starts-with(@aria-label, "${name}")]`) });
+  const names = await page
+    .locator('g.sim-card:not(.sim-card-back)')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+  expect(names).toHaveLength(9);
+  // Your two cards: no label at all.
+  expect(names).toContain('Three of clubs');
+  expect(names).toContain('Four of diamonds');
+  // The dealer's pair of tens plays, with the board's ace, king and queen; the nine and seven do not.
+  for (const n of [
+    'Ten of diamonds',
+    'Ten of spades',
+    'Ace of hearts',
+    'King of spades',
+    'Queen of diamonds',
+  ])
+    expect(names).toContain(`${n}, plays`);
+  for (const n of ['Nine of clubs', 'Seven of hearts'])
+    expect(names).toContain(`${n}, doesn't play`);
+  expect(await label('Three of clubs').count()).toBe(1);
+  await expect(page.locator('g.sim-card.is-out')).toHaveCount(2);
+});

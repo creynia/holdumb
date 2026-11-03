@@ -591,6 +591,16 @@ describe('Felt', () => {
       expect(out('Eight of diamonds')).toBe(false); // plays for you only
       expect(out('Nine of spades')).toBe(false); // plays for the dealer only
     });
+    it('a board card in only one of the two fives is not dimmed (either side)', () => {
+      // You play A K Q J 9; the dealer plays three fours with K Q. The 9h is yours alone, the 4c is
+      // the dealer's alone, and only the 2s misses both.
+      showdown('Ah Jc', '9h Ks Qd 4c 2s', '4h 4d');
+      expect(out('Nine of hearts')).toBe(false);
+      expect(out('Four of clubs')).toBe(false);
+      expect(label('Nine of hearts')).toBe('Nine of hearts, plays');
+      expect(label('Four of clubs')).toBe('Four of clubs, plays');
+      expect(out('Two of spades')).toBe(true);
+    });
     it('after a fold only the dealer five counts and your cards are left alone', () => {
       showdown('5c 8d', 'Ah Kh 7c 4d 2s', '9s 9d', true);
       expect(label('Five of clubs')).toBe('Five of clubs');
@@ -614,21 +624,32 @@ describe('Felt', () => {
       expect(screen.getByRole('img', { name: 'Ace of hearts' })).toBeTruthy();
       expect(document.querySelectorAll('.sim-card.is-out')).toHaveLength(0);
     });
-    it('the dim keeps the card readable: >= 3:1 against the felt, and it never animates', () => {
+    it('the not-playing cue never dims the ink: >= 4.5:1 on the card in every deck, edge >= 3:1 on the felt', () => {
       const css = readFileSync('src/sim/ui/styles/cards.css', 'utf8');
-      const m = /\.sim-card\.is-out\s*{[^}]*opacity:\s*([\d.]+)/.exec(css);
-      expect(m).toBeTruthy();
-      const op = Number(m![1]);
+      const rule = /\.sim-card\.is-out\s+\.sim-card-body\s*{([^}]*)}/.exec(css);
+      expect(rule).toBeTruthy();
+      const decl = rule![1]!;
+      // Only the edge changes: no opacity, filter, fill, blend or animation on the card.
+      expect(decl).not.toMatch(/opacity|filter|fill|mix-blend|transition|animation/);
+      expect(/\.sim-card\.is-out\s*{/.test(css)).toBe(false);
+      const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
       const lin = (c: number) =>
         c / 255 <= 0.03928 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4;
       const lum = (rgb: number[]) =>
         0.2126 * lin(rgb[0]!) + 0.7152 * lin(rgb[1]!) + 0.0722 * lin(rgb[2]!);
-      const felt = [0x0b, 0x2e, 0x4a];
-      const card = [0xf8, 0xf5, 0xec];
-      const comp = card.map((c, k) => op * c + (1 - op) * felt[k]!);
-      const ratio = (lum(comp) + 0.05) / (lum(felt) + 0.05);
-      expect(ratio).toBeGreaterThanOrEqual(3);
-      expect(/\.sim-card\.is-out\s*{[^}]*(transition|animation)/.test(css)).toBe(false);
+      const ratio = (a: string, b: string) => {
+        const [hi, lo] = [lum(hex(a)), lum(hex(b))].sort((x, y) => y - x);
+        return (hi! + 0.05) / (lo! + 0.05);
+      };
+      const tokens = readFileSync('src/app/styles/tokens.css', 'utf8');
+      const tok = (name: string) => new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(tokens)![1]!;
+      const card = tok('card');
+      for (const ink of ['suit-s', 'suit-h', 'suit-d', 'suit-c', 'suit4-d', 'suit4-c'])
+        expect(ratio(tok(ink), card), ink).toBeGreaterThanOrEqual(4.5);
+      const edge = /stroke:\s*(#[0-9a-fA-F]{6})/.exec(decl)![1]!;
+      expect(ratio(edge, tok('felt'))).toBeGreaterThanOrEqual(3);
+      // And it is not the same as an ordinary card's edge.
+      expect(decl).toContain('stroke-dasharray');
     });
   });
   it('shows your cards, the board so far and slots for the rest', () => {
