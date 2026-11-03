@@ -61,3 +61,23 @@ describe('track*', () => {
     expect(img).not.toHaveBeenCalled();
   });
 });
+
+describe('errorHit', () => {
+  it('keeps the route and a short, single-line message with every digit masked', async () => {
+    const { errorHit } = await import('../../src/app/analytics');
+    const h = errorHit('/play', 'bad\nvalue $480 id 1234567 ' + 'x'.repeat(200));
+    expect(h.path).toBe('holdumb:error/play');
+    expect(h.event).toBe(true);
+    expect(h.title).toHaveLength(80);
+    expect(h.title).toMatch(/^bad value \$# id # x+$/);
+    expect(h.title).not.toMatch(/\d/);
+  });
+  it('counts a given route and message once per session', async () => {
+    const { trackError } = await import('../../src/app/analytics');
+    expect(trackError('/play', 'same problem')).toBe(true);
+    expect(trackError('/play', 'same problem')).toBe(false);
+    expect(trackError('/play', 'bad row 2')).toBe(true);
+    expect(trackError('/play', 'bad row 3')).toBe(false); // digits are masked: same message
+    expect(trackError('/learn', 'same problem')).toBe(true);
+  });
+});

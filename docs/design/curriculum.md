@@ -1170,8 +1170,7 @@ title: Preflop calls
 bankroll: 100000
 bets: { ante: 1000 }
 seed: 701
-showEV: true
-practice: true
+evMode: after # D39 (was practice: true, D35 S4)
 steps:
   - id: h1
     text: "Six hands. Make each preflop call from the eight rules; the EV sheet appears after you confirm. Hand 1: ace-three offsuit."
@@ -2602,6 +2601,12 @@ straight flush 10%, quads $300, full house $50, flush $40, straight $30, trips $
 | $100,000 | 17.7% | $5.31 |
 | ≈ $160,531 | 0% (break-even) | $0 |
 
+Drag the meter to see the price at any size, and where it crosses break-even:
+
+```progressive
+meter: 50000
+```
+
 Most meters sit far below break-even, so most progressives are among the most expensive bets in the casino.
 Their tables vary, so the app gives you the method, not one number.
 
@@ -2811,8 +2816,7 @@ title: Five hands for the road
 bankroll: 100000
 bets: { ante: 1000, trips: 500 }
 seed: 2301
-showEV: true
-practice: true
+evMode: after # D39 (was practice: true, D35 S4)
 ui: { showSession: true }
 steps:
   - id: play
@@ -3350,10 +3354,10 @@ exact EV still shown). The tier comes from §8.2.
 | `flop-flush-draw` | "Four to a flush: 2x only with a ten or better of that suit in your hand." |
 | `flop-straight-draw` | "Straight draws: check, and bet 1x on the river if it comes." |
 | `flop-nothing` | "No pair, no draw: check." |
-| `flop-deuces` | "Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board). Hit a set and rule (a) says 2x." |
+| `flop-deuces` | "Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board)." |
 | `river-hidden-pair` | "Hidden pair or better: always bet 1x." |
 | `river-outs-low` / `-edge` / `-high` | "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}." |
-| `river-board-plays` | "When the board plays, bet 1x: it's usually a tie." |
+| `river-board-plays` | "Your best five is the board, so you can tie but never win. Count the dealer's outs: the basic card says bet 1x with fewer than 21 and fold with 21 or more; perfect play folds from 19. Here: {outs}." |
 
 Streaks count `best` and `close` as correct. Accuracy per street is shown as a percentage, and "Review
 misses" replays `small` and worse.

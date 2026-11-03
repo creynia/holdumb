@@ -1,7 +1,7 @@
 import type { HandCategory, WagerId } from '../sim/engine/types';
 import type { WagerTier } from '../sim/math/types';
 import type { SceneConfig } from '../sim/scene/types';
-import type { StrategyId } from '../sim/strategy/types';
+import type { DrillCategoryId, StrategyId } from '../sim/strategy/types';
 
 export type LessonId = string;
 export type ChapterId = string;
@@ -38,12 +38,18 @@ export interface ChartBlockData {
   highlight?: string[]; // 'AKs', 'T9o', '77'
 }
 
+/** I063: the progressive jackpot calculator (lesson 20). `meter` is the slider's start, whole dollars. */
+export interface ProgressiveBlockData {
+  meter: number;
+}
+
 export type Block =
   | { kind: 'html'; html: string } // marked output, trusted repo content
   | { kind: 'math'; title: string; html: string } // collapsible "Show the math"
   | { kind: 'tip'; html: string }
   | { kind: 'scene'; scene: SceneConfig }
   | { kind: 'chart'; chart: ChartBlockData }
+  | { kind: 'progressive'; progressive: ProgressiveBlockData }
   | { kind: 'quiz'; quiz: Quiz };
 
 /** One entry of content/sources.json (shown on #/sources and cited by lessons). */
@@ -113,6 +119,9 @@ export interface StrategyCopy {
   rules: string[]; // markdown in source, HTML in the bundle
 }
 
+/** content/drill.json: the grading reminder per Drill category (curriculum.md 9.2). `{outs}` is filled in. */
+export type DrillReminders = Partial<Record<DrillCategoryId, string>>;
+
 export interface ContentBundle {
   chapters: Chapter[];
   lessons: Lesson[];
@@ -120,5 +129,6 @@ export interface ContentBundle {
   bets: Record<WagerId, BetCopy>;
   hands: Record<HandCategory, HandCopy>;
   strategy: Record<StrategyId, StrategyCopy>;
+  drill: DrillReminders;
   sources: SourceGroup[];
 }

@@ -1,0 +1,20 @@
+{
+  "pre-premium": "Big hands want the biggest bet: 4x.",
+  "pre-ace": "Any ace is a 4x hand.",
+  "pre-king": "Suited kings: always 4x. Offsuit kings: K5 and up.",
+  "pre-queen-jack": "Queens: Q6 suited or Q8 offsuit and up. Jacks: J8 suited or JT offsuit and up.",
+  "pre-small-pair": "Every pair from 33 up is 4x. Deuces: check.",
+  "pre-low": "With a ten or lower as your top card, check (unless it's a pair).",
+  "flop-hidden-pair": "A pair that uses your card: bet 2x.",
+  "flop-two-pair-plus": "Two pair or better that uses your cards: bet 2x.",
+  "flop-board-pair": "A pair on the board belongs to the dealer too: check.",
+  "flop-flush-draw": "Four to a flush: 2x only with a ten or better of that suit in your hand.",
+  "flop-straight-draw": "Straight draws: check, and bet 1x on the river if it comes.",
+  "flop-nothing": "No pair, no draw: check.",
+  "flop-deuces": "Pocket deuces with no third deuce: perfect play checks, even on a paired flop (the basic card's rule (a) says 2x on a paired board).",
+  "river-hidden-pair": "Hidden pair or better: always bet 1x.",
+  "river-outs-low": "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}.",
+  "river-outs-edge": "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}.",
+  "river-outs-high": "Count the dealer's outs: fewer than 21, bet 1x; otherwise fold. Here: {outs}.",
+  "river-board-plays": "Your best five is the board, so you can tie but never win. Count the dealer's outs: the basic card says bet 1x with fewer than 21 and fold with 21 or more; perfect play folds from 19. Here: {outs}."
+}

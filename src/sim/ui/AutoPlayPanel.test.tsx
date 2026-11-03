@@ -79,6 +79,60 @@ describe('shown net figures add up to the cent', () => {
   });
 });
 
+describe('AutoPlayPanel cost vs perfect and compare table (I022)', () => {
+  const setup = (settings = DEFAULT_SIM_SETTINGS) => {
+    const evClient = createEvClient({ mode: 'inthread' });
+    const r = render(<AutoPlayPanel evClient={evClient} settings={settings} />);
+    return { evClient, ...r };
+  };
+  const pick = (id: string) =>
+    fireEvent.change(screen.getByLabelText('Strategy'), { target: { value: id } });
+  const costText = () => screen.getByTestId('auto-play-cost').textContent ?? '';
+
+  it('matches decisions section 4 at $10 and 30 hands an hour', () => {
+    const { evClient } = setup();
+    expect(costText()).toContain('Costs $0.26 an hour more than perfect play');
+    pick('basic');
+    expect(costText()).toContain('Costs $0.59 an hour more than perfect play');
+    pick('simple');
+    expect(costText()).toContain('Costs $1.57 an hour more than perfect play');
+    evClient.dispose();
+  });
+
+  it('shows the element of risk with a glossary link', () => {
+    const { evClient } = setup();
+    pick('basic');
+    const link = screen.getByRole('link', { name: 'Element of risk' });
+    expect(link.getAttribute('href')).toBe('#/glossary?term=element-of-risk');
+    expect(costText()).toMatch(/Element of risk \d\.\d\d%\./);
+    evClient.dispose();
+  });
+
+  it('follows the ante and the hands per hour', () => {
+    const { evClient } = setup({ ...DEFAULT_SIM_SETTINGS, handsPerHour: 60 });
+    pick('basic');
+    expect(costText()).toContain('$1.18 an hour'); // 2 x $0.59
+    fireEvent.input(screen.getByLabelText('Ante ($)'), { target: { value: '5' } });
+    expect(costText()).toContain('$0.59 an hour'); // half the ante, twice the hands
+    evClient.dispose();
+  });
+
+  it('Compare lists every strategy exactly, lowest edge first', () => {
+    const { evClient } = setup();
+    expect(screen.queryByTestId('auto-play-compare')).toBeNull();
+    pick('basic');
+    fireEvent.click(screen.getByLabelText('Compare (same cards)'));
+    const rows = [...screen.getByTestId('auto-play-compare').querySelectorAll('tbody tr')].map(
+      (tr) => [...tr.children].map((c) => c.textContent),
+    );
+    expect(rows).toEqual([
+      ['Expert', '2.27%', '-$6.81', '+$0.26'],
+      ['Basic', '2.38%', '-$7.14', '+$0.59'],
+    ]);
+    evClient.dispose();
+  });
+});
+
 describe('always bet 4x versus never fold', () => {
   const spec = (id: 'never-fold' | 'always-max') => ({ id, ante: 1000, trips: 0 });
   const rules = { tripsPaytable: 'trips-8-6-5' } as never;
