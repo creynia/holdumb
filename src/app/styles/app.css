@@ -649,6 +649,13 @@ textarea {
   display: block;
   font-size: 0.85em;
 }
+/* Which bets is greyed out (still readable) while Confirm my bets is unticked (D40, I091). */
+.form fieldset.radios:disabled {
+  opacity: 0.6;
+}
+.form fieldset.radios:disabled label.radio {
+  cursor: default;
+}
 
 [data-motion='reduce'] *,
 [data-motion='reduce'] *::before,

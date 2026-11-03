@@ -227,7 +227,7 @@ test.describe('sandbox', () => {
 
   test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {
     await page.goto('/#/settings');
-    await page.getByRole('radio', { name: 'Never' }).first().check();
+    await page.getByRole('radio', { name: 'Off' }).first().check();
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await page.waitForSelector('[data-testid="simulator"]');
     await opt(page, 'check').click();
@@ -238,6 +238,7 @@ test.describe('sandbox', () => {
 
   test('a blunder needs a second tap with "Only bad bets"', async ({ page }) => {
     await page.goto('/#/settings');
+    await page.getByRole('checkbox', { name: 'Confirm my bets' }).check();
     await page.getByRole('radio', { name: /Only bad bets/ }).check();
     await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
     await ready(page);

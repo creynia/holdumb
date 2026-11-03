@@ -1,10 +1,10 @@
 import { DEFAULT_SIM_SETTINGS } from '../sim/ui/types';
 import type { SimSettings } from '../sim/ui/types';
 
-/** Persisted settings (architecture.md §2.4 + decisions.md D30). TODO(app) owns this file after WP0. */
 /** Which bets the Confirm box asks about: the scope it turns on (D40). */
 export type ConfirmTiers = Exclude<SimSettings['confirmOn'], 'never'>;
 
+/** Persisted settings (architecture.md §2.4 + decisions.md D30). TODO(app) owns this file after WP0. */
 export interface Settings extends SimSettings {
   theme: 'system' | 'light' | 'dark';
   reduceMotion: boolean;
