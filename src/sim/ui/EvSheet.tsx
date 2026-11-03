@@ -24,6 +24,7 @@ import {
   optionKeyOf,
   typographic,
 } from './text';
+import { Say } from './announcer';
 
 export interface EvSheetProps {
   /** null while the flop EV is still computing (shows a skeleton; Confirm stays enabled). */
@@ -83,7 +84,15 @@ function ResultCard({
   const cost = costCents(best, o);
   const isBest = optionKeyOf(best.action) === chosen || o.tier === 'best';
   return (
-    <div class="sim-result" role="status" data-testid="practice-result">
+    <div class="sim-result" data-testid="practice-result">
+      <Say
+        text={
+          isBest
+            ? `${o.label} was the best play.`
+            : `${best.label} was worth ${fmtCostC(cost)} more than ${o.label}.`
+        }
+        dedupeKey="ev-result"
+      />
       <TierBadge tier={o.tier} />
       <p>
         {isBest
@@ -337,12 +346,14 @@ export function EvSheet({
           ) : null}
         </>
       ) : failed ? (
-        <p class="sim-muted" role="status" data-testid="ev-unavailable">
+        <p class="sim-muted" data-testid="ev-unavailable">
+          <Say text="EV not available. You can still play this move." dedupeKey="ev-state" />
           EV not available. You can still play this move.
         </p>
       ) : (
         <div class="sim-skeleton" data-testid="ev-loading" aria-busy="true">
-          <p class="sim-muted sim-calc" role="status">
+          <p class="sim-muted sim-calc">
+            <Say text="Calculating." dedupeKey="ev-state" />
             <span class="sim-spinner" aria-hidden="true" />
             Calculating…
           </p>
