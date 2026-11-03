@@ -189,27 +189,38 @@ test.describe('sandbox', () => {
       expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height);
   });
 
-  test('Watch plays perfect hands on the felt without covering it, and Stop stops (I078)', async ({
+  test('Watch plays 3 perfect hands on the felt, announces them, and moves nothing (I078)', async ({
     page,
   }) => {
     await page.goto('/#/play?seed=7&speed=instant');
     const sim = page.getByTestId('simulator');
     await expect(sim).toHaveAttribute('data-hands', '0');
-    await page.getByTestId('watch-hands').selectOption('10');
+    const vp = page.viewportSize()!;
+    const landscape = vp.width > vp.height && vp.height < 520;
+    const boxes = async () => ({
+      table: (await page.locator('.sim-table').boundingBox())!,
+      actions: (await page.locator('.sim-actions').boundingBox())!,
+      rail: landscape ? (await page.locator('.sim-rail').boundingBox())! : null,
+    });
+    const near = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+      Math.abs(a.x - b.x) <= 1 &&
+      Math.abs(a.y - b.y) <= 1 &&
+      Math.abs(a.width - b.width) <= 1 &&
+      Math.abs(a.height - b.height) <= 1;
+    const before = landscape ? await boxes() : null;
+    await page.getByTestId('watch-hands').selectOption('3');
     await page.getByTestId('watch-start').click();
     const status = page.getByTestId('watch-status');
     await expect(status).toBeVisible();
-    await expect(status).toContainText('of 10');
+    await expect(status).toContainText('of 3');
     await expect(page.locator('.sim-rack')).toHaveCount(0);
-    // The move is announced and highlighted on the (locked) ActionBar before it is played.
-    await expect(page.getByTestId('watch-option')).toHaveText(/Bet \dx|Check|Fold/, {
-      timeout: 15_000,
-    });
-    await expect(page.locator('button[data-option].is-hl')).toHaveCount(1);
-    await expect(page.locator('button[data-option]').first()).toBeDisabled();
-    // The strip sits below the ActionBar (above the table in landscape), never on the felt, and
-    // Stop is a full tap target.
-    const vp = page.viewportSize()!;
+    if (before) {
+      // Landscape: starting Watch moves neither the table nor the rail (nor the ActionBar).
+      const during = await boxes();
+      expect(near(during.table, before.table)).toBe(true);
+      expect(near(during.rail!, before.rail!)).toBe(true);
+    }
+    // The strip never sits on the felt, and Pause / Stop are full tap targets.
     const felt = (await page.locator('svg.sim-felt').boundingBox())!;
     const strip = (await status.boundingBox())!;
     const overlaps =
@@ -218,19 +229,52 @@ test.describe('sandbox', () => {
       strip.y < felt.y + felt.height &&
       felt.y < strip.y + strip.height;
     expect(overlaps).toBe(false);
-    const stop = (await page.getByTestId('watch-stop').boundingBox())!;
-    expect(stop.height).toBeGreaterThanOrEqual(44);
-    expect(stop.width).toBeGreaterThanOrEqual(44);
-    if (vp.width > vp.height && vp.height < 520)
-      expect(stop.y + stop.height).toBeLessThanOrEqual(vp.height);
+    for (const id of ['watch-stop', 'watch-pause']) {
+      const b = (await page.getByTestId(id).boundingBox())!;
+      expect(b.height).toBeGreaterThanOrEqual(44);
+      expect(b.width).toBeGreaterThanOrEqual(44);
+    }
+    await expect(page.getByTestId('watch-summary')).toHaveText('Watched 3 hands of perfect play.', {
+      timeout: 30_000,
+    });
+    // Each hand is announced once through the toast's live region, with perfect play's moves; the
+    // last one stays after the run.
+    await expect(page.locator('.sim-toasts .sim-sr')).toHaveText(/^Hand 3 of 3: .*(Bet|Check)/);
+    await expect(sim).toHaveAttribute('data-hands', '3');
+    await expect(status).toHaveCount(0);
+    if (before) {
+      const after = await boxes();
+      expect(near(after.table, before.table)).toBe(true);
+      expect(near(after.rail!, before.rail!)).toBe(true);
+    }
+    // Watched hands are the table's play: the session panel lists them on their own line.
+    await page.getByTestId('session-toggle').click();
+    await expect(page.getByTestId('session-watched')).toContainText('3 hands');
+  });
+
+  test('Watch: Stop stops, and Pause holds the table (I078)', async ({ page }) => {
+    await page.goto('/#/play?seed=7&speed=fast');
+    const sim = page.getByTestId('simulator');
+    await page.getByTestId('watch-start').click();
+    await expect(page.getByTestId('watch-option')).toHaveText(/Bet \dx|Check|Fold/, {
+      timeout: 15_000,
+    });
+    await page.getByTestId('watch-pause').click();
+    await expect(page.getByTestId('watch-pause')).toHaveText('Resume');
+    const street = await sim.getAttribute('data-street');
+    const hands = await sim.getAttribute('data-hands');
+    await page.waitForTimeout(1500);
+    await expect(sim).toHaveAttribute('data-street', street!);
+    await expect(sim).toHaveAttribute('data-hands', hands!);
+    await page.getByTestId('watch-pause').click();
     await expect
       .poll(async () => Number(await sim.getAttribute('data-hands')), { timeout: 30_000 })
-      .toBeGreaterThanOrEqual(2);
+      .toBeGreaterThan(Number(hands));
     await page.getByTestId('watch-stop').click();
-    await expect(status).toHaveCount(0);
+    await expect(page.getByTestId('watch-status')).toHaveCount(0);
     await expect(page.getByTestId('watch-summary')).toContainText(/Stopped after \d+ hands?/);
-    const hands = await sim.getAttribute('data-hands');
-    await page.waitForTimeout(2500);
-    await expect(sim).toHaveAttribute('data-hands', hands!);
+    const after = await sim.getAttribute('data-hands');
+    await page.waitForTimeout(1500);
+    await expect(sim).toHaveAttribute('data-hands', after!);
   });
 });

@@ -87,6 +87,10 @@ export interface SessionTotals {
   tripsExpectedCents: Fraction;
   decisions: number;
   mistakes: number;
+  /** I078: hands the table played itself (Watch). Kept out of every line above but `hands`. */
+  watchedHands: number;
+  /** Their whole result (main bets and Trips). */
+  watchedCents: number;
 }
 export const EMPTY_TOTALS: SessionTotals = {
   hands: 0,
@@ -100,6 +104,8 @@ export const EMPTY_TOTALS: SessionTotals = {
   tripsExpectedCents: ZERO_CENTS,
   decisions: 0,
   mistakes: 0,
+  watchedHands: 0,
+  watchedCents: 0,
 };
 
 export interface SessionView extends SessionTotals {
@@ -213,6 +219,7 @@ export class SimDriver {
     scored: boolean;
     ante: number;
     mistakes: number;
+    watched: boolean;
   } | null = null;
   private lastEvents: GameEvent[] = [];
   private eventSeq = 0;
@@ -226,6 +233,7 @@ export class SimDriver {
   private listeners = new Set<() => void>();
   private cached: DriverView | null = null;
   private busy = false;
+  private watching = false;
   private disposed = false;
 
   constructor(opts: DriverOptions) {
@@ -331,7 +339,8 @@ export class SimDriver {
         wageredCents: w.ante + w.blind + w.play + w.trips,
         perfectCents,
         mistakesRoundedCents,
-        luckCents: net - perfectCents + mistakesRoundedCents,
+        // Watched hands are not your play: their result is its own line, outside the luck split.
+        luckCents: net - t.watchedCents - perfectCents + mistakesRoundedCents,
         tripsExpectedRoundedCents: round(t.tripsExpectedCents),
         edgePerAnte:
           t.scoredAnteCents > 0
@@ -454,10 +463,11 @@ export class SimDriver {
       scored: true,
       ante: this.game.bets.ante,
       mistakes: 0,
+      watched: this.watching,
     };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
-    if (!this.hand) return;
+    if (!this.hand || this.hand.watched) return;
     this.totals = { ...this.totals, decisions: this.totals.decisions + 1 };
     const opt = pv?.options.find((o) => sameOption(o, action));
     if (!pv || !opt) {
@@ -472,6 +482,16 @@ export class SimDriver {
   private finishHandTrack(result: HandResult): void {
     const h = this.hand;
     this.hand = null;
+    if (h?.watched) {
+      // AC2: a watched hand is the table's play, not yours: no Trips, luck or mistake lines.
+      this.totals = {
+        ...this.totals,
+        hands: this.totals.hands + 1,
+        watchedHands: this.totals.watchedHands + 1,
+        watchedCents: this.totals.watchedCents + result.net,
+      };
+      return;
+    }
     let main = 0;
     let trips = 0;
     let tripsBet = 0;
@@ -668,6 +688,16 @@ export class SimDriver {
     this.feed({ kind: 'auto-play-completed', hands, strategy });
     this.emit({ type: 'auto-play-completed', hands, strategy });
     this.afterChange();
+  }
+
+  /**
+   * I078 Watch: while on, every hand dealt (and the hand on the table) is marked watched and kept out
+   * of the learner's own record. Turning it off does not unmark a hand already touched by Watch.
+   */
+  setWatching(on: boolean): void {
+    this.watching = on;
+    if (on && this.hand) this.hand.watched = true;
+    this.notify();
   }
 
   /** Sandbox: start over with a fresh rack. */

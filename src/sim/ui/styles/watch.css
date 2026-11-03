@@ -33,13 +33,21 @@
 }
 .sim-watch-status {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text);
+}
+/* The controls row comes first and never moves; the hand's toast (if any) follows below it. */
+.sim-watch-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   min-height: 52px;
   padding: 0 4px;
-  color: var(--text);
-  /* Clears the app's fixed bottom tab bar when the strip scrolls into view. */
+}
+/* Portrait: when it scrolls into view it clears the app's fixed bottom tab bar. */
+.sim-watch-portrait {
   scroll-margin-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 .sim-watch-line {
@@ -56,12 +64,7 @@
   min-height: 1.25em;
   white-space: pre;
 }
-.sim-watch-landscape {
-  min-height: 44px;
-  padding: 0 8px;
-}
-.sim-watch-landscape .sim-watch-line {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 12px;
+.sim-watch-buttons {
+  display: flex;
+  gap: 8px;
 }

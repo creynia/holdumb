@@ -3,6 +3,7 @@
 // State lives in hooks/: the driver and toasts, the EV sheet, the bet handlers and the preview bar.
 import './sim.css';
 import './container.css';
+import { useRef } from 'preact/hooks';
 import { equity } from '../engine';
 import type { SceneConfig } from '../scene';
 import { ActionBar } from './ActionBar';
@@ -28,7 +29,8 @@ import { useWatch } from './hooks/useWatch';
 import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
-import { watchPace } from './watch';
+import { optionKeyOf } from './text';
+import { watchNarration, watchPace } from './watch';
 
 export function Simulator(props: SimulatorProps) {
   const mode: 'sandbox' | 'scene' =
@@ -64,7 +66,6 @@ export function Simulator(props: SimulatorProps) {
     () => buildTimeline(d.view.lastEvents, speed).totalMs,
   );
   const watching = watch.running;
-  const watchStrip = watching ? <WatchStatus watch={watch} orientation={orientation} /> : null;
   const motion = useSkippableMotion(view.eventSeq, timeline.totalMs);
   const bar = usePreviewBar(view.preview, decision, evShown);
 
@@ -75,6 +76,24 @@ export function Simulator(props: SimulatorProps) {
   const eq = equity(state);
   const [circleHl, stepOptionHl] = splitHighlight(step?.highlight ?? scene.highlight ?? []);
   const optionHl = watching && watch.option ? [watch.option] : stepOptionHl;
+
+  // I078: a watched hand's result toast also says what perfect play did, once per hand. The line is
+  // pinned to the toast's id, so it does not change (and re-announce) when Watch ends.
+  const narrated = useRef<{ id: number; spoken: string } | null>(null);
+  if (watching && toast && hand?.result && narrated.current?.id !== toast.id) {
+    const moves = hand.decisions.map((x) => optionKeyOf(x.action));
+    narrated.current = {
+      id: toast.id,
+      spoken: `${watchNarration(watch.hand, watch.of, moves)} ${toast.spoken ?? toast.text}`,
+    };
+  }
+  const shownToast =
+    toast && narrated.current?.id === toast.id
+      ? { ...toast, spoken: narrated.current.spoken }
+      : toast;
+  const toastNode = shownToast ? (
+    <Toasts toasts={[shownToast]} onDismiss={() => setToast(null)} />
+  ) : null;
 
   const stepPanel = step ? (
     <StepPanel
@@ -95,7 +114,7 @@ export function Simulator(props: SimulatorProps) {
   const table = (
     <Table
       orientation={orientation}
-      toasts={toast ? <Toasts toasts={[toast]} onDismiss={() => setToast(null)} /> : null}
+      toasts={watching ? null : toastNode}
       status={
         scene.ui?.showBankroll === false ? null : (
           <StatusBar
@@ -118,7 +137,8 @@ export function Simulator(props: SimulatorProps) {
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
           labels={resultLabels(result)}
-          quiet={result?.outcome === 'fold'}
+          // Watch announces each hand once (its toast), so the felt's card read-out stays quiet.
+          quiet={result?.outcome === 'fold' || watching}
           timeline={timeline}
           nextHand={settled}
           skipped={motion.skipped}
@@ -152,9 +172,7 @@ export function Simulator(props: SimulatorProps) {
       }
       chips={
         watching ? (
-          orientation === 'portrait' ? (
-            watchStrip
-          ) : null
+          <WatchStatus watch={watch} orientation={orientation} toast={toastNode} />
         ) : betting && scene.ui?.showChipRack !== false && !view.betsLocked ? (
           <ChipRack
             chips={scene.ui?.chips ?? CHIP_DENOMS}
@@ -180,7 +198,6 @@ export function Simulator(props: SimulatorProps) {
       style={orientation === 'landscape' ? '--sim-table-h: calc(100dvh - 100px)' : undefined}
     >
       {orientation === 'portrait' || autoOnly ? stepPanel : null}
-      {orientation === 'landscape' ? watchStrip : null}
       {autoOnly ? null : table}
       {sandbox && scene.ui?.showSettings ? (
         <SimTools

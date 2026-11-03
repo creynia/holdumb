@@ -34,7 +34,7 @@ describe('Watch (I078)', () => {
     );
     const sim = screen.getByTestId('simulator');
     expect(document.querySelector('.sim-rack')).toBeTruthy();
-    expect(screen.getByTestId('watch-hands')).toHaveProperty('value', '30');
+    expect(screen.getByTestId('watch-hands')).toHaveProperty('value', '10');
     fireEvent.click(screen.getByTestId('watch-start'));
     await waitFor(() => expect(screen.getByTestId('watch-status')).toBeTruthy());
     // The strip takes the rack's place; Watch and New session wait.
@@ -47,8 +47,18 @@ describe('Watch (I078)', () => {
     const four = document.querySelector('[data-option="play-4"]')!;
     expect(four.classList.contains('is-hl')).toBe(true);
     expect(four).toHaveProperty('disabled', true);
-    expect(screen.getByTestId('watch-status').textContent).toMatch(/hand 1 of 30/);
+    expect(screen.getByTestId('watch-status').textContent).toMatch(/hand 1 of 10/);
+    // One live region only: the strip is not one (the toast's region announces each hand).
+    expect(screen.getByTestId('watch-status').querySelector('[aria-live]')).toBeNull();
     await waitFor(() => expect(sim.getAttribute('data-hands')).toBe('1'), { timeout: 4000 });
+    // The settled hand is announced once, through the toast inside the strip, with the moves.
+    await waitFor(() =>
+      expect(screen.getByTestId('watch-status').querySelector('.sim-sr')?.textContent).toMatch(
+        /^Hand 1 of 10: Bet 4x\. /,
+      ),
+    );
+    // The felt's card read-out is quiet while Watch runs: one active live region.
+    expect(document.querySelectorAll('[aria-live]:not([aria-live="off"])')).toHaveLength(1);
     fireEvent.click(screen.getByTestId('watch-stop'));
     await waitFor(() => expect(screen.queryByTestId('watch-status')).toBeNull());
     expect(screen.getByTestId('watch-summary').textContent).toBe('Stopped after 1 hand.');
@@ -66,4 +76,38 @@ describe('Watch (I078)', () => {
     );
     expect(watchSummary({ end: null, played: 0 })).toBeNull();
   });
+
+  it('Pause holds the table and Resume goes on; unmount stops the run', async () => {
+    const evClient = createEvClient({ mode: 'inthread' });
+    dispose = () => evClient.dispose();
+    const { unmount } = render(
+      <Simulator
+        settings={settings}
+        evClient={evClient}
+        scene={{
+          id: 'sandbox',
+          version: 1,
+          bankroll: 50_000,
+          bets: { ante: 1_000 },
+          ui: { showSettings: true },
+          deals: [{ player: ['As', 'Ad'] }, { player: ['Ks', 'Kd'] }, { player: ['Qs', 'Qd'] }],
+        }}
+      />,
+    );
+    const sim = screen.getByTestId('simulator');
+    fireEvent.click(screen.getByTestId('watch-start'));
+    await waitFor(() => expect(screen.getByTestId('watch-option').textContent).toBe('Bet 4x'));
+    fireEvent.click(screen.getByTestId('watch-pause'));
+    expect(screen.getByTestId('watch-pause').textContent).toBe('Resume');
+    expect(screen.getByTestId('watch-status').textContent).toMatch(/paused/);
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(sim.getAttribute('data-street')).toBe('preflop');
+    expect(sim.getAttribute('data-hands')).toBe('0');
+    fireEvent.click(screen.getByTestId('watch-pause'));
+    await waitFor(() => expect(sim.getAttribute('data-hands')).toBe('1'), { timeout: 4000 });
+    unmount();
+    // Nothing runs after unmount: the driver would have dealt hand 2 within the result pause.
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(sim.getAttribute('data-hands')).toBe('1');
+  }, 20_000);
 });

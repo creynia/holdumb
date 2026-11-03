@@ -27,7 +27,8 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
     setOpen((o) => !o);
     onTap?.();
   };
-  const unscored = s.hands - s.scored;
+  // Watched hands (I078) are neither scored nor "no EV": they have their own line.
+  const unscored = s.hands - s.scored - s.watchedHands;
   return (
     <section class="sim-session" aria-label="Session" data-testid="session-panel">
       <button
@@ -102,6 +103,15 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
               </dd>
             </div>
           ) : null}
+          {s.watchedHands > 0 ? (
+            <div>
+              <dt>Watched (perfect play)</dt>
+              <dd data-testid="session-watched">
+                {s.watchedHands} {s.watchedHands === 1 ? 'hand' : 'hands'} ·{' '}
+                <span class="sim-money">{m(s.watchedCents, true)}</span>, not counted as your play
+              </dd>
+            </div>
+          ) : null}
           {unscored > 0 ? (
             <p class="sim-muted">
               {unscored} {unscored === 1 ? 'hand' : 'hands'} had no EV, so{' '}
@@ -109,7 +119,8 @@ export function SessionPanel({ session: s, onTap, defaultOpen }: SessionPanelPro
             </p>
           ) : null}
           <p class="sim-muted">
-            Your result = perfect play + mistakes + luck, to the cent. Expected amounts are exact
+            Your result = perfect play + mistakes + luck
+            {s.watchedHands > 0 ? ' + watched hands' : ''}, to the cent. Expected amounts are exact
             and rounded once: what you get on average over many sessions, not a forecast.
           </p>
         </dl>

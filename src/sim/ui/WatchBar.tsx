@@ -1,9 +1,9 @@
-// I078 Watch: the controls (under the table, with the sandbox tools) and the live status strip that
-// takes the chip rack's place while the table plays itself. Neither covers the felt or moves the
-// ActionBar: the strip sits below it, where the rack was.
+// I078 Watch: the controls (under the table, with the sandbox tools) and the status strip that takes
+// the chip rack's place while the table plays itself. Neither covers the felt or moves the ActionBar.
 import './styles/watch.css';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { WATCH_HAND_OPTIONS, WATCH_MAX_HANDS } from './watch';
+import { WATCH_DEFAULT_HANDS, WATCH_HAND_OPTIONS } from './watch';
 import type { WatchHandle } from './hooks/useWatch';
 import { OPTION_LABELS } from './text';
 
@@ -32,7 +32,7 @@ export interface WatchControlsProps {
 
 /** Idle: pick how many hands (up to 30) and start. */
 export function WatchControls({ watch, disabled }: WatchControlsProps) {
-  const [hands, setHands] = useState<number>(WATCH_MAX_HANDS);
+  const [hands, setHands] = useState<number>(WATCH_DEFAULT_HANDS);
   const summary = watchSummary(watch);
   return (
     <div class="sim-watch-controls" data-testid="watch-controls">
@@ -70,41 +70,59 @@ export function WatchControls({ watch, disabled }: WatchControlsProps) {
 }
 
 /**
- * Running: which hand, what perfect play does next, and Stop. Portrait: in the chip rack's place
- * below the ActionBar. Landscape: a bar right above the table (the rail has no room for a 44 px
- * button under three decision buttons at 667x375, and nothing may cover the felt). Watch is started
- * from below the table, so on mount the page (never the rail) scrolls the play back into view: in
- * portrait the strip sits at the bottom, clear of the app's tab bar via its scroll margin.
+ * Running: which hand, what perfect play does next, Pause / Resume and Stop. It sits where the chip
+ * rack goes (portrait: below the ActionBar; landscape: the rail's scrolling body), so it covers
+ * nothing and moves nothing. Not a live region: each watched hand is announced once, through the
+ * table's toast (see watchNarration), which renders below the controls while Watch runs.
  */
 export function WatchStatus({
   watch,
   orientation,
+  toast,
 }: {
   watch: WatchHandle;
   orientation: 'portrait' | 'landscape';
+  /** The table's toast while Watch runs: below the controls, so it never pushes Stop down. */
+  toast?: ComponentChildren;
 }) {
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    el.current?.scrollIntoView?.({ block: orientation === 'landscape' ? 'start' : 'end' });
+    // Watch is started from below the table: bring the play back into view (portrait only; in
+    // landscape the strip is in the rail, and the page must not move).
+    if (orientation === 'portrait') el.current?.scrollIntoView?.({ block: 'end' });
   }, []);
   return (
     <div class={`sim-watch-status sim-watch-${orientation}`} data-testid="watch-status" ref={el}>
-      <p class="sim-watch-line" aria-live="polite">
-        <span class="sim-watch-hand">
-          Perfect play · hand {Math.min(watch.hand, watch.of)} of {watch.of}
-        </span>
-        <span class="sim-watch-option" data-testid="watch-option">
-          {watch.option ? OPTION_LABELS[watch.option] : ' '}
-        </span>
-      </p>
-      <button
-        type="button"
-        class="sim-btn sim-btn-secondary"
-        onClick={watch.stop}
-        data-testid="watch-stop"
-      >
-        Stop
-      </button>
+      <div class="sim-watch-row">
+        <p class="sim-watch-line">
+          <span class="sim-watch-hand">
+            Perfect play · hand {Math.min(watch.hand, watch.of)} of {watch.of}
+            {watch.paused ? ' · paused' : ''}
+          </span>
+          <span class="sim-watch-option" data-testid="watch-option">
+            {watch.option ? OPTION_LABELS[watch.option] : ' '}
+          </span>
+        </p>
+        <div class="sim-watch-buttons">
+          <button
+            type="button"
+            class="sim-btn sim-btn-secondary"
+            onClick={watch.paused ? watch.resume : watch.pause}
+            data-testid="watch-pause"
+          >
+            {watch.paused ? 'Resume' : 'Pause'}
+          </button>
+          <button
+            type="button"
+            class="sim-btn sim-btn-secondary"
+            onClick={watch.stop}
+            data-testid="watch-stop"
+          >
+            Stop
+          </button>
+        </div>
+      </div>
+      {toast}
     </div>
   );
 }
