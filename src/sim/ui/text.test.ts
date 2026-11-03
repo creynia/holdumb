@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { evaluateN, parseCards } from '../engine';
+import type { HandResult } from '../engine';
 import {
   FOLDED_RESULT,
   FLOP_HIDDEN_PAIR,
@@ -97,7 +99,50 @@ describe('prose', () => {
     // three aces: rank comes from the lead card of best5 (ace = 12 -> index 48..51)
     const aces = { ...trips, player: { ...trips.player, best5: [48, 49, 50, 4, 8] } };
     expect(describeResult(aces)).toMatch(/^Your three aces beat the dealer's pair of nines\./);
+    // the fixture hands carry no real value, so their best5 sets differ: not the board
     const tie = { ...aces, outcome: 'tie' as const };
-    expect(describeResult(tie)).toMatch(/^Tie: you and the dealer both have three aces\./);
+    expect(describeResult(tie)).toMatch(/^Tie: same five-card hand\./);
+  });
+});
+
+describe('result text names the deciding card', () => {
+  const real = (p: string, d: string, outcome: 'win' | 'lose' | 'tie'): HandResult => ({
+    ...WON_RESULT,
+    player: evaluateN(parseCards(p)),
+    dealer: evaluateN(parseCards(d)),
+    outcome,
+    wagers: [],
+    net: 0,
+  });
+  it('same high card: ranks down to the first differing card', () => {
+    // king-nine high loses to the dealer's king-queen high
+    const r = real('Kh 9d 7c 5s 3d', 'Kc Qd 8h 6c 4s', 'lose');
+    expect(describeResult(r)).toMatch(/^The dealer's king-queen high beats your king-nine high\. /);
+  });
+  it('pair kicker battle names the kicker', () => {
+    const r = real('Td Ts Ac 7h 4s', 'Tc Th Qd 8s 3c', 'win');
+    expect(describeResult(r)).toMatch(
+      /^Your pair of tens, ace kicker beats the dealer's pair of tens, queen kicker\. /,
+    );
+  });
+  it('two pair tiebreak names the pairs', () => {
+    const r = real('Kd Kc 9h 9s 2d', 'Ks Kh 5d 5c 2c', 'win');
+    expect(describeResult(r)).toMatch(/^Your kings and nines beat the dealer's kings and fives\. /);
+  });
+  it('flush against flush names the top card', () => {
+    const r = real('Kd 9d 7d 5d 2d', 'Jc 9c 7c 5c 3c', 'win');
+    expect(describeResult(r)).toMatch(
+      /^Your king-high flush beats the dealer's jack-high flush\. /,
+    );
+  });
+  it('a tie where both play the board says so', () => {
+    const r = real('2h 3d As Ad Ks Kd Qc', '4c 5d As Ad Ks Kd Qc', 'tie');
+    expect(describeResult(r)).toMatch(
+      /^Tie: you both play the board \(two pair, aces and kings, queen kicker\)\. /,
+    );
+  });
+  it('an equal hand that is not the board is a same five-card hand', () => {
+    const r = real('Td Ts Ac 7h 4s', 'Tc Th Ad 7d 4c', 'tie');
+    expect(describeResult(r)).toMatch(/^Tie: same five-card hand\. /);
   });
 });
