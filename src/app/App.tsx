@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
+import { ErrorBoundary, ErrorToast } from './components/ErrorBoundary';
 import { Shell } from './components/Shell';
 import { useContent, useStore } from './context';
 import { consumeFreshNav, useRoute } from './router';
@@ -33,6 +34,7 @@ export function App() {
   const content = useContent();
   const { theme, animationSpeed, reduceMotion, fourColorDeck } = store.settings;
   const [, rerender] = useReducer((n: number) => n + 1, 0);
+  const [epoch, remount] = useReducer((n: number) => n + 1, 0);
   useEffect(() => applyTheme(store.settings), [theme, animationSpeed, reduceMotion, fourColorDeck]);
   // OS reduced-motion preference can change while the app is open.
   useEffect(
@@ -99,6 +101,7 @@ export function App() {
   return (
     <Shell
       path={route.path}
+      toast={<ErrorToast route={route.path} />}
       banner={
         store.persistent ? undefined : (
           <p class="banner" role="status">
@@ -107,7 +110,18 @@ export function App() {
         )
       }
     >
-      {renderRoute(route)}
+      <ErrorBoundary
+        key={`${route.path}:${epoch}`}
+        route={route.path}
+        onReset={() => {
+          // Only the sandbox snapshot; lessons, drill and settings stay.
+          store.setSandbox(undefined);
+          store.flush();
+          remount(0);
+        }}
+      >
+        {renderRoute(route)}
+      </ErrorBoundary>
     </Shell>
   );
 }

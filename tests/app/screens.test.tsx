@@ -1,6 +1,6 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -57,6 +57,101 @@ const btn = (el: HTMLElement, text: string | RegExp) =>
 
 beforeEach(() => {
   document.body.innerHTML = '';
+});
+
+describe('error boundary', () => {
+  /** A store whose sandbox snapshot is corrupt: /play throws while rendering, until it is reset. */
+  class BrokenSandboxStore extends Store {
+    broken = true;
+    override get sandbox(): unknown {
+      if (this.broken) throw new Error('corrupt sandbox');
+      return undefined;
+    }
+    override setSandbox(snap: unknown) {
+      if (snap === undefined) this.broken = false;
+      super.setSandbox(snap);
+    }
+  }
+
+  it('shows the fallback, keeps the tab bar alive, and Reset table remounts /play', async () => {
+    const store = new BrokenSandboxStore(new MemoryStorage());
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { el } = await mount('#/play', store);
+    const screen = el.querySelector('[data-testid="error-screen"]');
+    expect(screen?.textContent).toContain('This screen hit a problem');
+    expect(el.querySelector('[data-testid="error-build-sha"]')?.textContent).toBeTruthy();
+    expect(el.querySelector('[data-testid="simulator"]')).toBeNull();
+    // The tab bar still renders and responds to clicks.
+    expect(el.querySelectorAll('nav.tabbar a')).toHaveLength(4);
+    await act(() => {
+      el.querySelector<HTMLElement>('nav.tabbar a[href="#/learn"]')!.click();
+    });
+    await waitFor(() => expect(location.hash).toBe('#/learn'));
+    await waitFor(() => expect(el.querySelector('[data-testid="error-screen"]')).toBeNull());
+    // Back on /play it fails again; Reset table clears the snapshot and remounts the table.
+    await act(() => {
+      location.hash = '#/play';
+    });
+    await waitFor(() => expect(el.querySelector('[data-testid="error-screen"]')).not.toBeNull());
+    store.setSandbox({ stale: true });
+    store.broken = true;
+    await act(() => {
+      btn(el, 'Reset table').click();
+    });
+    expect(store.broken).toBe(false);
+    expect(store.sandbox).toBeUndefined();
+    expect(el.querySelector('[data-testid="error-screen"]')).toBeNull();
+    expect(el.querySelector('nav.tabbar')).not.toBeNull();
+  });
+
+  it('offers Reset table only on /play; elsewhere it is Reload only and nothing is wiped', async () => {
+    class BrokenStatusStore extends Store {
+      override status(): ReturnType<Store['status']> {
+        throw new Error('broken learn');
+      }
+    }
+    const store = new BrokenStatusStore(new MemoryStorage());
+    store.setSandbox({ keep: 'me' });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { el } = await mount('#/learn', store);
+    expect(el.querySelector('[data-testid="error-screen"]')).not.toBeNull();
+    expect(btn(el, 'Reload')).toBeTruthy();
+    expect(btn(el, 'Reset table')).toBeUndefined();
+    expect(store.sandbox).toEqual({ keep: 'me' });
+  });
+
+  it('ignores the harmless ResizeObserver error', async () => {
+    const { el } = await mount('#/more');
+    await act(() => {
+      window.dispatchEvent(
+        new ErrorEvent('error', {
+          message: 'ResizeObserver loop completed with undelivered notifications.',
+        }),
+      );
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+  });
+
+  it('shows one top-bar notice at a time: the update toast wins over the error toast', async () => {
+    const { simulateUpdateAvailable } = await import('../../src/pwa/register');
+    const { el } = await mount('#/more');
+    await act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')).not.toBeNull();
+    await act(() => simulateUpdateAvailable());
+    expect(el.querySelector('.pwa-toast')).not.toBeNull();
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+  });
+
+  it('shows a toast for an uncaught window error', async () => {
+    const { el } = await mount('#/more');
+    expect(el.querySelector('[data-testid="error-toast"]')).toBeNull();
+    await act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+    expect(el.querySelector('[data-testid="error-toast"]')?.textContent).toContain('went wrong');
+  });
 });
 
 describe('shell', () => {
@@ -831,7 +926,51 @@ describe('Drill', () => {
       await act(() => btn(el, 'Check').click());
       await act(() => new Promise((r) => setTimeout(r, 0)));
       const text = el.querySelector('[data-testid="drill-result"]')!.textContent ?? '';
-      expect(text, `case ${i}`).toContain(`(${formatMoney(cost)} per hand)`);
+      expect(text, `case ${i}`).toContain(`(${formatMoney(cost)}) more on average`);
     }
   }, 120_000);
+});
+
+describe('persistent storage in the app (I076)', () => {
+  const stubStorage = (api: Record<string, unknown> | undefined) => {
+    Object.defineProperty(navigator, 'storage', { value: api, configurable: true });
+  };
+  afterEach(() => stubStorage(undefined));
+  it('asks once ever: not on render, once after the first completion, never again', async () => {
+    const persist = vi.fn(() => Promise.resolve(true));
+    stubStorage({ persist, persisted: () => Promise.resolve(false) });
+    const [first, second] = content.lessons.filter((l) => l.blocks.length > 0);
+    const { el, store } = await mount(`#/learn/${first!.id}`);
+    expect(persist).toHaveBeenCalledTimes(0);
+    await act(() => btn(el, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(1);
+    const { el: el2 } = await mount(`#/learn/${second!.id}`, store);
+    await act(() => btn(el2, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+  it('a stored answer is not asked again after a reload', async () => {
+    const persist = vi.fn(() => Promise.resolve(false));
+    stubStorage({ persist, persisted: () => Promise.resolve(false) });
+    const store = new Store(new MemoryStorage());
+    store.updateSettings({ persistAsked: 'denied' });
+    const lesson = content.lessons.find((l) => l.blocks.length > 0)!;
+    const { el } = await mount(`#/learn/${lesson.id}`, store);
+    await act(() => btn(el, 'Mark complete').click());
+    expect(persist).toHaveBeenCalledTimes(0);
+  });
+  it.each([
+    ['persistent', true, 'Storage: persistent'],
+    ['may be cleared', false, 'Storage: may be cleared by the browser'],
+  ])('Settings shows the %s state', async (_label, persisted, text) => {
+    stubStorage({ persisted: () => Promise.resolve(persisted) });
+    const { el } = await mount('#/settings');
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(el.querySelector('[data-testid="storage-state"]')!.textContent).toContain(text);
+  });
+  it('Settings shows no storage text when the API is missing', async () => {
+    stubStorage(undefined);
+    const { el } = await mount('#/settings');
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(el.querySelector('[data-testid="storage-state"]')!.textContent?.trim()).toBe('');
+  });
 });
