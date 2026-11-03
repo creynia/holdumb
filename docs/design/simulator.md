@@ -43,7 +43,7 @@ and/or exact rationals in Python. The scratch code is in
 | Transport | All EV goes through architecture.md's `EvClient` (`preview`, `simulate` jobs, generator-based, cancellable, worker with in-thread fallback). |
 | Rendering | SVG felt, data-driven layouts for portrait (390×844) and landscape (844×390), HTML action bar and EV sheet. Every target is at least 44 px. |
 | Fold reveal | When you fold, the dealer's cards are revealed with "You would have won $X / lost $Y" (D7). |
-| EV visibility (was Practice mode) | Setting `evMode`: EV `before` I choose (default) / `after` I choose (the move is graded once you act) / `never`. `confirmOn` (default `never`: one tap acts) adds a confirm step for all bets, Mistake + Big mistake, or Big mistake only (D11, D24, D39). The app's Confirm box stores that scope as `confirmTiers` and turns it on or off without losing it (D40). |
+| EV visibility (was Practice mode) | Setting `evMode`: EV `before` I choose (default) / `after` I choose (the move is graded once you act) / `never`. `confirmOn` (default `never`: one tap acts) adds a confirm step for all bets, Mistake + Big mistake, or Big mistake only (D11, D24, D39). The app's Confirm box stores that scope as `confirmTiers` and turns it on or off without losing it (D40). On `/play` both are also in the table options row (I090): `EV [Before | After | Off]` and a `Confirm` box, above the status bar in portrait and under it in the landscape rail; they are the persisted settings, not a session override, and never appear in a lesson. |
 | Strategies | Ladder `perfect` → `basic` → `simple` (D16), plus `expert` (fast perfect for sims), `check-to-river`, `never-fold`, `always-max`, and lesson-only `riverLeak`, each with an **exact** EV per hand and a Trips amount. Multi-session sims with charts. |
 
 ---
@@ -1265,7 +1265,14 @@ dashed exact-expected line; for 100 sessions, a p10–p90 band + median +
 expected + survival; an outcome histogram (win/lose/tie/fold and final hand
 categories); a summary that labels **exact** vs **simulated** figures (§2.6):
 expected loss per hour (exact), actual (simulated), luck, bust rate, P(ahead).
-"Watch" plays ≤ 30 hands on the felt at fast speed (and allows `perfect`).
+"Watch" (I078, sandbox tools under the table) plays 10 / 20 / 30 hands (cap 30) on the felt with
+`perfect` play: every decision takes the best option of the exact EV preview (§2.3; exact ties go
+to the smaller wager), so it never uses `expert` or Monte Carlo. The move is named and highlighted on
+the locked ActionBar for a think pause (900 ms; 500 ms at fast speed or reduced motion) after the
+cards land, and a settled hand stays up for 1.8 s (1 s). A status strip with Stop takes the chip
+rack's place in portrait and sits above the table in landscape (it never covers the felt). It stops on
+Stop, when a deal is refused (not enough chips) or if a decision has no exact EV. Code:
+`ui/watch.ts` (loop), `ui/hooks/useWatch.ts`, `ui/WatchBar.tsx`.
 
 ---
 

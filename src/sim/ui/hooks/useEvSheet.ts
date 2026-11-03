@@ -50,6 +50,8 @@ export interface EvSheetState {
   onOption: (k: OptionKey) => void;
   /** The status bar's Details button: opens the sheet on the best option without acting (I092). */
   openDetails: () => void;
+  /** Closes any sheet and drops a pending confirm (Watch takes over the table, I078). */
+  close: () => void;
   /** Props for the EvSheet, or null when no sheet is shown. */
   sheet: EvSheetProps | null;
 }
@@ -273,5 +275,18 @@ export function useEvSheet(
           allowed: d.view.allowedOptions,
         }
       : null;
-  return { open, evMode, guarding: guard > 0 || streetJustChanged, onOption, openDetails, sheet };
+  const close = () => {
+    setOpen(null);
+    setReveal(null);
+    setPending(false);
+  };
+  return {
+    open,
+    evMode,
+    guarding: guard > 0 || streetJustChanged,
+    onOption,
+    openDetails,
+    close,
+    sheet,
+  };
 }

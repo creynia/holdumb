@@ -232,6 +232,19 @@ describe('useEvSheet', () => {
     expect(result.current.ev.sheet?.preview?.street).toBe('preflop');
   });
 
+  it('close() (Watch starting) drops an open sheet and a pending confirm without acting', async () => {
+    const f = fakeClient(() => withCheckTier('best'), true);
+    const { result } = mount('before', 'blunder', f.client, AA);
+    await waitFor(() => expect(result.current.sim.d.view.preview.status).toBe('pending'));
+    await act(() => result.current.ev.onOption('check'));
+    expect(result.current.ev.sheet?.checking).toBe(true);
+    await act(() => result.current.ev.close());
+    expect(result.current.ev.sheet).toBeNull();
+    await act(() => f.release());
+    await waitFor(() => expect(result.current.sim.d.view.preview.status).toBe('ready'));
+    expect(result.current.sim.d.view.state.street).toBe('preflop');
+  });
+
   it('select switches the open option', async () => {
     const { result } = mount('before', 'all');
     await ready(result);

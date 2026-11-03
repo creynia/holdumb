@@ -6,8 +6,9 @@ import { TRIPS_EDGE } from '../bets';
 import { Link } from '../components/Link';
 import { useStore } from '../context';
 import { LIMITS, decodeImport } from '../storage';
-import type { Settings as SettingsData } from '../settings';
+import type { ConfirmTiers, Settings as SettingsData } from '../settings';
 import { effectiveSpeed } from '../theme';
+import { confirmEnabled, withConfirmEnabled, withConfirmTiers } from '../settings';
 import { storageState, type StorageState } from '../persist';
 
 type Speed = SettingsData['animationSpeed'];
@@ -24,22 +25,18 @@ const EV_MODE_OPTIONS: readonly Choice<SettingsData['evMode']>[] = [
     label: 'After I choose',
     hint: 'Choose blind, then see how your move compared.',
   },
-  { value: 'never', label: 'Never', hint: 'No EV at all: just play.' },
+  { value: 'never', label: 'Off', hint: 'No EV at all: just play.' },
 ];
 
-const CONFIRM_OPTIONS: readonly Choice<SettingsData['confirmOn']>[] = [
-  {
-    value: 'all',
-    label: 'All bets',
-    hint: 'Every move waits for a second tap.',
-  },
+/** Which bets the Confirm box asks about (D40); the box itself is on or off. */
+const CONFIRM_TIER_OPTIONS: readonly Choice<ConfirmTiers>[] = [
+  { value: 'all', label: 'All bets', hint: 'Every move asks first.' },
   {
     value: 'costly',
     label: 'Medium and bad bets',
     hint: 'Mistake or Big mistake: it costs more than 0.10 Ante.',
   },
   { value: 'blunder', label: 'Only bad bets', hint: 'Big mistake: it costs more than 0.50 Ante.' },
-  { value: 'never', label: 'Never', hint: 'No extra warning before a Big mistake.' },
 ];
 
 interface Choice<T extends string> {
@@ -56,10 +53,11 @@ function Radios<T extends string>(props: {
   options: readonly Choice<T>[];
   /** A line under the legend that applies to the whole group. */
   note?: string;
+  disabled?: boolean;
   onChange: (v: T) => void;
 }) {
   return (
-    <fieldset class="radios">
+    <fieldset class="radios" disabled={props.disabled}>
       <legend>{props.legend}</legend>
       {props.note && (
         <p class="muted radios-note" id={`${props.name}-note`}>
@@ -76,6 +74,7 @@ function Radios<T extends string>(props: {
               value={o.value}
               checked={props.value === o.value}
               aria-describedby={hintId}
+              disabled={props.disabled}
               onChange={() => props.onChange(o.value)}
             />
             <span>
@@ -211,13 +210,27 @@ export function Settings() {
           options={EV_MODE_OPTIONS}
           onChange={(v) => set({ evMode: v })}
         />
+        <div class="check-row">
+          <label class="check">
+            <input
+              type="checkbox"
+              checked={confirmEnabled(s)}
+              aria-describedby="confirm-bets-hint"
+              onChange={(e) => set(withConfirmEnabled(s, e.currentTarget.checked))}
+            />
+            <span>Confirm my bets</span>
+          </label>
+          <p class="muted" id="confirm-bets-hint">
+            Asks before a bet goes in. Works with EV on or off.
+          </p>
+        </div>
         <Radios
-          legend="Ask me to confirm"
-          name="confirm-on"
-          value={s.confirmOn}
-          options={CONFIRM_OPTIONS}
-          note="Confirm options apply when EV is shown before the move."
-          onChange={(v) => set({ confirmOn: v })}
+          legend="Which bets"
+          name="confirm-tiers"
+          value={s.confirmTiers}
+          options={CONFIRM_TIER_OPTIONS}
+          disabled={!confirmEnabled(s)}
+          onChange={(v) => set(withConfirmTiers(s, v))}
         />
       </section>
 

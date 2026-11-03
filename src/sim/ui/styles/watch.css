@@ -1,0 +1,70 @@
+/* I078 Watch: controls under the table and the status strip in the chip rack's place. */
+.sim-watch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+}
+.sim-watch-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.sim-watch-controls select {
+  min-height: 44px;
+  min-width: 64px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid var(--sim-border);
+  border-radius: 10px;
+  padding: 0 8px;
+}
+.sim-watch-controls .sim-btn,
+.sim-watch-status .sim-btn {
+  min-height: 44px;
+}
+.sim-watch-summary {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+}
+.sim-watch-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text);
+  /* When it scrolls into view it clears the app's fixed bottom tab bar. */
+  scroll-margin-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+/* The controls row comes first and never moves; the hand's toast (if any) follows below it. */
+/* Buttons sit at the top of the row: the text beside them may wrap ("· paused" on narrow phones),
+   and that must never move Pause or Stop. */
+.sim-watch-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 4px;
+}
+.sim-watch-line {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-width: 0;
+}
+.sim-watch-hand {
+  font-size: 0.875rem;
+}
+.sim-watch-option {
+  font-weight: 700;
+  min-height: 1.25em;
+  white-space: pre;
+}
+.sim-watch-buttons {
+  display: flex;
+  gap: 8px;
+}

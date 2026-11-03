@@ -17,7 +17,7 @@ export default defineConfig({
     {
       name: 'phone-landscape',
       use: { ...devices['Pixel 7 landscape'], viewport: { width: 844, height: 390 } },
-      testMatch: /(sandbox|lessons|layout|drill|tabs|screenshots)\.spec\.ts/,
+      testMatch: /(sandbox|lessons|layout|drill|tabs|screenshots|table-options)\.spec\.ts/,
     },
     // 360x740: the narrowest invariant viewport (no horizontal scroll, tab bar overlaps)
     {
@@ -29,7 +29,7 @@ export default defineConfig({
     {
       name: 'landscape-small',
       use: { ...devices['Pixel 7 landscape'], viewport: { width: 667, height: 375 } },
-      testMatch: /(sandbox|lessons|drill|tabs|a11y|update-toast)\.spec\.ts/,
+      testMatch: /(sandbox|lessons|drill|tabs|a11y|update-toast|table-options)\.spec\.ts/,
     },
     // perf.spec.ts runs in the mobile project only (CPU-throttled budgets)
     { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /perf\.spec\.ts/ },

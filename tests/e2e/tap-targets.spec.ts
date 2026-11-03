@@ -25,15 +25,23 @@ async function tapTextToggles(label: import('@playwright/test').Locator) {
   await expect(input).toBeChecked({ checked: !before });
 }
 
-test('play: practice and compare labels are 44px and toggle from the text', async ({ page }) => {
+test('play: the table options and compare labels are 44px and toggle from the text', async ({
+  page,
+}) => {
   await page.goto('/#/play');
-  const practice = page.getByTestId('practice-toggle');
-  await expect(practice).toBeVisible();
+  const confirm = page.getByTestId('confirm-toggle');
+  await expect(confirm).toBeAttached();
+  // Every EV segment and the Confirm label box are at least 44 x 44 (I090).
+  for (const l of await page.locator('.sim-options label').all()) {
+    const b = (await l.boundingBox())!;
+    expect(b.height).toBeGreaterThanOrEqual(44);
+    expect(b.width).toBeGreaterThanOrEqual(44);
+  }
   await page.locator('details.sim-autoplay > summary').click();
   const cmp = page.locator('label:has-text("Compare (same cards)")');
   await expect(cmp).toBeVisible();
   await audit(page, '/play');
-  await tapTextToggles(page.locator('label:has([data-testid="practice-toggle"])'));
+  await tapTextToggles(page.locator('label.sim-options-confirm'));
   await tapTextToggles(cmp);
 });
 
