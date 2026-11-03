@@ -71,4 +71,18 @@ test.describe('update toast (I037)', () => {
       ).toBe(true);
     });
   }
+
+  test('Reload is safe mid-hand: the sandbox snapshot restores the hand', async ({ page }) => {
+    await page.goto('/#/play?speed=instant');
+    await page.locator('button[data-action="deal"]').click();
+    const sim = page.getByTestId('simulator');
+    await expect(sim).toHaveAttribute('data-street', 'preflop');
+    const hole = await page.locator('g.sim-card:not(.sim-card-back)').allTextContents();
+    expect(hole.length).toBe(2);
+    // What the toast's Reload does after a worker swap is a full page reload; pagehide flushes.
+    await page.evaluate('window.__holdumb.simulateUpdateAvailable()');
+    await page.reload();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'preflop');
+    expect(await page.locator('g.sim-card:not(.sim-card-back)').allTextContents()).toEqual(hole);
+  });
 });
