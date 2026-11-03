@@ -20,6 +20,19 @@ const GROUP_LABEL = {
   fun: 'Fun',
 } as const;
 
+/**
+ * The three net figures as shown, in whole cents. Luck is the difference of the two shown
+ * figures, so Expected + Luck = Actual to the cent (rounding each figure on its own broke that).
+ */
+export function shownNet(
+  exactNet: number,
+  simNet: number,
+): { expected: number; actual: number; luck: number } {
+  const expected = Math.round(exactNet);
+  const actual = Math.round(simNet);
+  return { expected, actual, luck: actual - expected };
+}
+
 export interface AutoPlayPanelProps {
   evClient: EvClient;
   settings: SimSettings;
@@ -120,6 +133,7 @@ export function AutoPlayPanel({
   const perHand = main ? main.expected[1]! - main.expected[0]! : 0;
   const exactNet = main ? perHand * (main.handsPlayed / sessions) : 0;
   const simNet = main ? main.meanFinal - bankroll : 0;
+  const shown = shownNet(exactNet, simNet);
   const running = progress !== null;
   const field = {
     display: 'flex',
@@ -243,13 +257,13 @@ export function AutoPlayPanel({
         <div data-testid="auto-play-result" style={{ display: 'grid', gap: '8px' }}>
           <BankrollChart series={result.series} bankroll={bankroll} hands={hands} />
           <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
-            <li>Expected result (exact): {formatMoney(Math.round(exactNet), { sign: true })}</li>
+            <li>Expected result (exact): {formatMoney(shown.expected, { sign: true })}</li>
             <li>
               Actual (≈ simulated{sessions > 1 ? ' average' : ''}):{' '}
-              {formatMoney(Math.round(simNet), { sign: true })}
+              {formatMoney(shown.actual, { sign: true })}
               {sessions > 1 ? ` ± ${formatMoney(Math.round(main.meanFinalCi95))}` : ''}
             </li>
-            <li>Luck: {formatMoney(Math.round(simNet - exactNet), { sign: true })}</li>
+            <li>Luck: {formatMoney(shown.luck, { sign: true })}</li>
             {sessions >= 10 ? (
               <>
                 <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>
