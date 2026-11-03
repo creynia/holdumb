@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { formatPct } from '../../src/sim/engine';
 import { GAME_EDGE } from '../../src/sim/math/edges';
+import { expandNumbers } from '../../src/content/compile';
 
 const root = process.cwd();
 
@@ -14,7 +15,7 @@ const walk = (dir: string): string[] =>
     return /\.(md|json)$/.test(e.name) ? [p] : [];
   });
 const files = walk(join(root, 'content'));
-const text = (id: string): string => readFileSync(files.find((f) => f.endsWith(`/lessons/${id}.md`) || f.endsWith(`-${id}.md`))!, 'utf8');
+const text = (id: string): string => expandNumbers(readFileSync(files.find((f) => f.endsWith(`/lessons/${id}.md`) || f.endsWith(`-${id}.md`))!, 'utf8'));
 
 describe('perfect-play edge rounding (decisions §4: 2.18497%)', () => {
   it('formats the exact edge as 2.18% to two decimals and 2.185% to three', () => {
@@ -24,7 +25,7 @@ describe('perfect-play edge rounding (decisions §4: 2.18497%)', () => {
 
   it('no content file prints the double-rounded 2.19% or the 2.184% mis-rounding', () => {
     for (const f of files) {
-      const t = readFileSync(f, 'utf8');
+      const t = expandNumbers(readFileSync(f, 'utf8'));
       expect(t, f).not.toContain('2.19%');
       expect(t, f).not.toContain('2.184%');
     }
