@@ -27,6 +27,33 @@ test('the grading lens toggle persists across a reload', async ({ page }) => {
   await expect(page.getByTestId('drill-result')).toBeVisible();
 });
 
+// Drill "See the chart" lands on the matching section, not at the top of the page (I019).
+for (const [width, height] of [
+  [390, 844],
+  [844, 390],
+] as const) {
+  for (const street of ['flop', 'river'] as const) {
+    test(`See the chart lands on the ${street} section at ${width}x${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/#/drill?street=${street}`);
+      await expect(page.getByTestId('drill-spot')).toBeVisible();
+      await page.locator('.choice-row button').first().click();
+      await expect(page.getByTestId('drill-result')).toBeVisible();
+      await page.getByRole('link', { name: 'See the chart' }).click();
+      await expect(page).toHaveURL(new RegExp(`view=${street}`));
+      const heading = page.locator(`[data-view="${street}"] h2`);
+      await expect(heading).toBeFocused();
+      const box = await heading.boundingBox();
+      expect(box, 'section heading has a box').not.toBeNull();
+      // scroll-margin-top (8px+) took effect: the heading is not flush with the top edge
+      expect(box!.y, 'scroll margin keeps the heading below the top edge').toBeGreaterThanOrEqual(
+        8,
+      );
+      expect(box!.y, 'heading top is inside the viewport').toBeLessThan(height);
+    });
+  }
+}
+
 test('a category deals only that category and the select is tappable', async ({ page }) => {
   await page.goto('/#/drill?street=flop');
   const sel = page.getByTestId('drill-categories');
