@@ -26,6 +26,12 @@ describe.skipIf(!existsSync('dist/sw.js'))('dist/sw.js', () => {
     expect(worker.length).toBeGreaterThan(0);
     for (const w of worker) expect(urls).toContain(`./assets/${w}`);
   });
+  it('precaches every emitted JS and CSS chunk, including the lazy route chunks (I039)', () => {
+    const urls = list();
+    const assets = readdirSync('dist/assets').filter((f) => !f.endsWith('.map'));
+    expect(assets.length).toBeGreaterThan(5);
+    for (const a of assets) expect(urls).toContain(`./assets/${a}`);
+  });
   it('never skips waiting on its own and does not cache the offline copy', () => {
     expect(sw).toContain('SKIP_WAITING');
     expect(list()).not.toContain('./holdumb.html');

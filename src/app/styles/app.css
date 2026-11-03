@@ -1009,3 +1009,27 @@ html[data-route='play'],
 html[data-route='play'] body {
   overscroll-behavior-y: contain;
 }
+
+/* Placeholders while a lazy screen or the lesson bundle loads (I039): visible, never blank. */
+.route-loading {
+  min-height: 70vh;
+}
+.skel-block {
+  display: block;
+  min-height: 56px;
+  margin: 1rem 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.ring-skel {
+  display: block;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.route-failed .btn {
+  min-height: 44px;
+  min-width: 44px;
+}
