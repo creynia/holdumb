@@ -745,3 +745,37 @@ for (const vp of [
     expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(46);
   });
 }
+
+// I094: the narration toast offers Details, which opens the reveal for the move just made.
+for (const vp of [
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+]) {
+  test(`the toast's Details opens the reveal for that move and Esc returns focus to it at ${vp.width}x${vp.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+    await ready(page);
+    await opt(page, 'check').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'river');
+    const details = page.getByTestId('toast-details');
+    await expect(details).toBeVisible();
+    expect((await details.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    // the bar does not move with the button present (page coordinates)
+    const bar = async () =>
+      page.locator('[role="group"][aria-label="Your decision"]').evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [r.x + scrollX, r.y + scrollY, r.width, r.height];
+      });
+    const withButton = await bar();
+    await details.click();
+    const reveal = page.getByTestId('reveal-result');
+    await expect(reveal).toContainText('Check');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+    await expect(details).toBeFocused();
+    const after = await bar();
+    withButton.forEach((v, i) => expect(Math.abs(v - after[i]!)).toBeLessThanOrEqual(1));
+  });
+}

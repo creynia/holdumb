@@ -8,6 +8,8 @@ export interface Toast {
   tone?: 'info' | 'good' | 'bad';
   /** What the live region announces instead of the visible text (the visible text is then hidden). */
   spoken?: string;
+  /** A button after the text, e.g. Details (I094). */
+  action?: { label: string; onClick: () => void };
 }
 
 /** Visible results. They are spoken through the app's single announcer, not a live region here. */
@@ -32,6 +34,16 @@ export function Toasts({
         <div key={t.id} class={`sim-toast sim-toast-${t.tone ?? 'info'}`}>
           <span aria-hidden={t.spoken ? 'true' : undefined}>{t.text}</span>
           {t.spoken ? <span class="sim-sr">{t.spoken}</span> : null}
+          {t.action ? (
+            <button
+              type="button"
+              class="sim-toast-action"
+              data-testid="toast-details"
+              onClick={t.action.onClick}
+            >
+              {t.action.label}
+            </button>
+          ) : null}
           {onDismiss ? (
             <button
               type="button"

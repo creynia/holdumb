@@ -418,4 +418,75 @@ describe('Simulator container', () => {
       evClient.dispose();
     });
   });
+
+  describe('narration toast Details and the same-tick guard (I094)', () => {
+    const FLOP_SCENE: SceneConfig = {
+      id: 'sandbox',
+      version: 1,
+      startAt: {
+        street: 'flop',
+        deal: { player: ['Ah', 'Tc'], flop: ['7d', 'Ks', '2c'], dealer: ['9d', '9s'] },
+      },
+    };
+    const ready = () =>
+      waitFor(() => expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'), {
+        timeout: 8000,
+      });
+    it('one tap acts, the toast offers Details, Details opens the reveal and Esc returns focus to it', async () => {
+      const { evClient } = mount(FLOP_SCENE);
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="check"]')!);
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river'),
+      );
+      const btn = await screen.findByTestId('toast-details');
+      expect(btn.textContent).toBe('Details');
+      expect(screen.queryByTestId('ev-sheet')).toBeNull();
+      fireEvent.click(btn);
+      await flush();
+      const sheet = screen.getByTestId('ev-sheet');
+      expect(screen.getByTestId('reveal-result').textContent).toMatch(/Check/);
+      expect(sheet).toBeTruthy();
+      fireEvent.keyDown(sheet, { key: 'Escape' });
+      await act(() => new Promise((r) => setTimeout(r, 20)));
+      expect(screen.queryByTestId('ev-sheet')).toBeNull();
+      expect(screen.getByTestId('toast-details')).toBe(document.activeElement);
+      evClient.dispose();
+    });
+    it('no toast and no button with EV never; with EV after the reveal opens by itself', async () => {
+      const never = mount(FLOP_SCENE, { settings: { ...settings, evMode: 'never' } });
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="check"]')!);
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river'),
+      );
+      expect(screen.queryByTestId('toast-details')).toBeNull();
+      never.evClient.dispose();
+      cleanup();
+      const after = mount(FLOP_SCENE, { settings: { ...settings, evMode: 'after' } });
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="check"]')!);
+      await waitFor(() => expect(screen.queryByTestId('ev-sheet')).toBeTruthy());
+      expect(screen.queryByTestId('toast-details')).toBeNull();
+      after.evClient.dispose();
+    });
+    it('two clicks in the same tick play one move, never "You cannot check here."', async () => {
+      const { evClient } = mount(FLOP_SCENE);
+      await ready();
+      const check = document.querySelector('[data-option="check"]')!;
+      act(() => {
+        // Both clicks run before the first act has been awaited.
+        check.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        check.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river'),
+      );
+      await flush();
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river');
+      const toasts = [...document.querySelectorAll('.sim-toast')].map((t) => t.textContent);
+      expect(toasts.join(' ')).not.toMatch(/cannot|Working on the last move/i);
+      evClient.dispose();
+    });
+  });
 });

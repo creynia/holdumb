@@ -144,6 +144,8 @@ export function useEvSheet(
   };
   /** Acts on `k`; in 'after' mode the move is then revealed against the pre-move preview. */
   const confirm = async (k: OptionKey) => {
+    // Set before anything is awaited: a second click in the same tick must meet the guard.
+    lastActAt.current = Date.now();
     setPending(false);
     const pre = d.view.preview;
     const before = pre.status === 'ready' ? pre.value : null;
@@ -155,19 +157,40 @@ export function useEvSheet(
     const said =
       before && i >= 0 && evMode === 'before' && !d.view.step ? narrationText(before, i) : null;
     sim.narration.current = said;
+    // Details on that toast opens the reveal for this move against its pre-move preview (I094).
+    const detailsAction =
+      said && before
+        ? {
+            label: 'Details',
+            onClick: () => {
+              fromToast.current = true;
+              fromDetails.current = false;
+              setPending(false);
+              setOpen(null);
+              setReveal({ preview: before, chosen: k, req: reqBefore });
+              d.previewed(k, false);
+            },
+          }
+        : null;
+    sim.narrationAction.current = detailsAction;
     const r = await d.act(actionOfKey(k));
     sim.narration.current = null;
+    sim.narrationAction.current = null;
     if (r.ok) startGuard();
+    else lastActAt.current = 0; // nothing was played: taps are welcome again
     if (r.ok && evMode === 'after' && before)
       setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
     if (r.ok) refocus();
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
-    else if (r.ok && said && d.view.state.street !== 'settled') pushToast(said);
+    else if (r.ok && said && d.view.state.street !== 'settled')
+      pushToast(said, undefined, undefined, detailsAction ?? undefined);
   };
   // The sheet was opened by the status bar's Details button (I092): closing it returns focus there,
   // and it is not a confirm step (D40).
   const fromDetails = useRef(false);
+  // ...or by the Details button on the narration toast (I094): focus goes back to that button.
+  const fromToast = useRef(false);
   const openDetails = () => {
     const pvNow = d.view.preview.value;
     const allowed = d.view.allowedOptions;
@@ -177,12 +200,14 @@ export function useEvSheet(
     const k = best && (!allowed || allowed.includes(best)) ? best : first;
     if (!k) return;
     fromDetails.current = true;
+    fromToast.current = false;
     setPending(false);
     setOpen(k);
     d.previewed(k, false);
   };
   const openSheet = (k: OptionKey, waiting = false) => {
     fromDetails.current = false;
+    fromToast.current = false;
     setPending(waiting);
     setOpen(k);
     d.previewed(k, false);
@@ -247,9 +272,11 @@ export function useEvSheet(
             setReveal(null);
             setPending(false);
             // Give focus back to the button that opened the sheet.
-            const opener = fromDetails.current
-              ? '[data-testid="ev-details"]'
-              : `button[data-option="${k}"]`;
+            const opener = fromToast.current
+              ? '[data-testid="toast-details"]'
+              : fromDetails.current
+                ? '[data-testid="ev-details"]'
+                : `button[data-option="${k}"]`;
             setTimeout(() => document.querySelector<HTMLElement>(opener)?.focus(), 0);
           },
           evMode,
