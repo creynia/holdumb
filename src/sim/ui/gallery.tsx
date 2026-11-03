@@ -229,7 +229,7 @@ function Demo({ id }: { id: string }) {
         onSelect={setOpen}
         onConfirm={(k) => (reveal && !chosen ? setChosen(k) : act(actionOfKey(k)))}
         onCancel={() => setOpen(null)}
-        hideEv={reveal}
+        evMode={reveal ? 'after' : 'before'}
         chosen={chosen}
         onContinue={() => chosen && act(actionOfKey(chosen))}
         alternative={

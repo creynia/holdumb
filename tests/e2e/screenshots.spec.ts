@@ -1,5 +1,6 @@
 // Not a test: `SHOTS=1 npx playwright test screenshots` refreshes docs/screenshots/ from the REAL app.
 import { test } from '@playwright/test';
+import { seedSettings } from './settings-seed';
 
 test.skip(!process.env.SHOTS, 'set SHOTS=1 to refresh docs/screenshots');
 
@@ -8,6 +9,7 @@ const dir = 'docs/screenshots';
 test('screenshots', async ({ page }, info) => {
   const o = info.project.name === 'phone-landscape' ? 'landscape' : 'portrait';
   if (info.project.name === 'desktop') return;
+  await seedSettings(page, { confirmOn: 'all' }); // the shots show the EV sheet (D40)
   const shot = (name: string) => page.screenshot({ path: `${dir}/${name}-${o}.png` });
   const ready = () =>
     page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 15000 });

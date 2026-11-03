@@ -624,7 +624,7 @@ slower and inexact. §2.7 has the format, generator and verification.
 | `close` | 0 < r ≤ 0.02 | "Close: −0.0x ante" | `--ev-close` (green) | one tap |
 | `small` | 0.02 < r ≤ 0.10 | "Small mistake" | `--ev-small` (yellow) | one tap |
 | `costly` | 0.10 < r ≤ 0.50 | "Mistake" | `--ev-costly` (orange) | one tap + alternative card |
-| `blunder` | r > 0.50 | "Big mistake" | `--ev-blunder` (red) | **second tap** ("Do it anyway") when `confirmCostlyMoves` is on |
+| `blunder` | r > 0.50 | "Big mistake" | `--ev-blunder` (red) | warning + "Do it anyway" when `confirmOn` covers it (D40) |
 
 Calibration (exact, from the precompute and the §2.5 examples):
 - Preflop, every class near the chart boundary has regret < 0.10 (K2s 0.005,
@@ -846,22 +846,28 @@ the top of the rail.
    manage sheet shows the paytable and the `WagerTier` badge (edge 1.90%).
 2. **Decision streets**: the bar shows the options (preflop **Check · Raise 3x
    · Raise 4x**, flop **Check · Raise 2x**, river **Fold · Raise 1x**). When EV is
-   on, each button carries a tiny badge and its EV ("+0.34"). Tapping a button
-   opens the **EV sheet** with that option selected:
+   on, each button carries a tiny badge and its EV ("+0.34"). **One tap acts**
+   (D40): a button acts at once unless the effective confirm policy (`confirmOn`,
+   the scene's in a lesson, the user's in the sandbox) covers that option's tier.
+   Then the **EV sheet** opens on that option as the confirm step:
    - all options in a list (label, EV in $ and antes, "−$x vs best", tier badge),
      the selected one highlighted, switchable in place;
    - a headline: "Raise 4x: +$5.21 · Best play";
    - the alternative card (non-best) with "Use this";
    - a "Why?" expander (rows from §2.5; scenes can open it);
-   - **Confirm** / **Cancel**. `blunder` needs a second tap ("Do it anyway") when
-     `confirmOn` covers it (D39).
-   - While a flop preview is computing: a skeleton after 150 ms and a progress
-     bar. Confirm stays enabled (EV is advisory, architecture §4.2).
-   - **EV after** (`evMode: 'after'`, D11/D39; was Practice mode): the sheet hides EVs; after Confirm, a result card
-     shows "Best play ✓" or "Mistake: Raise 2x was worth $0.48 more" with the
-     full sheet below.
-   - **One tap acts** (`confirmOn: 'never'`, the default, D39) replaces the old
-     Skip preview setting; `confirmOn` picks which tiers get a confirm step.
+   - **Confirm <label>** / **Cancel**; a Mistake or Big mistake shows its warning
+     ("This is a big mistake: Check is the better play.") and **Do it anyway**
+     at once. A sheet's Confirm always acts: there is no "tap again" step.
+   - A tiered policy tapped before the preview is ready: "Checking your move…"
+     with Cancel only; when it lands the warning shows (covered) or the move acts.
+     A failed preview acts (EV is advisory, architecture §4.2).
+   - Confirm does not depend on Show EV. **EV after** (`evMode: 'after'`): the
+     sheet says "EV is hidden until you act."; after the move a result card shows
+     "Best play" or "Raise 2x was worth $0.48 more" with the full sheet below
+     (after a one-tap act too). **EV off** (`'never'`): no option rows and no
+     numbers, just the label, "Confirm this move." or the warning, and the buttons.
+   - After an act, focus goes to the same slot on the next street, or to
+     Rebet & Deal.
 3. **Resolution**: cards flip in order (turn and river, then the dealer's
    cards), the hand labels appear ("Dealer: pair of 9s, qualifies"), chips move
    per wager (wins slide from the dealer, losses slide away, pushes pulse). A
@@ -1259,7 +1265,14 @@ dashed exact-expected line; for 100 sessions, a p10–p90 band + median +
 expected + survival; an outcome histogram (win/lose/tie/fold and final hand
 categories); a summary that labels **exact** vs **simulated** figures (§2.6):
 expected loss per hour (exact), actual (simulated), luck, bust rate, P(ahead).
-"Watch" plays ≤ 30 hands on the felt at fast speed (and allows `perfect`).
+"Watch" (I078, sandbox tools under the table) plays 10 / 20 / 30 hands (cap 30) on the felt with
+`perfect` play: every decision takes the best option of the exact EV preview (§2.3; exact ties go
+to the smaller wager), so it never uses `expert` or Monte Carlo. The move is named and highlighted on
+the locked ActionBar for a think pause (900 ms; 500 ms at fast speed or reduced motion) after the
+cards land, and a settled hand stays up for 1.8 s (1 s). A status strip with Stop takes the chip
+rack's place in portrait and sits above the table in landscape (it never covers the felt). It stops on
+Stop, when a deal is refused (not enough chips) or if a decision has no exact EV. Code:
+`ui/watch.ts` (loop), `ui/hooks/useWatch.ts`, `ui/WatchBar.tsx`.
 
 ---
 

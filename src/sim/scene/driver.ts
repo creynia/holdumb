@@ -126,6 +126,12 @@ export interface SessionTotals {
   mistakes: number;
   /** Money added to the rack mid-session (I083). Net = equity - (start + topUps). */
   topUpCents: number;
+  /** I078: hands the table played itself (Watch). Kept out of every line above but `hands`. */
+  watchedHands: number;
+  /** Their whole result (main bets and Trips). */
+  watchedCents: number;
+  /** Their action (all wagers), kept out of "Total wagered". */
+  watchedWageredCents: number;
 }
 export const EMPTY_TOTALS: SessionTotals = {
   hands: 0,
@@ -143,6 +149,9 @@ export const EMPTY_TOTALS: SessionTotals = {
   decisions: 0,
   mistakes: 0,
   topUpCents: 0,
+  watchedHands: 0,
+  watchedCents: 0,
+  watchedWageredCents: 0,
 };
 
 export interface SessionView extends SessionTotals {
@@ -309,6 +318,7 @@ export class SimDriver {
     scored: boolean;
     ante: number;
     mistakes: number;
+    watched: boolean;
     /** One entry per decision taken: its tier and exact regret when a preview scored it. */
     notes: ({ tier: HandTierCode; regret: string } | null)[];
     /** Drill spots of this hand's mistakes, in order; kept only if the hand ends scored. */
@@ -327,6 +337,7 @@ export class SimDriver {
   private listeners = new Set<() => void>();
   private cached: DriverView | null = null;
   private busy = false;
+  private watching = false;
   private sixCard: SixCardSetting | null = null;
   private sixCardLast: SixCardOutcome | null = null;
   private disposed = false;
@@ -440,10 +451,14 @@ export class SimDriver {
       session: {
         ...t,
         net,
-        wageredCents: w.ante + w.blind + w.play + w.trips + t.sixCardWageredCents,
+        // Your action only: the watched hands' bets are the table's (I078). Six Card is a wager
+        // result settled at the deal, in its own ledger, watched or not (I062).
+        wageredCents:
+          w.ante + w.blind + w.play + w.trips - t.watchedWageredCents + t.sixCardWageredCents,
         perfectCents,
         mistakesRoundedCents,
-        luckCents: net - perfectCents + mistakesRoundedCents,
+        // Watched hands are not your play: their result is its own line, outside the luck split.
+        luckCents: net - t.watchedCents - perfectCents + mistakesRoundedCents,
         tripsExpectedRoundedCents: round(t.tripsExpectedCents),
         sixCardExpectedRoundedCents: round(t.sixCardExpectedCents),
         edgePerAnte:
@@ -576,12 +591,13 @@ export class SimDriver {
       scored: true,
       ante: this.game.bets.ante,
       mistakes: 0,
+      watched: this.watching,
       notes: Array<null>(decisionsSoFar).fill(null),
       spots: [],
     };
   }
   private trackDecision(pv: DecisionPreview | null, action: Action): void {
-    if (!this.hand) return;
+    if (!this.hand || this.hand.watched) return;
     this.totals = { ...this.totals, decisions: this.totals.decisions + 1 };
     const opt = pv?.options.find((o) => sameOption(o, action));
     if (!pv || !opt) {
@@ -618,8 +634,22 @@ export class SimDriver {
       const { ante, trips } = this.game.bets;
       this.history = pushRecord(
         this.history,
-        handRecord(settledHand, result, { ante, trips }, h?.notes ?? []),
+        // A watched hand is recorded (it was played on your table) but carries no tier or
+        // regret notes: Watch's moves are not yours to grade (I078).
+        handRecord(settledHand, result, { ante, trips }, h && !h.watched ? h.notes : []),
       );
+    }
+    if (h?.watched) {
+      // AC2: a watched hand is the table's play, not yours: no Trips, luck or mistake lines.
+      this.totals = {
+        ...this.totals,
+        hands: this.totals.hands + 1,
+        watchedHands: this.totals.watchedHands + 1,
+        watchedCents: this.totals.watchedCents + result.net,
+        watchedWageredCents:
+          this.totals.watchedWageredCents + result.wagers.reduce((a, x) => a + x.amount, 0),
+      };
+      return;
     }
     let main = 0;
     let trips = 0;
@@ -830,6 +860,16 @@ export class SimDriver {
     this.feed({ kind: 'auto-play-completed', hands, strategy });
     this.emit({ type: 'auto-play-completed', hands, strategy });
     this.afterChange();
+  }
+
+  /**
+   * I078 Watch: while on, every hand dealt (and the hand on the table) is marked watched and kept out
+   * of the learner's own record. Turning it off does not unmark a hand already touched by Watch.
+   */
+  setWatching(on: boolean): void {
+    this.watching = on;
+    if (on && this.hand) this.hand.watched = true;
+    this.notify();
   }
 
   /**
