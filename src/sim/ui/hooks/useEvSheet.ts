@@ -121,6 +121,7 @@ export function useEvSheet(
           confirmOn: settings.confirmOn,
           hideEv: practice,
           alternative,
+          request: sheetReq,
           chosen: reveal?.chosen ?? null,
           onContinue: () => {
             setReveal(null);

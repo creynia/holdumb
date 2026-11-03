@@ -110,6 +110,22 @@
   border-radius: 12px;
   background: var(--sim-surface-2);
 }
+/* River facts (lesson 12): outs count and cards, hidden pair or better, the basic card's rule. */
+.sim-outs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+.sim-outs-list {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.sim-result .sim-outs {
+  align-self: stretch;
+  padding-top: 4px;
+  border-top: 1px solid var(--sim-border);
+}
 .sim-skeleton {
   display: flex;
   flex-direction: column;

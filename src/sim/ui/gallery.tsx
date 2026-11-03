@@ -242,6 +242,7 @@ function Demo({ id }: { id: string }) {
         }
         handsPerHour={30}
         whyOpen={q.get('why') === '1'}
+        request={req}
       />
     ) : null;
   const settled = state.street === 'settled';
