@@ -1,3 +1,4 @@
+import { Say, useAnnounceFrom } from '../../sim';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   EvSheet,
@@ -156,6 +157,9 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const [spot, setSpot] = useState<DrillSpot | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
+  const gradeRef = useRef<HTMLParagraphElement>(null);
+  // The grade is spoken exactly as shown: the headline, the better play and by how much.
+  useAnnounceFrom(gradeRef, answer, { dedupeKey: 'drill' });
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -241,7 +245,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
     : '';
 
   return (
-    <div class="page">
+    <div class="page drill-page">
       <h1>Drill</h1>
       <div class="segmented" role="group" aria-label="Street">
         {(['mixed', ...DRILL_STREETS] as const).map((s) => (
@@ -277,7 +281,11 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         })}
       </section>
       {unavailable && (
-        <section class="card" data-testid="drill-unavailable" role="status">
+        <section class="card" data-testid="drill-unavailable">
+          <Say
+            text="Spots are on their way. The drill is not available in this build yet."
+            dedupeKey="drill"
+          />
           <h2>Spots are on their way</h2>
           <p class="muted">
             The drill needs the strategy engine, which is not part of this build yet. Meanwhile,
@@ -311,7 +319,12 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             ))}
           </div>
           {failed && (
-            <p role="alert" class="warn">
+            <p class="warn">
+              <Say
+                text="Could not work out the EV. Try again."
+                politeness="assertive"
+                dedupeKey="drill-err"
+              />
               Could not work out the EV. Try again.
             </p>
           )}
@@ -320,7 +333,7 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
 
       {spot && answer && chosenOpt && perfectBest && (
         <section class="card drill-result" data-testid="drill-result" data-tier={answer.tier}>
-          <p role="status">
+          <p data-testid="drill-headline" ref={gradeRef}>
             <strong>{HEADLINE[answer.tier]}</strong>{' '}
             {answer.tier === 'best'
               ? answer.grade.lens === 'perfect'

@@ -1,4 +1,5 @@
 import './sim.css';
+import { useAnnounce } from './announcer';
 import './container.css';
 import { useEffect, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
@@ -76,6 +77,7 @@ export function StepPanel({
     return () => clearTimeout(t);
   }, [step.id, rejection?.seq]);
   const hint = rejection?.text ?? (idle ? step.hint : undefined);
+  useAnnounce(hint, { dedupeKey: 'hint' });
   return (
     <section class="sim-step" aria-label="Lesson step" data-testid="step-panel" data-step={step.id}>
       <p class="sim-step-count">
@@ -89,7 +91,7 @@ export function StepPanel({
         </details>
       ) : null}
       {hint ? (
-        <p class="sim-step-hint" role="status" data-testid="step-hint">
+        <p class="sim-step-hint" data-testid="step-hint">
           {renderInline(hint)}
         </p>
       ) : null}

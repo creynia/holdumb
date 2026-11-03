@@ -1,3 +1,4 @@
+import { Say } from '../sim';
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
 import { ErrorBoundary, ErrorToast } from './components/ErrorBoundary';
@@ -109,7 +110,11 @@ export function App() {
       toast={<ErrorToast route={route.path} />}
       banner={
         store.persistent ? undefined : (
-          <p class="banner" role="status">
+          <p class="banner">
+            <Say
+              text="Progress will not be saved in this copy. Use Settings, then Export, to keep it."
+              dedupeKey="banner"
+            />
             Progress will not be saved in this copy. Use Settings, then Export, to keep it.
           </p>
         )
