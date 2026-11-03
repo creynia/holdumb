@@ -104,7 +104,7 @@ export function Simulator(props: SimulatorProps) {
           playMultiple={hand?.play?.multiple ?? null}
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
-          labels={resultLabels(result)}
+          labels={resultLabels(result, hand?.deal)}
           quiet={result?.outcome === 'fold'}
           timeline={timeline}
           nextHand={settled}
