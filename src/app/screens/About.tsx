@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { InstallButton } from '../components/InstallButton';
 import { Link } from '../components/Link';
 import { UPDATE_MESSAGE, checkForUpdates } from '../update';
 import type { UpdateCheck } from '../update';
@@ -43,6 +44,7 @@ export function About(props: { check?: () => Promise<UpdateCheck> }) {
       <p role="status" class="muted">
         {msg}
       </p>
+      <InstallButton />
       <p class="muted">
         holdumb is MIT licensed. It is a practice tool: no real money, ever. Odds are for the
         standard rules shown in Paytables. Please gamble responsibly. If gambling is causing you or

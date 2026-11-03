@@ -50,37 +50,10 @@ export async function checkForUpdates(): Promise<UpdateCheck> {
   }
 }
 
-const FOREGROUND_CHECK_MS = 60 * 60 * 1000;
-
-/**
- * Returns a function that asks the registration to re-fetch sw.js when the app comes back to the
- * foreground, at most once per hour. A kept-open installed PWA otherwise sees a deploy only on a
- * cold start. Returns true when it called update().
- */
-export function makeForegroundChecker(
-  current: () => { update: () => Promise<unknown> } | null,
-): (now: number) => boolean {
-  let last = -Infinity;
-  return (now) => {
-    const reg = current();
-    if (!reg || now - last < FOREGROUND_CHECK_MS) return false;
-    last = now;
-    void reg.update().catch(() => {
-      /* a failed check still uses up this hour; the next check is at the next foreground an hour on */
-    });
-    return true;
-  };
-}
-const checkOnForeground = makeForegroundChecker(() => registration);
-
 export function registerSW(): void {
   if (__SINGLE_FILE__ || import.meta.env.DEV) return;
   if (!('serviceWorker' in navigator)) return;
   if (location.protocol !== 'https:' && location.protocol !== 'http:') return;
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') checkOnForeground(Date.now());
-  });
 
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {

@@ -28,7 +28,7 @@ Three lessons hide in that table.
    almost 15. The 4x and 2x bets are where your edge comes from. Strong hands need big bets **early**.
 2. **Folding is a skill.** Never folding costs nearly as much as betting 4x on every hand. In fact, both
    cost exactly the same, because if you play every hand to the end, the Play bet is a coin flip and
-   only its size changes. The auto-play panel shows the same expected loss per hand for both (40.70% of the Ante). "Always bet 4x" puts twice the money in action, so its element of risk is 6.78% against 13.57%.
+   only its size changes.
 3. **Bet size matters.** 3x leaves a quarter of your best bets on the table. Always choose 4x when you raise
    preflop.
 

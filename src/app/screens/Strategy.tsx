@@ -1,4 +1,3 @@
-import { useEffect } from 'preact/hooks';
 import { Html } from '../components/Html';
 import { Link } from '../components/Link';
 import { ChartBlock } from '../components/ChartBlock';
@@ -26,15 +25,6 @@ export function Strategy({ query }: { query: URLSearchParams }) {
   const hl = query.get('highlight');
   const highlight = hl ? hl.split(',').filter(Boolean) : undefined;
   const copy = content.strategy[lens.strategy];
-  // `view=flop|river` (from Drill's "See the chart") scrolls to that section on arrival only.
-  const focusView =
-    query.get('view') === 'flop' || query.get('view') === 'river' ? query.get('view') : null;
-  useEffect(() => {
-    if (!focusView) return;
-    const sec = document.querySelector<HTMLElement>(`[data-view="${focusView}"]`);
-    sec?.scrollIntoView?.({ block: 'start' });
-    sec?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
-  }, [focusView]);
   return (
     <div class="page">
       <Link to="/more" class="back">
@@ -76,7 +66,7 @@ export function Strategy({ query }: { query: URLSearchParams }) {
       )}
       {VIEWS.map((v) => (
         <section key={v.view} data-view={v.view}>
-          <h2 tabIndex={-1}>{v.label}</h2>
+          <h2>{v.label}</h2>
           <ChartBlock
             chart={{ strategy: lens.strategy, view: v.view, ...(highlight ? { highlight } : {}) }}
           />
