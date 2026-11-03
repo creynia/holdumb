@@ -163,6 +163,24 @@ test.describe('sandbox', () => {
     );
     await expect(toast).toContainText(/Whole-hand expected result from here: [+\u2212]\$/);
     await expect(toast).toContainText('Net');
+    // The combined toast does not move the settled bar or the felt either (page coordinates).
+    const rebet = page.getByRole('button', { name: /Rebet/ });
+    const at = async () =>
+      Promise.all(
+        [rebet, page.locator('.sim-felt').first()].map((l) =>
+          l.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return [r.x + scrollX, r.y + scrollY, r.width, r.height];
+          }),
+        ),
+      );
+    const withToast = await at();
+    await toast.locator('button').click();
+    await expect(toast).toHaveCount(0);
+    const without = await at();
+    withToast
+      .flat()
+      .forEach((v, i) => expect(Math.abs(v - without.flat()[i]!)).toBeLessThanOrEqual(1));
   });
 
   test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {
