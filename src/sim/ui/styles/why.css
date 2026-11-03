@@ -1,0 +1,68 @@
+/* ---------- Why table ---------- */
+.sim-why-toggle {
+  min-height: 44px;
+  padding: 0 12px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  border: 2px solid var(--sim-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.sim-why-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.sim-why {
+  width: 100%;
+  font-size: 0.85rem;
+}
+.sim-why-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.sim-why-table caption {
+  text-align: left;
+  color: var(--muted);
+  padding-bottom: 4px;
+}
+.sim-why-table th,
+.sim-why-table td {
+  padding: 4px 4px;
+  border-top: 1px solid var(--sim-border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.sim-why-table thead th {
+  font-size: 0.75rem;
+  color: var(--muted);
+  border-top: 0;
+}
+.sim-why-table tbody th {
+  text-align: left;
+  font-weight: 600;
+  width: 46%;
+}
+.sim-why-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sim-why-count {
+  display: block;
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.sim-why-formula {
+  margin: 8px 0 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.sim-why-note {
+  margin: 4px 0 0;
+  color: var(--muted);
+}

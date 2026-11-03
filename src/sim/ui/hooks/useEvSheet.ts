@@ -1,0 +1,147 @@
+// The EV sheet state machine: tap an option -> sheet open -> confirm -> (practice) reveal ->
+// continue; cancel closes it and gives focus back to the option button that opened it.
+import { useEffect, useRef, useState } from 'preact/hooks';
+import type { OptionKey, SimDriver } from '../../scene';
+import { betterAlternative } from '../../math';
+import type { BetterAlternative, DecisionPreview, PreviewRequest } from '../../math';
+import type { EvSheetProps } from '../EvSheet';
+import { evShownOf, isDecisionStreet } from '../tableView';
+import type { Orientation } from '../Table';
+import { actionOfKey, headline, optionKeyOf } from '../text';
+import type { SimSettings } from '../types';
+import type { SimDriverHandle } from './useSimDriver';
+
+/** The preview request for the decision on the table now, or null between decisions. */
+export function requestNow(d: SimDriver): PreviewRequest | null {
+  const st = d.view.state;
+  const h = st.hand;
+  if (!h || !isDecisionStreet(st.street)) return null;
+  return {
+    street: st.street as PreviewRequest['street'],
+    hole: h.deal.player,
+    board: h.deal.board.slice(0, h.boardShown),
+    blindPaytable: st.rules.blindPaytable,
+    ante: st.bets.ante,
+  };
+}
+
+export interface Reveal {
+  preview: DecisionPreview;
+  chosen: OptionKey;
+  req: PreviewRequest | null;
+}
+
+export interface EvSheetInput {
+  settings: SimSettings;
+  sandbox: boolean;
+  /** Practice mode (D11): confirming shows the reveal card before the sheet closes. */
+  practice: boolean;
+  orientation: Orientation;
+}
+
+export interface EvSheetState {
+  /** The option whose sheet is open (null when closed). */
+  open: OptionKey | null;
+  /** Tap on an ActionBar option. */
+  onOption: (k: OptionKey) => void;
+  /** Props for the EvSheet, or null when no sheet is shown. */
+  sheet: EvSheetProps | null;
+}
+
+export function useEvSheet(sim: SimDriverHandle, i: EvSheetInput): EvSheetState {
+  const { d, pushToast, act } = sim;
+  const { settings, sandbox, practice } = i;
+  const { scene, state, preview: pv } = d.view;
+  const evShown = evShownOf(d.view);
+  const decision = isDecisionStreet(state.street);
+  // Changes on every new hand or street; closes an open (non-reveal) sheet.
+  const handKey = `${state.hand?.n ?? 0}:${state.street}`;
+  const [open, setOpen] = useState<OptionKey | null>(null);
+  const [reveal, setReveal] = useState<Reveal | null>(null);
+  const lastKey = useRef(handKey);
+  useEffect(() => {
+    if (lastKey.current !== handKey) {
+      lastKey.current = handKey;
+      if (!reveal) setOpen(null);
+    }
+  }, [handKey, reveal]);
+
+  const confirm = async (k: OptionKey) => {
+    const before = d.view.preview.value;
+    const reqBefore = requestNow(d);
+    const r = await d.act(actionOfKey(k));
+    if (practice && before) setReveal({ preview: before, chosen: k, req: reqBefore });
+    else setOpen(null);
+    if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
+  };
+  const onOption = (k: OptionKey) => {
+    if (!evShown || (sandbox && settings.skipPreview && !practice)) {
+      const v = d.view.preview.value;
+      const o = v?.options.find((x) => optionKeyOf(x.action) === k);
+      if (o?.tier === 'blunder' && settings.confirmCostlyMoves && evShown) {
+        setOpen(k);
+        d.previewed(k, false);
+        return;
+      }
+      if (v && o && evShown) pushToast(headline(v, v.options.indexOf(o)));
+      void act(actionOfKey(k));
+      return;
+    }
+    setOpen(k);
+    d.previewed(k, false);
+  };
+
+  const sheetKey = reveal?.chosen ?? open;
+  const sheetPreview = reveal ? reveal.preview : pv.value;
+  const sheetReq = reveal ? reveal.req : requestNow(d);
+  let alternative: BetterAlternative | null = null;
+  if (sheetKey && sheetPreview && sheetReq && sheetPreview.street === sheetReq.street) {
+    const idx = sheetPreview.options.findIndex((o) => optionKeyOf(o.action) === sheetKey);
+    try {
+      if (idx >= 0) alternative = betterAlternative(sheetReq, sheetPreview, idx);
+    } catch {
+      alternative = null;
+    }
+  }
+  const sheet: EvSheetProps | null =
+    sheetKey && (reveal || (open && decision))
+      ? {
+          preview: reveal ? reveal.preview : pv.value,
+          error: !reveal && pv.status === 'error',
+          progress: pv.progress,
+          selected: sheetKey,
+          variant: i.orientation === 'landscape' ? 'rail' : 'sheet',
+          onSelect: (k) => {
+            setOpen(k);
+            d.previewed(k, false);
+          },
+          onConfirm: (k) => void confirm(k),
+          onCancel: () => {
+            const k = sheetKey;
+            setOpen(null);
+            setReveal(null);
+            // Give focus back to the button that opened the sheet.
+            setTimeout(
+              () => document.querySelector<HTMLElement>(`button[data-option="${k}"]`)?.focus(),
+              0,
+            );
+          },
+          confirmCostlyMoves: settings.confirmCostlyMoves,
+          hideEv: practice,
+          alternative,
+          chosen: reveal?.chosen ?? null,
+          onContinue: () => {
+            setReveal(null);
+            setOpen(null);
+          },
+          detail: scene.evDetail ?? 'full',
+          whyOpen: scene.whyOpen,
+          onWhyToggle: (o) => {
+            if (o && sheetKey) d.previewed(sheetKey, true);
+          },
+          handsPerHour: settings.handsPerHour,
+          allowed: d.view.allowedOptions,
+        }
+      : null;
+  return { open, onOption, sheet };
+}
