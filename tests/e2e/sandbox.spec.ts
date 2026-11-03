@@ -94,6 +94,57 @@ test.describe('sandbox', () => {
     await expect(toast).toContainText('Whole-hand expected result from here');
   });
 
+  for (const vp of [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 360, height: 740 },
+    { width: 667, height: 375 },
+  ]) {
+    test(`the narration toast never moves the action bar or the felt at ${vp.width}x${vp.height} (I080)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(vp);
+      await page.goto('/#/play?hole=AsAh&speed=instant&seed=1');
+      await ready(page);
+      await opt(page, 'check').click();
+      await page.getByTestId('confirm').click();
+      await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'flop');
+      const toast = page.locator('.sim-toast');
+      await expect(toast).toContainText('Whole-hand expected result from here');
+      // Page coordinates: dismissing the toast may shorten the page and change the scroll offset.
+      const boxes = async () => {
+        const out: Record<string, { x: number; y: number; width: number; height: number }> = {};
+        const sel: Record<string, string> = {
+          check: 'button[data-option="check"]',
+          'play-2': 'button[data-option="play-2"]',
+          felt: '.sim-felt',
+        };
+        for (const [k, q] of Object.entries(sel)) {
+          out[k] = await page
+            .locator(q)
+            .first()
+            .evaluate((el) => {
+              const r = el.getBoundingClientRect();
+              return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height };
+            });
+        }
+        return out;
+      };
+      const withToast = await boxes();
+      await toast.locator('button').click();
+      await expect(toast).toHaveCount(0);
+      const without = await boxes();
+      for (const k of Object.keys(withToast)) {
+        for (const f of ['x', 'y', 'width', 'height'] as const) {
+          expect(
+            Math.abs(withToast[k]![f] - without[k]![f]),
+            `${k}.${f} moved when the toast went away`,
+          ).toBeLessThanOrEqual(1);
+        }
+      }
+    });
+  }
+
   test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {
     await page.goto('/#/settings');
     await page.getByRole('radio', { name: 'Never' }).first().check();
