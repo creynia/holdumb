@@ -4,7 +4,8 @@
 // and the session still adds up to the cent: net = watched + perfect − mistakes + luck.
 import { describe, expect, it } from 'vitest';
 import { equity, visibleView } from '../engine/game';
-import { frac, round } from '../math/fraction';
+import { ZERO, add, frac, round, scale } from '../math/fraction';
+import type { Fraction } from '../math/types';
 import { preflopPreview } from '../math/preview';
 import { STRATEGIES } from '../strategy/presets';
 import { SimDriver } from './driver';
@@ -32,15 +33,37 @@ describe('Six Card with watched hands (I062 + I078)', () => {
     let sixProfit = 0;
     let ownNet = 0;
     let watchedNet = 0;
+    // Independently of the driver's ledger: a hand is scored when every decision had a preview;
+    // then it expects its first decision's best EV and costs the chosen options' regret x Ante.
+    let expected: Fraction = ZERO;
+    let mistakes: Fraction = ZERO;
     const play = async (watched: boolean) => {
+      let scored = true;
+      let base: Fraction | null = null;
+      let regret: Fraction = ZERO;
       d.setWatching(watched);
       expect((await d.act({ type: 'deal' })).ok).toBe(true);
       const six = d.view.sixCard.last;
       expect(six?.kind).toBe('settled');
       if (six?.kind === 'settled') sixProfit += six.result.profit;
       while (['preflop', 'flop', 'river'].includes(d.view.state.street)) {
-        await d.currentPreview();
-        expect((await d.act(strat.decide(visibleView(d.view.state)))).ok).toBe(true);
+        const pv = await d.currentPreview().catch(() => null);
+        const a = strat.decide(visibleView(d.view.state));
+        const opt = pv?.options.find(
+          (o) =>
+            o.action.type === a.type &&
+            (a.type !== 'play' || (o.action.type === 'play' && o.action.multiple === a.multiple)),
+        );
+        if (!pv || !opt) scored = false;
+        else {
+          base ??= pv.options[pv.bestIndex]!.evCents;
+          regret = add(regret, scale(opt.regret, 1000));
+        }
+        expect((await d.act(a)).ok).toBe(true);
+      }
+      if (!watched && scored && base) {
+        expected = add(expected, base);
+        mistakes = add(mistakes, regret);
       }
       const net = d.view.state.hand!.result!.net;
       if (watched) watchedNet += net;
@@ -64,6 +87,14 @@ describe('Six Card with watched hands (I062 + I078)', () => {
     // The session net is every hand's result plus every Six Card result, to the cent.
     expect(s.net).toBe(equity(d.view.state) - start);
     expect(s.net).toBe(ownNet + watchedNet + sixProfit);
+    // Perfect play expects the scored own hands' EV plus the Six Card expectation (no Trips bet
+    // here), rounded once; luck is then what is left of your own and Six Card results.
+    expect(s.scored).toBeGreaterThan(0);
+    const sixExpected = frac(-8n * 500n * 12816n, 149695n);
+    const perfect = round(add(expected, sixExpected));
+    expect(s.perfectCents).toBe(perfect);
+    expect(s.mistakesRoundedCents).toBe(round(mistakes));
+    expect(s.luckCents).toBe(ownNet + sixProfit - perfect + round(mistakes));
     // The split adds up exactly.
     expect(s.net).toBe(s.watchedCents + s.perfectCents - s.mistakesRoundedCents + s.luckCents);
   });
