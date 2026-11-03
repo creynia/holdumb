@@ -25,8 +25,8 @@ export function Learn() {
         <section class="card skills" aria-labelledby="skills-h" data-testid="skills">
           <h2 id="skills-h">Your skills</h2>
           <p class="muted">
-            From your last {SKILL_WINDOW} Drill answers in each area. It is a guide to what to
-            practise next, not a score.
+            From your last {SKILL_WINDOW} Drill answers in each area, for the Drill grading you have
+            selected. It is a guide to what to practise next, not a score.
           </p>
           <ul class="skill-list">
             {content.skills.map((sk) => {

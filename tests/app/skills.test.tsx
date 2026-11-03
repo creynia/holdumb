@@ -164,6 +164,28 @@ describe('Learn: Your skills', () => {
   });
 });
 
+describe('Drill answer log: sanitize', () => {
+  it('keeps the newest 200 of 250 valid entries, oldest first', () => {
+    const log = Array.from({ length: 250 }, (_, i) => `flop-nothing:${i % 2}`);
+    // make the position visible: entry i in the newest 200 is index i + 50
+    log[49] = 'pre-ace:1';
+    log[50] = 'pre-king:0';
+    log[249] = 'river-outs-low:1';
+    const p = sanitize({ version: 1, drill: { recent: log } })!;
+    expect(p.drill.recent).toHaveLength(MAX_RECENT_ANSWERS);
+    expect(p.drill.recent[0]).toBe('pre-king:0'); // index 49 was cut, 50 is the oldest kept
+    expect(p.drill.recent[199]).toBe('river-outs-low:1'); // the newest is kept
+    expect(p.drill.recent).toEqual(log.slice(50));
+  });
+  it('round-trips through the stored JSON, for both lenses', () => {
+    const d = { ...emptyDrill(), recent: ['pre-ace:1', 'flop-nothing:0'] };
+    d.practical = { ...emptyDrill(), recent: ['river-outs-edge:1'] };
+    const back = sanitize(JSON.parse(JSON.stringify({ version: 1, drill: d })))!;
+    expect(back.drill.recent).toEqual(['pre-ace:1', 'flop-nothing:0']);
+    expect(back.drill.practical.recent).toEqual(['river-outs-edge:1']);
+  });
+});
+
 describe('Drill answer log (storage)', () => {
   it('recordDrill appends `<category>:<0|1>`, capped, and it persists', () => {
     const m = new MemoryStorage();
