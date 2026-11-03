@@ -151,6 +151,7 @@ interface Settings {
   handsPerHour: number;         // default from curriculum.md (placeholder 30)
   evMode: 'before' | 'after' | 'never';               // default 'before' (D11, D39)
   confirmOn: 'all' | 'costly' | 'blunder' | 'never';  // default 'never' (D24, D39)
+  confirmTiers: 'all' | 'costly' | 'blunder';         // default 'all': the Confirm box's scope (D40)
   fourColorDeck: boolean;       // default false
   paytable: string;             // preset id from the engine registry; default per decisions.md
 }
