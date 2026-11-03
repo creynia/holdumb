@@ -1,9 +1,10 @@
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
 import { Shell } from './components/Shell';
-import { useStore } from './context';
+import { useContent, useStore } from './context';
 import { consumeFreshNav, useRoute } from './router';
-import { renderRoute } from './routes';
+import { renderRoute, routeName } from './routes';
+import { wagerName } from './screens/Bets';
 import { applyTheme, onReducedMotionChange } from './theme';
 
 const SCROLL_KEY = 'holdumb:scroll';
@@ -23,9 +24,13 @@ function writeScroll(hash: string, y: number) {
   }
 }
 
+/** The SEO title from index.html: Home keeps it. */
+const HOME_TITLE = typeof document === 'undefined' ? '' : document.title;
+
 export function App() {
   const route = useRoute();
   const store = useStore();
+  const content = useContent();
   const { theme, animationSpeed, reduceMotion, fourColorDeck } = store.settings;
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   useEffect(() => applyTheme(store.settings), [theme, animationSpeed, reduceMotion, fourColorDeck]);
@@ -38,6 +43,15 @@ export function App() {
       }),
     [store],
   );
+  // The document title names the screen, so tabs, history and screen readers can tell pages apart.
+  // Runs before the page view, which records document.title.
+  useEffect(() => {
+    const name = routeName(route, {
+      lessonTitle: (id) => content.lessons.find((l) => l.id === id)?.title,
+      wagerName: (id) => wagerName(id, content.bets),
+    });
+    document.title = name ? `${name} · holdumb` : HOME_TITLE;
+  }, [route.path, content]);
   // One anonymous page view per route (path only; query strings are dropped).
   useEffect(() => trackPage(pagePath(location.pathname, route.path)), [route.path]);
   // Move focus to the page after a route change (not on first load).
