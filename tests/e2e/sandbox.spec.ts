@@ -479,8 +479,7 @@ test.describe('sandbox', () => {
   test('the hand result stays on screen after the toast is dismissed (I051)', async ({ page }) => {
     await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
     await ready(page);
-    await opt(page, 'play-2').click();
-    await page.getByTestId('confirm').click();
+    await opt(page, 'play-2').click(); // one tap acts (D40)
     const sim = page.getByTestId('simulator');
     await expect(sim).toHaveAttribute('data-street', 'settled');
     const toast = page.locator('.sim-toast');
