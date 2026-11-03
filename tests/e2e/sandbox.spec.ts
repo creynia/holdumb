@@ -349,6 +349,35 @@ test.describe('sandbox', () => {
     await expect(page.locator('button[data-action="deal"]')).toHaveCount(0);
   });
 
+  test('the hand result stays on screen after the toast is dismissed (I051)', async ({ page }) => {
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+    await ready(page);
+    await opt(page, 'play-2').click();
+    await page.getByTestId('confirm').click();
+    const sim = page.getByTestId('simulator');
+    await expect(sim).toHaveAttribute('data-street', 'settled');
+    const toast = page.locator('.sim-toast');
+    await expect(toast).toBeVisible();
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    await expect(toast).toHaveCount(0);
+    const result = page.getByTestId('hand-result');
+    await expect(result).toBeVisible();
+    await expect(result).toContainText(/Won|Lost|Push/);
+    // Signed money uses the real minus, so a line break can't fall inside it.
+    await expect(result).not.toContainText('-');
+    // The pill never sits on a bet circle, a hole card or a board card.
+    const box = await result.boundingBox();
+    if (!box) throw new Error('hand result has no box');
+    const overlaps = await page.evaluate((r) => {
+      const hit = (b: DOMRect) =>
+        !(b.right <= r.x || b.left >= r.x + r.width || b.bottom <= r.y || b.top >= r.y + r.height);
+      return [...document.querySelectorAll('[data-hit], g.sim-card')]
+        .map((e) => e.getBoundingClientRect())
+        .filter((b) => hit(b)).length;
+    }, box);
+    expect(overlaps).toBe(0);
+  });
+
   test('money never wraps and nothing scrolls sideways', async ({ page }) => {
     await page.goto('/#/play?seed=3&speed=instant');
     const wraps = await page.evaluate(() => {
