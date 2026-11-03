@@ -5,14 +5,19 @@ interface FractionLike {
   den: bigint;
 }
 
-/** "-$0.14" | "+$39" | "$1,250" (ASCII minus; cents omitted when zero unless < $1). */
+/**
+ * One money format. "-$0.14" | "+$39" | "$1,250" | "$0" (ASCII minus).
+ * Rule: whole-dollar amounts, zero included, have no ".00"; any non-whole amount
+ * (including sub-dollar amounts such as "$0.50") always has two decimals.
+ * Zero never takes a sign, even with opts.sign.
+ */
 export function formatMoney(cents: Cents, opts?: { sign?: boolean }): string {
   const c = Math.round(cents);
   const abs = Math.abs(c);
   const dollars = Math.floor(abs / 100);
   const rem = abs % 100;
   const d = String(dollars).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const body = abs < 100 || rem !== 0 ? `${d}.${String(rem).padStart(2, '0')}` : d;
+  const body = rem !== 0 ? `${d}.${String(rem).padStart(2, '0')}` : d;
   const sign = c < 0 ? '-' : opts?.sign && c > 0 ? '+' : '';
   return `${sign}$${body}`;
 }
