@@ -116,3 +116,32 @@ for (const [lesson, title] of [
     await expect(page.getByTestId('blunder-warning')).toHaveCount(0);
   });
 }
+
+// I066: "Practise this" opens the lesson's own river spot on the table; leaving doesn't finish it.
+test('lesson 12 "Practise this" opens its river spot and keeps the lesson unfinished', async ({
+  page,
+}) => {
+  await page.goto('/#/learn/counting-dealer-outs');
+  const block = page.getByRole('region', { name: 'Practise this' });
+  const link = block.getByRole('link', { name: 'Play jack-eight on K-Q-4-3-2' });
+  await link.scrollIntoViewIfNeeded();
+  const box = (await link.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  await link.click();
+  await expect(page).toHaveURL(/#\/play\?hole=Jd8c&board=KhQs4d3c2h/);
+  const sim = page.getByTestId('simulator');
+  await expect(sim).toHaveAttribute('data-street', 'river');
+  await expect(page.locator('button[data-option="fold"]')).toBeVisible();
+  await page.goto('/#/learn');
+  const row = page.locator('a.lesson-row[href="#/learn/counting-dealer-outs"]');
+  await expect(row).toHaveClass(/st-progress/);
+  await expect(row).not.toHaveClass(/st-done/);
+  await page.goto('/#/learn/counting-dealer-outs');
+  await expect(page.getByRole('button', { name: 'Mark complete' })).toBeVisible();
+  const drill = page
+    .getByRole('region', { name: 'Practise this' })
+    .getByRole('link', { name: 'Drill rivers near 21 outs' });
+  await drill.click();
+  await expect(page).toHaveURL(/#\/drill\?category=river-outs-edge/);
+  await expect(page.getByTestId('drill-category-label')).toBeVisible();
+});

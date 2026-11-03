@@ -113,3 +113,12 @@ steps:
   answer: 0
   explain: "The board plays, so it's usually a tie. Betting 1x costs 0.136 antes on average, and folding costs 2."
 ```
+
+```practise
+- label: "Drill rivers with a hidden pair"
+  to: "#/drill?category=river-hidden-pair"
+- label: "Drill rivers near 21 outs"
+  to: "#/drill?category=river-outs-edge"
+- label: "Play queen-seven on K-J-9-5-2"
+  to: "#/play?hole=Qc7d&board=KdJh9s5c2d"
+```

@@ -94,3 +94,8 @@ steps:
   answer: 1
   explain: "Your Trips result is fixed by your cards. Play the main game normally."
 ```
+
+```practise
+- label: "Play pocket sevens into a straight for the dealer"
+  to: "#/play?hole=7c7d&board=7hKs9dTdJc&dealer=Qh8s&street=preflop"
+```

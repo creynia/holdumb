@@ -75,3 +75,10 @@ Basic card EV = −54758439/2299422125 antes per hand. Simple card EV = −47068
   answer: 0
   explain: "The simple card bets 4x with any king. (Perfect play checks K3o, a small mistake that's part of the simple card's price.)"
 ```
+
+```practise
+- label: "Drill rivers near 21 outs"
+  to: "#/drill?category=river-outs-edge"
+- label: "Drill flop flush draws"
+  to: "#/drill?category=flop-flush-draw"
+```

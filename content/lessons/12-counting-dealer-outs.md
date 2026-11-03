@@ -103,3 +103,12 @@ steps:
   answer: 2
   explain: "The three other cards of that rank."
 ```
+
+```practise
+- label: "Drill rivers near 21 outs"
+  to: "#/drill?category=river-outs-edge"
+- label: "Play jack-eight on K-Q-4-3-2"
+  to: "#/play?hole=Jd8c&board=KhQs4d3c2h"
+- label: "Play jack-nine on 8-8-5-3-2"
+  to: "#/play?hole=Jc9d&board=8s8h5c3d2s"
+```

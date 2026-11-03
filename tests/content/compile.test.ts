@@ -272,3 +272,51 @@ describe('lesson sources and citations', () => {
     for (const l of b.lessons) if (l.sources) expect(l.sources.length).toBeGreaterThan(0);
   });
 });
+
+describe('practise blocks (I066)', () => {
+  const deal = '```scene\nid: s1\nversion: 1\nsteps:\n  - id: a\n    text: t\n    startAt: { street: river, deal: { player: [Qc, 7d], flop: [Kd, Jh, 9s], turn: 5c, river: 2d } }\n    completeWhen: { acknowledged: true }\n    advance: button\n```\n';
+  const p = (links: string) => '```practise\n' + links + '\n```\n';
+  const link = (label: string, to: string) => `- label: "${label}"\n  to: "${to}"`;
+  const ok = (body: string) => compileLesson(head + deal + body, 'p.md');
+  const bad = (body: string, re: RegExp) => expect(() => ok(body)).toThrow(re);
+  it('compiles Drill categories and table presets of the lesson\'s own deals', () => {
+    const l = ok(
+      p(
+        [
+          link('Drill', '#/drill?category=river-outs-edge'),
+          link('River', '#/play?hole=Qc7d&board=KdJh9s5c2d&street=river'),
+          link('Flop', '/play?hole=Qc7d&board=KdJh9s'),
+        ].join('\n'),
+      ),
+    );
+    expect(l.blocks.at(-1)).toEqual({
+      kind: 'practise',
+      links: [
+        { label: 'Drill', to: '/drill?category=river-outs-edge' },
+        { label: 'River', to: '/play?hole=Qc7d&board=KdJh9s5c2d&street=river' },
+        { label: 'Flop', to: '/play?hole=Qc7d&board=KdJh9s' },
+      ],
+    });
+  });
+  it('fails the build on an unknown category or a Drill link with other keys', () => {
+    bad(p(link('x', '#/drill?category=flop-nope')), /unknown Drill category "flop-nope"/);
+    bad(p(link('x', '#/drill?street=flop')), /takes \?category= only/);
+  });
+  it('fails the build on an invalid preset: bad cards, repeated cards, wrong counts, unknown keys', () => {
+    bad(p(link('x', '#/play?hole=Zz7d')), /invalid table preset/);
+    bad(p(link('x', '#/play?hole=Qc7d&board=QcJh9s')), /invalid table preset/);
+    bad(p(link('x', '#/play?hole=Qc7d&board=KdJh')), /invalid table preset/);
+    bad(p(link('x', '#/play?hole=Qc7d&seed=3')), /unknown table preset key "seed"/);
+    bad(p(link('x', '#/sources')), /must start with \/play\? or \/drill\?/);
+  });
+  it('a preset must be one of the lesson\'s scene deals', () => {
+    bad(p(link('x', '#/play?hole=AsAd')), /not one of this lesson's scene deals/);
+    bad(p(link('x', '#/play?hole=Qc7d&board=KdJh9s5c3h')), /not one of this lesson's scene deals/);
+  });
+  it('takes 1 to 3 links with only label and to', () => {
+    bad(p('[]'), /1 to 3/);
+    const four = Array.from({ length: 4 }, () => link('d', '#/drill?category=pre-ace')).join('\n');
+    bad(p(four), /1 to 3/);
+    bad(p('- label: x\n  to: "#/drill?category=pre-ace"\n  icon: y'), /unknown key "icon"/);
+  });
+});
