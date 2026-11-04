@@ -7,7 +7,7 @@ import type { Fraction } from '../math';
 import { STREET_OF_CODE } from '../engine';
 import { replayQuery } from '../scene';
 import { describeResult, typographic } from './text';
-import { signedMoney } from './text';
+import { signedMoney, unjoined } from './text';
 
 export interface HandHistoryProps {
   /** Newest first (driver view). */
@@ -99,7 +99,9 @@ export function HandHistory({ records, rules, replayHref }: HandHistoryProps) {
                 class="sim-history-head"
                 aria-expanded={open}
                 aria-controls={id}
-                aria-label={`Hand ${r.n}, net ${typographic(signedMoney(r.net))}, ${actionsText(r)}`}
+                aria-label={unjoined(
+                  `Hand ${r.n}, net ${typographic(signedMoney(r.net))}, ${actionsText(r)}`,
+                )}
                 onClick={() => setOpenN(open ? null : r.n)}
               >
                 <span class="sim-history-n">#{r.n}</span>

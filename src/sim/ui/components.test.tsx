@@ -1076,7 +1076,7 @@ describe('HandHistory (simulator.md 3.7)', () => {
     ).toBeTruthy();
     // Each row's button says the hand, its net and the choices in one name.
     expect(within(rows[1]!).getByRole('button').getAttribute('aria-label')).toBe(
-      'Hand 1, net \u2212\u2060$20, check (best), check (close), fold (mistake)',
+      'Hand 1, net \u2212$20, check (best), check (close), fold (mistake)',
     );
     expect(screen.queryByRole('status')).toBeNull(); // no live region of its own
   });
