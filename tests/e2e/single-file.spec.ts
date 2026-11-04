@@ -30,6 +30,7 @@ test('single-file build opens from file:// with no failed requests or errors', a
   await expect(page.locator('h1, main').first()).toBeVisible();
 
   // The inline IIFE worker must start under file:// (it falls back to in-thread otherwise).
+  await page.waitForFunction(() => '__holdumb' in window); // the hook loads after first paint
   const out = await page.evaluate(smoke);
   expect(out, 'window.__holdumb test hook missing').toBeDefined();
   expect(out!.mode).toBe('worker');
@@ -45,6 +46,8 @@ test('single-file build opens from file:// with no failed requests or errors', a
 
 test('hosted build uses a real worker', async ({ page }) => {
   await page.goto('/');
+  // The test hook loads after first paint (I095).
+  await page.waitForFunction(() => '__holdumb' in window);
   const out = await page.evaluate(smoke);
   expect(out, 'window.__holdumb test hook missing').toBeDefined();
   expect(out!.mode).toBe('worker');
