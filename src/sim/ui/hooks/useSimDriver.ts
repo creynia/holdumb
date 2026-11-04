@@ -5,7 +5,8 @@ import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
 import type { LoggedHand } from '../moveLogData';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
-import { randomSeed, resolveEvMode } from '../settings';
+import { randomSeed, resolveEvMode, resolveSpeed } from '../settings';
+import { soundOf } from '../soundEvents';
 import { foldAnnouncement, settledToastText, typographic } from '../text';
 import type { SimulatorProps } from '../types';
 
@@ -62,6 +63,8 @@ export interface SimDriverHandle {
   pushToast: (text: string, tone?: Toast['tone'], spoken?: string) => void;
   /** I080: what the confirmed decision was worth; the result toast leads with it if the hand ends. */
   narration: { current: string | null };
+  /** Silences table sounds while the table plays itself (Watch). The container sets it. */
+  soundMuted: { current: boolean };
   /** Runs a driver action and toasts a rejection outside scene steps. */
   act: (a: DriverAction) => ReturnType<SimDriver['act']>;
 }
@@ -75,6 +78,9 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
     setToast({ id: ++toastId.current, text, tone, spoken });
 
   const narration = useRef<string | null>(null);
+  // Table sounds (I027): the audio module is loaded only while Sounds is on (no first-paint cost).
+  const soundMuted = useRef(false);
+  const audio = useRef<typeof import('../sound') | null>(null);
   const holder = useRef<SimDriver | null>(null);
   if (!holder.current) {
     holder.current = makeDriver(props, mode, (e) => {
@@ -91,10 +97,31 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
       } else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
       else if (e.type === 'action-rejected' && !holder.current?.view.step)
         pushToast(e.reason, 'bad');
+      const sound = latest.current.settings.sounds ? soundOf(e) : null;
+      if (sound && !soundMuted.current && audio.current) {
+        const scene = holder.current?.view.scene ??
+          latest.current.scene ?? { id: 'sandbox', version: 1 };
+        if (resolveSpeed(latest.current.settings, scene) !== 'instant')
+          audio.current.playSound(sound);
+      }
       latest.current.onEvent?.(e);
     });
   }
   const d = holder.current;
+  const soundsOn = props.settings.sounds === true;
+  useEffect(() => {
+    if (!soundsOn) return audio.current?.setSoundsWanted(false);
+    let live = true;
+    void import('../sound').then((m) => {
+      if (!live) return;
+      audio.current = m;
+      m.setSoundsWanted(true);
+      m.armSoundUnlock(); // the audio context is created on the first tap, never before
+    });
+    return () => {
+      live = false;
+    };
+  }, [soundsOn]);
   const [, force] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
     const off = d.subscribe(() => force(0));
@@ -111,7 +138,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
     return r;
   };
-  return { d, latest, toast, setToast, pushToast, narration, act };
+  return { d, latest, toast, setToast, pushToast, narration, soundMuted, act };
 }
 
 /**

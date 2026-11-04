@@ -417,12 +417,13 @@ describe('Settings', () => {
     expect(store.settings.confirmOn).toBe('costly');
     expect(store.settings.confirmTiers).toBe('costly');
     expect(radios('confirm-tiers').find((r) => r.checked)!.value).toBe('costly');
-    // The confirm box, reduce motion and four-colour remain; the old three checkboxes are gone.
+    // The confirm box, reduce motion, four-colour and Sounds remain; the old three checkboxes are gone.
     const boxes = [...el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
     expect(boxes.map(labelOf)).toEqual([
       expect.stringContaining('Confirm my bets'),
       expect.stringContaining('Reduce motion'),
       expect.stringContaining('Four-colour deck'),
+      expect.stringContaining('Sounds'),
     ]);
   });
   it('applies the theme and four-colour deck to the document', async () => {
@@ -459,6 +460,21 @@ describe('Settings', () => {
     Object.defineProperty(s, 'persistent', { value: false });
     const { el: el2 } = await mount('#/settings', s);
     expect(el2.querySelector('.banner')).toBeTruthy();
+  });
+});
+
+describe('Settings: Sounds (I027)', () => {
+  it('is off by default and a tick turns it on', async () => {
+    const { el, store } = await mount('#/settings');
+    expect(store.settings.sounds).toBe(false);
+    const box = [...el.querySelectorAll<HTMLInputElement>('label.check input')].find((i) =>
+      i.closest('label')!.textContent.startsWith('Sounds'),
+    )!;
+    expect(box.checked).toBe(false);
+    await act(() => box.click());
+    expect(store.settings.sounds).toBe(true);
+    await act(() => box.click());
+    expect(store.settings.sounds).toBe(false);
   });
 });
 

@@ -17,6 +17,8 @@ export interface SimSettings {
   evMode: EvMode;
   /** Which decision tiers ask for a confirm step before acting (D24, D39). */
   confirmOn: ConfirmOn;
+  /** Table sounds (I027). Off by default; never during watching, at instant speed or before a gesture. */
+  sounds?: boolean;
 }
 
 /** EV visibility and confirm policy live with the scene contract (D39). */

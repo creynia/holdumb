@@ -85,6 +85,7 @@ export function Simulator(props: SimulatorViewProps) {
     () => buildTimeline(d.view.lastEvents, speed).totalMs,
   );
   const watching = watch.running;
+  sim.soundMuted.current = watching; // no table sounds while the table plays itself (I027)
   // No sheet can act while Watch plays the table: starting Watch closes it (D40, I078).
   useEffect(() => {
     if (watching) ev.close();

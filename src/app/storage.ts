@@ -165,6 +165,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     animationSpeed: oneOf(o.animationSpeed, ['normal', 'fast', 'instant'], d.animationSpeed),
     reduceMotion: bool(o.reduceMotion, d.reduceMotion),
     fourColorDeck: bool(o.fourColorDeck, d.fourColorDeck),
+    sounds: bool(o.sounds, d.sounds),
     paytable: oneOf(o.paytable, PAYTABLE_PRESET_IDS, d.paytable),
     // D39 migration: a valid evMode wins; else the legacy practice flag (true -> 'after').
     evMode: oneOf(o.evMode, EV_MODES, o.practice === true ? evModeOfPractice(true) : d.evMode),
