@@ -126,4 +126,52 @@ describe('Drill: read the showdown (I061)', () => {
     expect(rule![1]).toContain('border-style: dashed');
     expect(rule![1]).not.toMatch(/opacity|filter|(^|[\s;{])color:/);
   });
+  it('a board card in only one of the two fives keeps its normal edge (union rule, as on the felt)', async () => {
+    // You play A K Q J 9; the dealer plays three fours with K Q. The 9h is yours alone, the 4c is
+    // the dealer's alone, and only the 2s misses both.
+    const { el } = await mount('mode=showdown&spot=s:AhJc.9hKsQd4c2s.4h4d');
+    await tap(el, 'winner', 'you');
+    await tap(el, 'qualifies', 'yes');
+    await tap(el, 'blind', 'loses');
+    const out = [...el.querySelectorAll('.pc-out')].map((n) => n.getAttribute('aria-label'));
+    expect(out).toEqual(["Two of spades, doesn't play"]);
+    expect(el.querySelector('[aria-label="Nine of hearts, plays"]')).toBeTruthy();
+    expect(el.querySelector('[aria-label="Four of clubs, plays"]')).toBeTruthy();
+  });
+  it('the marked cards keep readable ink: every suit colour is >= 4.5:1 on the card, edge >= 3:1', () => {
+    const css = readFileSync('src/app/styles/app.css', 'utf8');
+    const tokens = readFileSync('src/app/styles/tokens.css', 'utf8');
+    const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const lin = (c: number) =>
+      c / 255 <= 0.03928 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4;
+    const lum = (rgb: number[]) =>
+      0.2126 * lin(rgb[0]!) + 0.7152 * lin(rgb[1]!) + 0.0722 * lin(rgb[2]!);
+    const ratio = (a: string, b: string) => {
+      const [hi, lo] = [lum(hex(a)), lum(hex(b))].sort((x, y) => y - x);
+      return (hi! + 0.05) / (lo! + 0.05);
+    };
+    const tok = (name: string) => new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(tokens)![1]!;
+    for (const ink of ['suit-s', 'suit-h', 'suit-d', 'suit-c', 'suit4-d', 'suit4-c'])
+      expect(ratio(tok(ink), tok('card')), ink).toBeGreaterThanOrEqual(4.5);
+    const edge = /\.pc-out\s*{[^}]*border-color:\s*(#[0-9a-fA-F]{6})/.exec(css)![1]!;
+    expect(ratio(edge, tok('card'))).toBeGreaterThanOrEqual(3);
+    expect(ratio(edge, tok('bg'))).toBeGreaterThanOrEqual(3);
+  });
+  it('says "a pair of ..." when you win with a pair, and names the straight that pays the Blind', async () => {
+    let { el } = await mount(`mode=showdown&spot=${KICKER}`);
+    await tap(el, 'winner', 'you');
+    await tap(el, 'qualifies', 'yes');
+    await tap(el, 'blind', 'pushes');
+    expect(el.querySelector('[data-testid="showdown-feedback"]')!.textContent).toContain(
+      'You win with a pair of kings, but the Blind only pays',
+    );
+    document.body.innerHTML = '';
+    ({ el } = await mount('mode=showdown&spot=s:9c8d.7h6s5c2d3h.AdKs'));
+    await tap(el, 'winner', 'you');
+    await tap(el, 'qualifies', 'no');
+    await tap(el, 'blind', 'pays');
+    expect(el.querySelector('[data-testid="showdown-feedback"]')!.textContent).toMatch(
+      /You win with a [a-z-]*straight/,
+    );
+  });
 });

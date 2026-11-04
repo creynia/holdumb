@@ -33,6 +33,10 @@ test.describe('Drill: read the showdown (I061)', () => {
         expect(b.w).toBeGreaterThanOrEqual(44);
         expect(b.n).toBeTruthy();
       }
+      // The "All drills" link is a 44px target too.
+      const back = await page.getByRole('link', { name: 'All drills' }).boundingBox();
+      expect(back!.height).toBeGreaterThanOrEqual(44);
+      expect(back!.width).toBeGreaterThanOrEqual(44);
       await page.locator('[data-testid="showdown-winner"] [data-value="you"]').click();
       await page.locator('[data-testid="showdown-qualifies"] [data-value="yes"]').click();
       await page.locator('[data-testid="showdown-blind"] [data-value="pushes"]').click();

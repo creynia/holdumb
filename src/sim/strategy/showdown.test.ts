@@ -113,4 +113,31 @@ describe('showdown drill (I061)', () => {
     expect(teaching / sample.length).toBeGreaterThan(0.45);
     expect(teaching / sample.length).toBeLessThan(0.85);
   });
+  describe('each teaching-kind predicate', () => {
+    const is = (code: string, kind: (typeof SHOWDOWN_KINDS)[number]) =>
+      showdownKindOf(showdownFromCode(code), kind);
+    it('kicker: same category decided below the pair, not a tie, not a different category', () => {
+      expect(is('s:KdAc.Ks7h4c2d9s.KhQc', 'kicker')).toBe(true); // pair of kings, ace vs queen kicker
+      expect(is('s:7c7d.Kh9s4c2d3h.Ad6s', 'kicker')).toBe(false); // pair against ace high
+      expect(is('s:2c3c.9h8d7s6c5h.Jd2d', 'kicker')).toBe(false); // a tie
+      expect(is('s:9c8d.7h6s5c2d3h.AdKs', 'kicker')).toBe(false); // straight against ace high
+    });
+    it('board-plays: both hands are the same five board cards', () => {
+      expect(is('s:2c3c.9h8d7s6c5h.Jd2d', 'board-plays')).toBe(true);
+      expect(is('s:KdAc.Ks7h4c2d9s.KhQc', 'board-plays')).toBe(false); // you win on a kicker
+      expect(is('s:9c8d.7h6s5c2d3h.AdKs', 'board-plays')).toBe(false); // your hole cards play
+    });
+    it('not-qualified: the dealer has nothing better than high card', () => {
+      expect(is('s:7c7d.Kh9s4c2d3h.Ad6s', 'not-qualified')).toBe(true);
+      expect(is('s:KdAc.Ks7h4c2d9s.KhQc', 'not-qualified')).toBe(false);
+      expect(is('s:2c3c.9h8d7s6c5h.Jd2d', 'not-qualified')).toBe(false); // the dealer plays a straight
+    });
+    it('blind-straight: a win with a straight or better, and nothing weaker', () => {
+      expect(is('s:9c8d.7h6s5c2d3h.AdKs', 'blind-straight')).toBe(true);
+      expect(is('s:KdAc.Ks7h4c2d9s.KhQc', 'blind-straight')).toBe(false); // wins, but with a pair
+      expect(is('s:7c7d.Kh9s4c2d3h.Ad6s', 'blind-straight')).toBe(false); // wins with a pair
+      expect(is('s:9c8d.7h6s5c2d3h.9s8s', 'blind-straight')).toBe(false); // the same straight: a tie
+      expect(is('s:2c3d.AhAs9c7d4h.KdQs', 'blind-straight')).toBe(false); // loses
+    });
+  });
 });

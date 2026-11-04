@@ -17,6 +17,7 @@ export {
   optionKeyOf,
   outsDetailText,
   playerNearMiss,
+  withArticle,
 } from './ui/text';
 export { StrategyChart } from './ui/StrategyChart';
 export { DEFAULT_SIM_SETTINGS } from './ui/types';

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { cardFace } from '../../content/cards';
-import { describeResult, handName, useAnnounceFrom } from '../../sim';
+import { describeResult, handName, useAnnounceFrom, withArticle } from '../../sim';
 import type { Card, RngState } from '../../sim';
 // Deep import on purpose: through the strategy barrel this module would sit in the first-paint
 // chunk (Rollup groups modules by what the entry can reach), and only this screen needs it.
@@ -173,7 +173,10 @@ export function DrillShowdown(props: { query: URLSearchParams; seed?: number }) 
     <div class="page drill-page" data-testid="showdown-page">
       <h1>Read the showdown</h1>
       <p class="muted">
-        Nine cards, three quick taps. <Link to="/drill">All drills</Link>
+        Nine cards, three quick taps.{' '}
+        <Link to="/drill" class="inline-link">
+          All drills
+        </Link>
       </p>
       {spot && truth ? (
         <section class="card sd-spot" data-testid="showdown-spot" data-code={spot.code}>
@@ -236,12 +239,12 @@ export function DrillShowdown(props: { query: URLSearchParams; seed?: number }) 
               ? `The dealer has ${handName(truth.result.dealer)}, a pair or better, so the dealer qualifies.`
               : `The dealer has only ${handName(truth.result.dealer)}. It takes a pair or better to qualify, so the Ante pushes.`}{' '}
             {truth.blind === 'pays'
-              ? `You win with ${handName(truth.result.player)}, a straight or better, so the Blind pays.`
+              ? `You win with ${withArticle(handName(truth.result.player))}, a straight or better, so the Blind pays.`
               : truth.blind === 'loses'
                 ? 'You lose the hand, so the Blind loses.'
                 : truth.winner === 'tie'
                   ? 'A tie pushes the Blind.'
-                  : `You win with ${handName(truth.result.player)}, but the Blind only pays for a straight or better, so it pushes.`}
+                  : `You win with ${withArticle(handName(truth.result.player))}, but the Blind only pays for a straight or better, so it pushes.`}
           </p>
           <p class="muted">The five cards that play are bright; the others are dimmed.</p>
         </section>
