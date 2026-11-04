@@ -70,6 +70,7 @@ const UI_KEYS = new Set([
   'showChipRack',
   'showBankroll',
   'showHistory',
+  'verdict',
   'showSettings',
   'showSession',
   'speed',
@@ -574,6 +575,8 @@ export function validateScene(json: unknown): SceneValidation {
     if (!isObj(s.ui)) e.add('scene.ui', 'must be an object');
     else {
       keysOnly(e, 'scene.ui', s.ui, UI_KEYS);
+      if (s.ui.verdict !== undefined && typeof s.ui.verdict !== 'boolean')
+        e.add('scene.ui.verdict', 'must be a boolean');
       if (Array.isArray(s.ui.chips))
         s.ui.chips.forEach((c, i) => money(e, `scene.ui.chips[${i}]`, c));
     }

@@ -1,6 +1,7 @@
 import { dueCodes, reviewAfterAnswer } from './review';
 import {
   DRILL_STREETS,
+  MAX_RECENT_ANSWERS,
   createStorage,
   decodeImport,
   defaultPersisted,
@@ -208,6 +209,9 @@ export class Store {
           }
         : cur.byCategory,
       review,
+      recent: category
+        ? [...cur.recent, `${category}:${correct ? 1 : 0}`].slice(-MAX_RECENT_ANSWERS)
+        : cur.recent,
     };
     this.commit({
       ...this.data,

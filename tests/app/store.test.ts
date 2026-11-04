@@ -7,6 +7,7 @@ const bundle = (ids: string[]): ContentBundle => ({
   chapters: [{ id: 'c', title: 'C', summary: '', lessons: ids }],
   sources: [],
   drill: {},
+  skills: [],
   lessons: ids.map((id) => ({
     id,
     title: id,

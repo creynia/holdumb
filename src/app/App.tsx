@@ -1,4 +1,6 @@
-import { Say } from '../sim';
+// Direct module imports, never the '../sim' barrel: the barrel would pull the simulator into
+// the Home route's first paint (I095).
+import { Say } from '../sim/ui/announcer';
 import { useEffect, useReducer, useRef } from 'preact/hooks';
 import { pagePath, trackPage } from './analytics';
 import { ErrorBoundary, ErrorToast } from './components/ErrorBoundary';

@@ -8,6 +8,7 @@ export { Home } from './screens/Home';
 export { Learn } from './screens/Learn';
 export { LessonView } from './screens/Lesson';
 export { More } from './screens/More';
+export { Play } from './screens/Play';
 export { Settings } from './screens/Settings';
 export { Sources } from './screens/Sources';
 export { Strategy } from './screens/Strategy';

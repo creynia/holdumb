@@ -57,13 +57,13 @@ export interface EvSheetState {
 }
 
 /**
- * `practice` (evMode 'after', D11): acting shows the reveal card. `evShown`: the scene or step shows
+ * `tableMode`: the table's EV mode; 'after' (D11) shows the reveal card when you act. `evShown`: the scene or step shows
  * EVs at all (false = evMode 'never'). The sheet is a modal in portrait and a rail panel in
  * landscape; `decision`: the hand is on a decision street (an open sheet only shows there).
  */
 export function useEvSheet(
   sim: SimDriverHandle,
-  practice: boolean,
+  tableMode: EvMode,
   orientation: Orientation,
   evShown: boolean,
   decision: boolean,
@@ -77,7 +77,7 @@ export function useEvSheet(
   const [reveal, setReveal] = useState<Reveal | null>(null);
   // Opened as a confirm step while a tiered policy waits for the preview ("Checking your move…").
   const [pending, setPending] = useState(false);
-  const evMode: EvMode = !evShown ? 'never' : practice ? 'after' : 'before';
+  const evMode: EvMode = !evShown ? 'never' : tableMode;
   const policy = () => resolveConfirm(settings, scene, d.view.step, d.mode);
   const lastKey = useRef(handKey);
   useEffect(() => {

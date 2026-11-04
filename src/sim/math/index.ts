@@ -30,7 +30,7 @@ export {
   tripsEdge,
   tripsPerHour,
 } from './edges';
-export { isChartHand, preflopClass, preflopClasses, preflopRow, rowSums } from './preflop';
+export { classEv, isChartHand, preflopClass, preflopClasses, preflopRow, rowSums } from './preflop';
 export type { PreflopRow } from './preflop';
 export * as fraction from './fraction';
 export { riverPreview, preflopPreview } from './preview';

@@ -1,9 +1,16 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
-import { PAYTABLE_PRESET_IDS } from '../sim/engine';
-import { CONFIRM_ON, EV_MODES, evModeOfPractice } from '../sim/ui/settings';
-import { DRILL_CATEGORY_IDS, spotFromCode } from '../sim/strategy';
+// The store loads with Home, so it imports no simulator module that the lazy table chunks share
+// (Rollup would split it into a chunk Home preloads, I095): the setting value lists live in
+// ./settingValues, kept equal to the simulator's by tests/app/settings-values.test.ts.
+import {
+  CONFIRM_ON,
+  DRILL_CATEGORY_IDS,
+  EV_MODES,
+  PAYTABLE_PRESET_IDS,
+  evModeOfPractice,
+} from './settingValues';
+import type { DrillCategoryId } from '../sim/strategy/types';
 import { MAX_REVIEW, REVIEW_BOXES, type ReviewItem } from './review';
-import type { DrillCategoryId } from '../sim/strategy';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
 
@@ -64,6 +71,8 @@ export interface LessonProgress {
 
 export type DrillStreet = 'preflop' | 'flop' | 'river';
 export const DRILL_STREETS: readonly DrillStreet[] = ['preflop', 'flop', 'river'];
+/** Drill answers remembered per lens for the skill windows on Learn (I069). */
+export const MAX_RECENT_ANSWERS = 200;
 
 export type DrillLens = 'perfect' | 'practical';
 type StreetCounts = Record<DrillStreet, { answered: number; correct: number }>;
@@ -76,6 +85,8 @@ export interface LensStats {
   byCategory: Partial<Record<DrillCategoryId, { answered: number; correct: number }>>;
   /** The spaced-review deck of missed spots (I067); `clock` is the answers given in this lens. */
   review: ReviewItem[];
+  /** The last answers, oldest first: `<category>:<1 if correct, else 0>`. Older records lack it. */
+  recent: string[];
 }
 
 /**
@@ -112,6 +123,7 @@ const emptyLens = (): LensStats => ({
   byStreet: emptyStreets(),
   byCategory: {},
   review: [],
+  recent: [],
 });
 
 export function emptyDrill(): DrillStats {
@@ -206,6 +218,12 @@ function sanitizeStreets(raw: unknown): StreetCounts {
   return out;
 }
 
+/** A spot code (strategy/drill.ts): street letter, hole, board of 0 / 3 / 5 cards. */
+const CARD = '(?:[2-9TJQKA][shdc])';
+const SPOT_CODE = new RegExp(
+  `^(p:${CARD}{2}\\.|f:${CARD}{2}\\.${CARD}{3}|r:${CARD}{2}\\.${CARD}{5})$`,
+);
+
 function sanitizeLens(raw: unknown): LensStats {
   const d = emptyLens();
   if (!isObj(raw)) return d;
@@ -225,12 +243,8 @@ function sanitizeLens(raw: unknown): LensStats {
   const clock = DRILL_STREETS.reduce((n, s) => n + d.byStreet[s].answered, 0);
   const seen = new Set<string>();
   const keep = (code: unknown): code is string => {
-    if (typeof code !== 'string' || code.length > 64 || seen.has(code)) return false;
-    try {
-      spotFromCode(code);
-    } catch {
+    if (typeof code !== 'string' || code.length > 64 || seen.has(code) || !SPOT_CODE.test(code))
       return false; // unknown or malformed code
-    }
     seen.add(code);
     return true;
   };
@@ -250,6 +264,15 @@ function sanitizeLens(raw: unknown): LensStats {
       if (keep(code)) d.review.push({ code, box: 1, due: clock });
     d.review = d.review.slice(0, MAX_REVIEW);
   }
+  if (Array.isArray(raw.recent))
+    d.recent = raw.recent
+      .filter(
+        (x): x is string =>
+          typeof x === 'string' &&
+          /^[a-z0-9-]+:[01]$/.test(x) &&
+          (DRILL_CATEGORY_IDS as readonly string[]).includes(x.slice(0, -2)),
+      )
+      .slice(-MAX_RECENT_ANSWERS);
   return d;
 }
 

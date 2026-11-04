@@ -22,7 +22,7 @@ import type {
   RiverFacts,
   WagerTier,
 } from '../math';
-import type { OptionKey } from '../scene';
+import type { HandVerdict, OptionKey } from '../scene';
 
 // ---------- exact fractions -> text ----------
 
@@ -168,6 +168,33 @@ export const DECISION_TIER_SHORT: Record<DecisionTier, string> = {
 export function bestOf(preview: DecisionPreview): DecisionOption {
   return preview.options[preview.bestIndex]!;
 }
+
+/**
+ * The skill-versus-luck line after a hand (I059). Every decision fine -> "Played it right" with
+ * what the line expected against what the cards gave. A mistake is named (the costliest only,
+ * once) unless the last decision was the costliest and was just described in words (the I080
+ * narration, or the After-mode reveal): then the line carries only expected against result, so
+ * the cost is never said twice.
+ */
+export function handVerdictText(v: HandVerdict, lastDescribed = false): string {
+  const mistakes = v.decisions.filter((d) => d.tier !== 'best' && d.tier !== 'close');
+  const worst = mistakes.reduce<HandVerdict['decisions'][number] | null>(
+    (w, d) => (!w || compareFractions(d.costCents, w.costCents) > 0 ? d : w),
+    null,
+  );
+  const e = Number(roundFraction(v.expectedCents));
+  const figures = `Expected ${typographic(formatMoney(e, { sign: true }))}, result ${typographic(formatMoney(v.netCents, { sign: true }))}.`;
+  if (!worst) return `Played it right. ${figures}`;
+  if (lastDescribed && worst === v.decisions[v.decisions.length - 1]) return figures;
+  const cost = fmtCostC(Number(roundFraction(worst.costCents)));
+  return `Your ${worst.street} ${worst.label} cost ${cost} on average (${DECISION_TIER_LABEL[worst.tier]}).`;
+}
+
+const compareFractions = (a: Fraction, b: Fraction): number => {
+  const l = a.num * b.den;
+  const r = b.num * a.den;
+  return l < r ? -1 : l > r ? 1 : 0;
+};
 
 const TIER_PHRASE: Record<DecisionTier, string> = {
   best: 'best play',

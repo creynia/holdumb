@@ -1,12 +1,12 @@
 // How the container combines app settings, scene options and URL presets.
 import type { DecisionTier } from '../math';
-import { stepConfirmOn, stepEvMode } from '../scene';
-import type { SceneConfig, SceneStep } from '../scene';
+import { stepConfirmOn, stepEvMode } from '../scene/modes';
+import type { SceneConfig, SceneStep } from '../scene/types';
 import type { ConfirmOn, EvMode, SimSettings } from './types';
 import { effectiveSpeed } from './animation';
 import type { Speed } from './animation';
 
-export { CONFIRM_ON, EV_MODES } from '../scene';
+export { CONFIRM_ON, EV_MODES } from '../scene/modes';
 
 /** EV shown on the buttons and sheet before you act (D39). */
 export function evVisibleBefore(mode: EvMode): boolean {
@@ -69,18 +69,6 @@ export function resolveConfirm(
   return mode === 'sandbox' ? settings.confirmOn : stepConfirmOn(scene, step);
 }
 
-/**
- * Legacy: practice behaviour (EV hidden until confirm) is evMode 'after'. Until the one-tap
- * interaction lands the container still reads this boolean.
- */
-export function resolvePractice(
-  settings: SimSettings,
-  scene: SceneConfig,
-  mode: Mode = 'sandbox',
-): boolean {
-  return resolveEvMode(settings, scene, mode) === 'after';
-}
-
 /** Sandbox: "never" hides every EV, like a scene with `showEV: false` (D39). */
 export function resolveEvShown(
   settings: SimSettings,
@@ -88,7 +76,7 @@ export function resolveEvShown(
   sandbox: boolean,
   step?: SceneStep | null,
 ): boolean {
-  // A lesson: its own evMode (or the showEV / practice aliases), step first (D39).
+  // A lesson: its own evMode (or the showEV / legacy practice aliases), step first (D39).
   if (!sandbox) return evVisibleAfter(stepEvMode(scene, step));
   const explicit = step?.showEV ?? scene.showEV;
   if (explicit !== undefined) return explicit;
