@@ -21,7 +21,7 @@ export function fmtCostC(cents: number): string {
 }
 /** "−$14.08" or "−<$0.01". */
 export function fmtVsBestC(cents: number): string {
-  return `\u2212${fmtCostC(cents)}`;
+  return `\u2212\u2060${fmtCostC(cents)}`;
 }
 
 /** The ante in cents, recovered from a preview (evCents / ev of any option with a non-zero EV). */

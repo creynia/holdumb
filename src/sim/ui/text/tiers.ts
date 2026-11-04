@@ -1,5 +1,4 @@
 // Text helpers (tiers); re-exported unchanged by ../text.ts (I082 split).
-import { formatMoney } from '../../engine';
 import type {
   DecisionOption,
   DecisionPreview,
@@ -9,7 +8,7 @@ import type {
 } from '../../math';
 import type { HandVerdict } from '../../scene';
 import { bestOf, costCents, fmtCostC } from './costs';
-import { fmtCentsFraction, roundFraction, typographic } from './format';
+import { fmtCentsFraction, roundFraction, signedMoney, typographic } from './format';
 
 // ---------- tiers ----------
 
@@ -50,7 +49,7 @@ export function handVerdictText(v: HandVerdict, lastDescribed = false): string {
     null,
   );
   const e = Number(roundFraction(v.expectedCents));
-  const figures = `Expected ${typographic(formatMoney(e, { sign: true }))}, result ${typographic(formatMoney(v.netCents, { sign: true }))}.`;
+  const figures = `Expected ${signedMoney(e)}, result ${signedMoney(v.netCents)}.`;
   if (!worst) return `Played it right. ${figures}`;
   if (lastDescribed && worst === v.decisions[v.decisions.length - 1]) return figures;
   const cost = fmtCostC(Number(roundFraction(worst.costCents)));
@@ -84,7 +83,7 @@ export function narrationText(preview: DecisionPreview, index: number): string {
     o.tier === 'best'
       ? `${o.label}: ${TIER_PHRASE.best}.`
       : `${o.label}: ${TIER_PHRASE[o.tier]}, costs ${fmtCostC(costCents(best, o))} against ${best.label}.`;
-  return `${lead} Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents))}.`;
+  return `${lead} Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents)).replace(/^\u2212/, '\u2212\u2060')}.`;
 }
 
 /** Spoken name of an action button: "Bet 4x, EV plus $5.21, best play". */

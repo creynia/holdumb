@@ -8,6 +8,7 @@ import type { SimulateResult } from '../../strategy/types';
 import { BankrollChart } from '../BankrollChart';
 import { OutcomeHistogram } from '../OutcomeHistogram';
 import { shownNet } from './helpers';
+import { signedMoney } from '../text';
 
 export function AutoPlayResult({
   result,
@@ -38,13 +39,12 @@ export function AutoPlayResult({
     <div data-testid="auto-play-result" style={{ display: 'grid', gap: '8px' }}>
       <BankrollChart series={result.series} bankroll={bankroll} hands={hands} />
       <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
-        <li>Expected result (exact): {formatMoney(shown.expected, { sign: true })}</li>
+        <li>Expected result (exact): {signedMoney(shown.expected)}</li>
         <li>
-          Actual (≈ simulated{sessions > 1 ? ' average' : ''}):{' '}
-          {formatMoney(shown.actual, { sign: true })}
+          Actual (≈ simulated{sessions > 1 ? ' average' : ''}): {signedMoney(shown.actual)}
           {sessions > 1 ? ` ± ${formatMoney(Math.round(main.meanFinalCi95))}` : ''}
         </li>
-        <li>Luck: {formatMoney(shown.luck, { sign: true })}</li>
+        <li>Luck: {signedMoney(shown.luck)}</li>
         {sessions >= 10 ? (
           <>
             <li>Chance of finishing ahead (≈): {(main.probAhead * 100).toFixed(0)}%</li>
@@ -61,7 +61,7 @@ export function AutoPlayResult({
           <li data-testid="auto-play-six-card">
             Six Card{sessions > 1 ? ' (all sessions)' : ''}: {six.taken}{' '}
             {six.taken === 1 ? 'bet' : 'bets'}, {formatMoney(six.wageredCents)} wagered, net{' '}
-            {formatMoney(six.profitCents, { sign: true })}, {six.hits} paid
+            {signedMoney(six.profitCents)}, {six.hits} paid
             {six.skipped ? `, ${six.skipped} skipped (kept a 4x bet)` : ''}
           </li>
         ) : null}

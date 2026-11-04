@@ -128,8 +128,8 @@ describe('AutoPlayPanel cost vs perfect and compare table (I022)', () => {
       (tr) => [...tr.children].map((c) => c.textContent),
     );
     expect(rows).toEqual([
-      ['Expert', '2.27%', '-$6.81', '+$0.26'],
-      ['Basic', '2.38%', '-$7.14', '+$0.59'],
+      ['Expert', '2.27%', '\u2212\u2060$6.81', '+$0.26'],
+      ['Basic', '2.38%', '\u2212\u2060$7.14', '+$0.59'],
     ]);
     evClient.dispose();
   });
@@ -219,7 +219,7 @@ describe('AutoPlayPanel with the Six Card Bonus on (I062)', () => {
     const want = Math.round(30 * perHand - (15_000 * 12816) / 149695);
     const shown = screen.getByText(/Expected result \(exact\):/).textContent;
     const cents = Math.round(Number(shown.replace(/[^\d.]/g, '')) * 100);
-    expect(shown).toMatch(/[-−]\$/);
+    expect(shown).toMatch(/[-−]\u2060?\$/);
     expect(cents).toBe(-want);
     inner.dispose();
   });

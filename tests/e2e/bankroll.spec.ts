@@ -42,11 +42,11 @@ test.describe('bankroll control (I083)', () => {
     await page.getByTestId('bankroll-confirm').click();
     await expect(page.getByTestId('bankroll')).toHaveText('$100');
     await expect(page.getByTestId('rack-short')).toHaveCount(0);
-    await expect(page.getByTestId('session-net')).toHaveText('−$10');
+    await expect(page.getByTestId('session-net')).toHaveText(/^−\u2060?\$10$/);
     await expect(sim).toHaveAttribute('data-hands', before ?? '1');
     await page.getByTestId('session-toggle').click();
     await expect(page.getByTestId('session-topups')).toHaveText('$100');
-    await expect(page.getByTestId('session-net-detail')).toHaveText('−$10');
+    await expect(page.getByTestId('session-net-detail')).toHaveText(/^−\u2060?\$10$/);
 
     // Play on.
     await page.getByRole('button', { name: /Rebet/ }).click();

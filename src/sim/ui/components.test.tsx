@@ -75,7 +75,7 @@ describe('EvSheet', () => {
     expect(within(list).getAllByRole('radio')).toHaveLength(3);
     expect(list.textContent).toContain('+$36.01');
     expect(list.textContent).toContain('+3.601 ante');
-    expect(list.textContent).toContain('−$14.08 vs best');
+    expect(list.textContent).toContain('−\u2060$14.08 vs best');
     expect(list.textContent).toContain('Big mistake');
   });
   it('marks exactly one option best and tags the figures exact', () => {
@@ -836,7 +836,7 @@ describe('small pieces', () => {
       unmount();
     }
     render(<StatusBar bankroll={49_000} onFelt={0} hand={{ outcome: 'lose', net: -3500 }} />);
-    expect(screen.getByTestId('hand-result').textContent).toContain('\u2212$35');
+    expect(screen.getByTestId('hand-result').textContent).toContain('\u2212\u2060$35');
   });
   it('StatusBar shows EV / Details in the third column until a result is showing (I092)', () => {
     const onDetails = vi.fn();
@@ -870,9 +870,9 @@ describe('small pieces', () => {
     expect(screen.getByTestId('hand-result').textContent).toBe('Hand\u2014');
     for (const [outcome, net, text] of [
       ['win', 15_000, 'Won+$150'],
-      ['lose', -3000, 'Lost\u2212$30'],
+      ['lose', -3000, 'Lost\u2212\u2060$30'],
       ['tie', 0, 'Push$0'],
-      ['fold', -2000, 'Folded\u2212$20'],
+      ['fold', -2000, 'Folded\u2212\u2060$20'],
     ] as const) {
       rerender(<StatusBar bankroll={49_000} onFelt={0} hand={{ outcome, net }} />);
       expect(screen.getByTestId('hand-result').textContent).toBe(text);
@@ -884,7 +884,7 @@ describe('small pieces', () => {
     render(<StatusBar bankroll={49_000} onFelt={2500} sessionNet={-1000} />);
     expect(screen.getByTestId('bankroll').textContent).toBe('$490');
     expect(screen.getByTestId('on-felt').textContent).toBe('$25');
-    expect(screen.getByTestId('session-net').textContent).toBe('\u2212$10');
+    expect(screen.getByTestId('session-net').textContent).toBe('\u2212\u2060$10');
   });
   it('a toast with an action renders its button; one without renders none (I094)', () => {
     const onClick = vi.fn();
@@ -1137,7 +1137,7 @@ describe('session net and next-hand chips (D38)', () => {
     const net = equity(r.state) - equity(start);
     expect(net).toBe(-2500);
     render(<StatusBar bankroll={equity(r.state)} onFelt={0} sessionNet={net} />);
-    expect(screen.getByTestId('session-net').textContent).toBe('\u2212$25');
+    expect(screen.getByTestId('session-net').textContent).toBe('\u2212\u2060$25');
   });
   it('Felt ghosts the chips and captions them "Next hand"', () => {
     const { container } = render(
@@ -1189,7 +1189,7 @@ describe('HandHistory (simulator.md 3.7)', () => {
     expect(rows[0]!.textContent).toContain('4x (best)');
     expect(rows[0]!.textContent).toContain('+$45');
     expect(rows[1]!.textContent).toContain('check (best), check (close), fold (mistake)');
-    expect(rows[1]!.textContent).toContain('\u2212$20');
+    expect(rows[1]!.textContent).toContain('\u2212\u2060$20');
     expect(
       within(rows[1]!).getByRole('img', { name: 'You: Queen of clubs, Seven of diamonds' }),
     ).toBeTruthy();
@@ -1211,7 +1211,9 @@ describe('HandHistory (simulator.md 3.7)', () => {
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     const row = screen.getByTestId('hand-history-row');
     // The settlement sentence is re-derived from the deal (describeResult, I010's fold wording).
-    expect(row.textContent).toContain('Folded. Ante -$10, Blind -$10. Net -$20.');
+    expect(row.textContent).toContain(
+      'Folded. Ante \u2212\u2060$10, Blind \u2212\u2060$10. Net \u2212\u2060$20.',
+    );
     const link = screen.getByTestId<HTMLAnchorElement>('replay-spot');
     expect(link.getAttribute('href')).toBe(
       '#/play?hole=Qc7d&board=KdJh9s5c2d&dealer=TdTs&street=river',
@@ -1338,14 +1340,16 @@ describe('SessionPanel (curriculum 8.5)', () => {
   it('shows wagered, perfect, mistakes with the count, luck, the edge per Ante and the Trips line', () => {
     const s = view();
     render(<SessionPanel session={s} defaultOpen />);
-    expect(screen.getByTestId('session-net-detail').textContent).toBe('\u2212$35');
+    expect(screen.getByTestId('session-net-detail').textContent).toBe('\u2212\u2060$35');
     expect(screen.getByTestId('session-wagered').textContent).toBe('$1,780');
-    expect(screen.getByTestId('session-perfect').textContent).toBe('\u2212$13.18');
-    expect(screen.getByTestId('session-mistakes').textContent).toBe('3 mistakes · \u2212$1.20');
-    expect(screen.getByTestId('session-luck').textContent).toBe('\u2212$20.62');
+    expect(screen.getByTestId('session-perfect').textContent).toBe('\u2212\u2060$13.18');
+    expect(screen.getByTestId('session-mistakes').textContent).toBe(
+      '3 mistakes · \u2212\u2060$1.20',
+    );
+    expect(screen.getByTestId('session-luck').textContent).toBe('\u2212\u2060$20.62');
     expect(screen.getByTestId('session-edge').textContent).toBe('2.40% (perfect play 2.18%)');
     expect(screen.getByTestId('session-trips').textContent).toBe(
-      'wagered $210 · expected \u2212$4 · actual +$25',
+      'wagered $210 · expected \u2212\u2060$4 · actual +$25',
     );
     // The displayed split adds up to the result to the cent.
     expect(s.perfectCents - s.mistakesRoundedCents + s.luckCents).toBe(s.net);
@@ -1431,7 +1435,7 @@ describe('review fixes', () => {
   it('shown costs add up with shown EVs', () => {
     const { container } = render(<EvSheet {...baseProps()} />);
     // $36.01 - $21.93 = $14.08
-    expect(container.textContent).toContain('\u2212$14.08 vs best');
+    expect(container.textContent).toContain('\u2212\u2060$14.08 vs best');
     expect(container.textContent).toContain('+$36.01');
     expect(container.textContent).toContain('+$21.93');
   });
@@ -1440,7 +1444,7 @@ describe('review fixes', () => {
     p.options[1]!.evCents = { ...p.options[0]!.evCents };
     p.options[1]!.tier = 'close';
     render(<EvSheet {...baseProps({ preview: p })} />);
-    expect(document.body.textContent).toContain('\u2212<$0.01 vs best');
+    expect(document.body.textContent).toContain('\u2212\u2060<$0.01 vs best');
   });
   it('renders the curriculum 8.4 copy for a math alternative', () => {
     sheet({

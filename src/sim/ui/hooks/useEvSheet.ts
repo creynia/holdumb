@@ -13,7 +13,7 @@ import type { Orientation } from '../Table';
 import { needsConfirm, resolveConfirm } from '../settings';
 import type { EvMode } from '../types';
 import { optionsFor } from '../ActionBar';
-import { actionOfKey, bestOf, narrationText, optionKeyOf } from '../text';
+import { actionOfKey, bestOf, narrationText, optionKeyOf, unjoined } from '../text';
 import type { SimDriverHandle } from './useSimDriver';
 
 /** How long taps are ignored after an act or a new street (the double-tap guard, D40). */
@@ -185,7 +185,7 @@ export function useEvSheet(
     if (r.ok) refocus();
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
     else if (r.ok && said && d.view.state.street !== 'settled')
-      pushToast(said, undefined, undefined, detailsAction ?? undefined);
+      pushToast(said, undefined, unjoined(said), detailsAction ?? undefined);
   };
   // The sheet was opened by the status bar's Details button (I092): closing it returns focus there,
   // and it is not a confirm step (D40).
