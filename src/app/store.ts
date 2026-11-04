@@ -219,10 +219,9 @@ export class Store {
     });
   }
 
-  /** Read the showdown: one answered spot (each question graded on its own). */
+  /** Read the showdown (I061): one answered spot (each question graded on its own). */
   recordShowdown(g: { winner: boolean; qualifies: boolean; blind: boolean; all: boolean }) {
-    const d = this.data.drill;
-    const s = d.modes.showdown;
+    const s = this.data.drill.showdown;
     const bump = (c: { answered: number; correct: number }, ok: boolean) => ({
       answered: c.answered + 1,
       correct: c.correct + (ok ? 1 : 0),
@@ -230,16 +229,31 @@ export class Store {
     this.commit({
       ...this.data,
       drill: {
-        ...d,
-        modes: {
-          ...d.modes,
-          showdown: {
-            winner: bump(s.winner, g.winner),
-            qualifies: bump(s.qualifies, g.qualifies),
-            blind: bump(s.blind, g.blind),
-            spots: s.spots + 1,
-            allRight: s.allRight + (g.all ? 1 : 0),
-          },
+        ...this.data.drill,
+        showdown: {
+          winner: bump(s.winner, g.winner),
+          qualifies: bump(s.qualifies, g.qualifies),
+          blind: bump(s.blind, g.blind),
+          spots: s.spots + 1,
+          allRight: s.allRight + (g.all ? 1 : 0),
+        },
+      },
+    });
+  }
+
+  /** Count the outs (I060): one answer, the number said against the exact count. */
+  recordOuts(guess: number, actual: number) {
+    const o = this.data.drill.outs;
+    const miss = Math.abs(guess - actual);
+    this.commit({
+      ...this.data,
+      drill: {
+        ...this.data.drill,
+        outs: {
+          answered: o.answered + 1,
+          exact: o.exact + (miss === 0 ? 1 : 0),
+          within2: o.within2 + (miss <= 2 ? 1 : 0),
+          absErrorTotal: o.absErrorTotal + miss,
         },
       },
     });

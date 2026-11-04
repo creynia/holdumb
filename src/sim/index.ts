@@ -15,6 +15,7 @@ export {
   fmtFixed,
   handName,
   optionKeyOf,
+  outsDetailText,
   playerNearMiss,
 } from './ui/text';
 export { StrategyChart } from './ui/StrategyChart';

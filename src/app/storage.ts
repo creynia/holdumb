@@ -93,13 +93,34 @@ export interface LensStats {
  * The top-level fields are the perfect-play lens (the only one before I017, so old records migrate
  * into it unchanged); `practical` holds the basic-card lens. Switching lenses never mixes them.
  */
+/** Count-the-outs answers (I060): hit rate and mean absolute error, kept over all answers. */
+export interface OutsStats {
+  answered: number;
+  exact: number;
+  within2: number;
+  /** Sum of |guess - actual|, so the mean error is absErrorTotal / answered. */
+  absErrorTotal: number;
+}
+export const emptyOuts = (): OutsStats => ({ answered: 0, exact: 0, within2: 0, absErrorTotal: 0 });
+
+const emptyCount = (): QuestionCount => ({ answered: 0, correct: 0 });
+export const emptyShowdown = (): ShowdownStats => ({
+  winner: emptyCount(),
+  qualifies: emptyCount(),
+  blind: emptyCount(),
+  spots: 0,
+  allRight: 0,
+});
+
 export interface DrillStats extends LensStats {
   lens: DrillLens;
   practical: LensStats;
   /** "Close calls" (I068): about 60% of spots are close, streets weighted by real play. Default on. */
   closeCalls: boolean;
-  /** Drills that are not "pick an action": read the showdown (I061); count the outs (I060) adds its own. */
-  modes: DrillModes;
+  /** Count the dealer's outs (I060); not per lens, it has no grading lens. */
+  outs: OutsStats;
+  /** Read the showdown (I061); not per lens either. */
+  showdown: ShowdownStats;
 }
 
 export interface QuestionCount {
@@ -114,9 +135,6 @@ export interface ShowdownStats {
   /** Spots answered, and how many had all three right. */
   spots: number;
   allRight: number;
-}
-export interface DrillModes {
-  showdown: ShowdownStats;
 }
 
 /** Stats of the lens currently selected. */
@@ -145,24 +163,14 @@ const emptyLens = (): LensStats => ({
   recent: [],
 });
 
-const emptyCount = (): QuestionCount => ({ answered: 0, correct: 0 });
-export const emptyModes = (): DrillModes => ({
-  showdown: {
-    winner: emptyCount(),
-    qualifies: emptyCount(),
-    blind: emptyCount(),
-    spots: 0,
-    allRight: 0,
-  },
-});
-
 export function emptyDrill(): DrillStats {
   return {
     ...emptyLens(),
     lens: 'perfect',
     practical: emptyLens(),
     closeCalls: true,
-    modes: emptyModes(),
+    outs: emptyOuts(),
+    showdown: emptyShowdown(),
   };
 }
 
@@ -312,30 +320,6 @@ function sanitizeLens(raw: unknown): LensStats {
   return d;
 }
 
-const MAX_COUNT = 10_000_000;
-function sanitizeCount(raw: unknown): QuestionCount {
-  if (!isObj(raw)) return emptyCount();
-  const answered = clampInt(raw.answered, 0, MAX_COUNT, 0);
-  return { answered, correct: Math.min(clampInt(raw.correct, 0, MAX_COUNT, 0), answered) };
-}
-
-function sanitizeModes(raw: unknown): DrillModes {
-  const d = emptyModes();
-  if (!isObj(raw)) return d;
-  if (isObj(raw.showdown)) {
-    const s = raw.showdown;
-    const spots = clampInt(s.spots, 0, MAX_COUNT, 0);
-    d.showdown = {
-      winner: sanitizeCount(s.winner),
-      qualifies: sanitizeCount(s.qualifies),
-      blind: sanitizeCount(s.blind),
-      spots,
-      allRight: Math.min(clampInt(s.allRight, 0, MAX_COUNT, 0), spots),
-    };
-  }
-  return d;
-}
-
 function sanitizeDrill(raw: unknown): DrillStats {
   if (!isObj(raw)) return emptyDrill();
   return {
@@ -343,8 +327,37 @@ function sanitizeDrill(raw: unknown): DrillStats {
     lens: raw.lens === 'practical' ? 'practical' : 'perfect',
     practical: sanitizeLens(raw.practical),
     closeCalls: raw.closeCalls !== false,
-    modes: sanitizeModes(raw.modes),
+    outs: sanitizeOuts(raw.outs),
+    showdown: sanitizeShowdown(raw.showdown),
   };
+}
+
+function sanitizeCount(raw: unknown): QuestionCount {
+  if (!isObj(raw)) return emptyCount();
+  const answered = clampInt(raw.answered, 0, 10_000_000, 0);
+  return { answered, correct: Math.min(clampInt(raw.correct, 0, 10_000_000, 0), answered) };
+}
+
+function sanitizeShowdown(raw: unknown): ShowdownStats {
+  if (!isObj(raw)) return emptyShowdown();
+  const spots = clampInt(raw.spots, 0, 10_000_000, 0);
+  return {
+    winner: sanitizeCount(raw.winner),
+    qualifies: sanitizeCount(raw.qualifies),
+    blind: sanitizeCount(raw.blind),
+    spots,
+    allRight: Math.min(clampInt(raw.allRight, 0, 10_000_000, 0), spots),
+  };
+}
+
+function sanitizeOuts(raw: unknown): OutsStats {
+  const o = emptyOuts();
+  if (!isObj(raw)) return o;
+  o.answered = clampInt(raw.answered, 0, 10_000_000, 0);
+  o.exact = Math.min(clampInt(raw.exact, 0, 10_000_000, 0), o.answered);
+  o.within2 = Math.min(Math.max(clampInt(raw.within2, 0, 10_000_000, 0), o.exact), o.answered);
+  o.absErrorTotal = clampInt(raw.absErrorTotal, 0, 450_000_000, 0);
+  return o;
 }
 
 /** Validates arbitrary parsed JSON into PersistedV1; malformed parts fall back to defaults. */

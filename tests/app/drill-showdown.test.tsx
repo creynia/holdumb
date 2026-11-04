@@ -60,7 +60,7 @@ describe('Drill: read the showdown (I061)', () => {
       "Your pair of kings, ace kicker beats the dealer's pair of kings",
     );
     expect(fb.textContent).toContain('only pays for a straight or better');
-    expect(store.drill.modes.showdown).toMatchObject({
+    expect(store.drill.showdown).toMatchObject({
       winner: { answered: 1, correct: 1 },
       qualifies: { answered: 1, correct: 1 },
       blind: { answered: 1, correct: 1 },
@@ -78,7 +78,7 @@ describe('Drill: read the showdown (I061)', () => {
     expect(fb.textContent).toContain('Winner: you said Tie, it is You');
     expect(fb.textContent).toContain('Dealer qualifies: you said No, it is Yes');
     expect(fb.textContent).toContain('Blind: right');
-    expect(store.drill.modes.showdown).toMatchObject({
+    expect(store.drill.showdown).toMatchObject({
       winner: { answered: 1, correct: 0 },
       qualifies: { answered: 1, correct: 0 },
       blind: { answered: 1, correct: 1 },

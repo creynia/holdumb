@@ -165,7 +165,7 @@ export function DrillShowdown(props: { query: URLSearchParams; seed?: number }) 
   const dealerFive = truth ? new Set<Card>(truth.result.dealer.best5) : null;
   const boardPlays =
     truth && playerFive && dealerFive ? new Set<Card>([...playerFive, ...dealerFive]) : undefined;
-  const s = store.drill.modes.showdown;
+  const s = store.drill.showdown;
   const pct = (c: { answered: number; correct: number }) =>
     c.answered ? `${c.correct}/${c.answered}` : '--';
 

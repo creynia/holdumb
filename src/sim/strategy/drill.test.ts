@@ -8,6 +8,7 @@ import {
   MIXED_STREET_WEIGHTS,
   gradeSpot,
   nextSpot,
+  pickOutsCategory,
   secondBestRegret,
   spotCode,
   spotFromCode,
@@ -17,7 +18,8 @@ import { matchesAny } from './predicates';
 import { handClass } from './ranks';
 import { PREFLOP_4X_PERFECT, RULE_DEFS } from './rules';
 import { DRILL_CATEGORY_IDS } from './types';
-import type { DrillFilter, DrillSpot } from './types';
+import type { DrillCategoryId, DrillFilter, DrillSpot } from './types';
+import { riverFacts } from '../math/alternatives';
 import { parseCards } from '../engine/cards';
 
 function many(filter: DrillFilter, n: number, seed = 1): DrillSpot[] {
@@ -344,5 +346,50 @@ describe('Close calls (I068)', () => {
       'p:Qh2h.',
       'p:4sQd.',
     ]);
+  });
+});
+
+describe('count the outs spots (I060)', () => {
+  it('the band mix is seeded and puts at least 40% in the 19-23 edge band', () => {
+    const run = (seed: number) => {
+      let r = seedRng(seed);
+      const out: string[] = [];
+      for (let i = 0; i < 4000; i++) {
+        let c: string;
+        [c, r] = pickOutsCategory(r);
+        out.push(c);
+      }
+      return out;
+    };
+    const a = run(60);
+    expect(run(60)).toEqual(a); // a seed replays
+    const share = (id: string) => a.filter((c) => c === id).length / a.length;
+    expect(share('river-outs-edge')).toBeGreaterThanOrEqual(0.4);
+    expect(share('river-outs-low')).toBeGreaterThan(0.2);
+    expect(share('river-outs-high')).toBeGreaterThan(0.2);
+    expect(new Set(a)).toEqual(new Set(['river-outs-edge', 'river-outs-low', 'river-outs-high']));
+  });
+  it('spots drawn from the mix have no hidden pair and the right number of outs', () => {
+    let r = seedRng(61);
+    const bands: Record<string, [number, number]> = {
+      'river-outs-low': [0, 18],
+      'river-outs-edge': [19, 23],
+      'river-outs-high': [24, 45],
+    };
+    let edge = 0;
+    for (let i = 0; i < 120; i++) {
+      let cat: DrillCategoryId;
+      [cat, r] = pickOutsCategory(r);
+      let s: DrillSpot;
+      [s, r] = nextSpot(r, { street: 'river', category: cat });
+      expect(s.category).toBe(cat);
+      const f = riverFacts(s.hole, s.board);
+      expect(f.hidden).toBe(false);
+      const [lo, hi] = bands[cat]!;
+      expect(f.outs).toBeGreaterThanOrEqual(lo);
+      expect(f.outs).toBeLessThanOrEqual(hi);
+      if (cat === 'river-outs-edge') edge++;
+    }
+    expect(edge / 120).toBeGreaterThanOrEqual(0.3); // 45% expected; wide margin for 120 draws
   });
 });
