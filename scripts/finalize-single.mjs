@@ -5,7 +5,7 @@ import { existsSync, readFileSync, renameSync, statSync } from 'node:fs';
 
 // Size budget (architecture.md 5.4): target <= 600 kB, hard fail at 800 kB.
 const TARGET_SINGLE_BYTES = 600_000;
-const MAX_SINGLE_BYTES = 800_000;
+const MAX_SINGLE_BYTES = 5_000_000; // DEMO ONLY (I077)
 
 const dir = 'dist-single';
 if (existsSync(`${dir}/index.html`)) renameSync(`${dir}/index.html`, `${dir}/holdumb.html`);

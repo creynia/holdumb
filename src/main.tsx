@@ -1,4 +1,6 @@
 import { render } from 'preact';
+import { HASH } from './app/demo-heavy';
+(window as unknown as { __demo: number }).__demo = HASH;
 import content from '#content';
 import { Announcer } from './app/announcer';
 import { App } from './app/App';
