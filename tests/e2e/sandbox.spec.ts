@@ -860,3 +860,30 @@ test('Details on the result toast of a hand that just ended opens the reveal; Es
   await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
   await expect(details).toBeFocused();
 });
+
+// I094 flake: a runner that is slow to run passive effects used to leave focus on the toast's
+// Details button when the reveal appeared, so an Esc right then was ignored and the sheet stayed.
+// This presses Esc in the same task the reveal is first rendered, before any passive effect ran.
+test('Esc closes the reveal even when pressed the moment it appears (no wait for focus effects)', async ({
+  page,
+}) => {
+  await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+  await ready(page);
+  await opt(page, 'check').click();
+  await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'river');
+  const details = page.getByTestId('toast-details');
+  await expect(details).toBeVisible();
+  const opened = await page.evaluate(async () => {
+    const btn = document.querySelector<HTMLElement>('[data-testid="toast-details"]')!;
+    btn.click();
+    // let preact render the click (a microtask), but run no timer or frame: passive effects wait
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    const sheet = document.querySelector('[data-testid="ev-sheet"]');
+    const target = document.activeElement ?? document.body;
+    target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    return !!sheet;
+  });
+  expect(opened, 'the reveal was on screen when Esc was pressed').toBe(true);
+  await expect(page.getByTestId('ev-sheet')).toHaveCount(0, { timeout: 2000 });
+  await expect(details).toBeFocused();
+});
