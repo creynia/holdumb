@@ -6,7 +6,7 @@ import { lazyScreen } from './lazy';
 
 export { Home } from './screens/Home';
 export const Play = lazyScreen(() => import('./screens/Play').then((m) => m.Play));
-export const Drill = lazyScreen(() => import('./screens/Drill').then((m) => m.Drill), true);
+export const Drill = lazyScreen(() => import('./screens/DrillRoute').then((m) => m.Drill), true);
 export const Learn = lazyScreen(() => import('./screens/Learn').then((m) => m.Learn), true);
 export const LessonView = lazyScreen(
   () => import('./screens/Lesson').then((m) => m.LessonView),

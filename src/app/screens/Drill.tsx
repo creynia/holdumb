@@ -517,7 +517,10 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
             <Link to="/drill?mode=outs" class="btn btn-ghost" data-testid="outs-mode-on">
               Count the dealer's outs
             </Link>
-          )}
+          )}{' '}
+          <Link to="/drill?mode=showdown" class="btn btn-ghost" data-testid="showdown-mode-on">
+            Read the showdown
+          </Link>
         </p>
         {outsMode && d.outs.answered > 0 && (
           <p class="muted" data-testid="outs-stats">

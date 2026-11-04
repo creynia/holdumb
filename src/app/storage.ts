@@ -103,6 +103,15 @@ export interface OutsStats {
 }
 export const emptyOuts = (): OutsStats => ({ answered: 0, exact: 0, within2: 0, absErrorTotal: 0 });
 
+const emptyCount = (): QuestionCount => ({ answered: 0, correct: 0 });
+export const emptyShowdown = (): ShowdownStats => ({
+  winner: emptyCount(),
+  qualifies: emptyCount(),
+  blind: emptyCount(),
+  spots: 0,
+  allRight: 0,
+});
+
 export interface DrillStats extends LensStats {
   lens: DrillLens;
   practical: LensStats;
@@ -110,6 +119,22 @@ export interface DrillStats extends LensStats {
   closeCalls: boolean;
   /** Count the dealer's outs (I060); not per lens, it has no grading lens. */
   outs: OutsStats;
+  /** Read the showdown (I061); not per lens either. */
+  showdown: ShowdownStats;
+}
+
+export interface QuestionCount {
+  answered: number;
+  correct: number;
+}
+/** Read the showdown: each of the three questions is tracked on its own. */
+export interface ShowdownStats {
+  winner: QuestionCount;
+  qualifies: QuestionCount;
+  blind: QuestionCount;
+  /** Spots answered, and how many had all three right. */
+  spots: number;
+  allRight: number;
 }
 
 /** Stats of the lens currently selected. */
@@ -145,6 +170,7 @@ export function emptyDrill(): DrillStats {
     practical: emptyLens(),
     closeCalls: true,
     outs: emptyOuts(),
+    showdown: emptyShowdown(),
   };
 }
 
@@ -303,6 +329,25 @@ function sanitizeDrill(raw: unknown): DrillStats {
     practical: sanitizeLens(raw.practical),
     closeCalls: raw.closeCalls !== false,
     outs: sanitizeOuts(raw.outs),
+    showdown: sanitizeShowdown(raw.showdown),
+  };
+}
+
+function sanitizeCount(raw: unknown): QuestionCount {
+  if (!isObj(raw)) return emptyCount();
+  const answered = clampInt(raw.answered, 0, 10_000_000, 0);
+  return { answered, correct: Math.min(clampInt(raw.correct, 0, 10_000_000, 0), answered) };
+}
+
+function sanitizeShowdown(raw: unknown): ShowdownStats {
+  if (!isObj(raw)) return emptyShowdown();
+  const spots = clampInt(raw.spots, 0, 10_000_000, 0);
+  return {
+    winner: sanitizeCount(raw.winner),
+    qualifies: sanitizeCount(raw.qualifies),
+    blind: sanitizeCount(raw.blind),
+    spots,
+    allRight: Math.min(clampInt(raw.allRight, 0, 10_000_000, 0), spots),
   };
 }
 

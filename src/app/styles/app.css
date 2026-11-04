@@ -1302,3 +1302,50 @@ html[data-route='play'] body {
   align-items: center;
   min-height: 44px;
 }
+
+/* Read the showdown (I061) */
+.sd-spot {
+  display: grid;
+  gap: 0.6rem;
+}
+.sd-hand {
+  display: grid;
+  gap: 0.2rem;
+}
+.sd-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.sd-hand .cards {
+  font-size: 1.15em;
+}
+.pc-out {
+  /* Not one of the five that play: a dashed grey edge on the same 1px box. The ink is never dimmed
+     (it must stay >= 4.5:1), the same cue as the felt cards (I007). */
+  border-style: dashed;
+  border-color: #6f6c62;
+}
+.sd-q {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.sd-q legend {
+  padding: 0;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+.sd-q .choice-row .btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+.sd-q .btn.sd-right {
+  outline: 3px solid var(--tier-best, #1a7f4b);
+  outline-offset: -3px;
+}
+.sd-q .btn.sd-wrong {
+  outline: 3px solid var(--tier-blunder, #c0262d);
+  outline-offset: -3px;
+}
