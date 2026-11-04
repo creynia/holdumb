@@ -145,14 +145,10 @@ export function Felt({
     .join(' ');
   // Spoken through the app's single announcer (I036); a fold is announced by its toast instead.
   useAnnounce(quiet ? '' : summary, { dedupeKey: 'felt' });
-  const playerFive = plays?.player ? new Set<CardId>(plays.player) : null;
-  const dealerFive = plays?.dealer ? new Set<CardId>(plays.dealer) : null;
-  const playsHole = (c: CardId | undefined) =>
-    playerFive && c !== undefined ? playerFive.has(c) : undefined;
-  const playsDealer = (c: CardId | undefined) =>
-    dealerFive && c !== undefined ? dealerFive.has(c) : undefined;
-  const playsBoard = (c: CardId) =>
-    playerFive || dealerFive ? !!(playerFive?.has(c) || dealerFive?.has(c)) : undefined;
+  const pf = plays?.player ? new Set<CardId>(plays.player) : null;
+  const df = plays?.dealer ? new Set<CardId>(plays.dealer) : null;
+  const inFive = (f: Set<CardId> | null, c?: CardId) =>
+    f && c !== undefined ? f.has(c) : undefined;
   const amountOf = (id: CircleId): Cents => bets[id] ?? 0;
   return (
     <div
@@ -195,7 +191,7 @@ export function Felt({
                     h={cs.h}
                     fourColor={fourColor}
                     slotLabel={`Dealer card ${i + 1}, face down`}
-                    plays={faceUp ? playsDealer(card) : undefined}
+                    plays={faceUp ? inFive(df, card) : undefined}
                     delayMs={faceUp ? (d?.reveal[i] ?? 0) : (d?.dealer[i] ?? 0)}
                     durMs={dur}
                   />
@@ -226,7 +222,7 @@ export function Felt({
                 h={bs.h}
                 fourColor={fourColor}
                 slotLabel={BOARD_NAMES[i]}
-                plays={playsBoard(card)}
+                plays={pf || df ? !!(pf?.has(card) || df?.has(card)) : undefined}
                 delayMs={i < 3 ? (d?.flop[i] ?? 0) : i === 3 ? (d?.turn ?? 0) : (d?.river ?? 0)}
                 durMs={dur}
               />
@@ -273,7 +269,7 @@ export function Felt({
                 <Card
                   key={`p-${hole[i]}`}
                   card={hole[i]}
-                  plays={playsHole(hole[i])}
+                  plays={inFive(pf, hole[i])}
                   x={p.x}
                   y={p.y}
                   w={cs.w}

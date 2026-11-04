@@ -16,10 +16,12 @@ import { describe, expect, it } from 'vitest';
  * route's preloads (follow-up item).
  * 2026-11-03: raw raised to 220 kB (gzip stays 85 kB). I078 Watch +6.4 kB (2026-11-03); I095 tracks
  * the structural fix (keep src/sim out of Home's preloads).
+ * 2026-11-03: gzip raised to 85.2 kB: I007 (best-five marks on the felt) adds about 90 B gzip to the
+ * table code, and main was already within 50 B of the old limit.
  */
 const BUDGET = {
   entryRaw: 220_000,
-  entryGzip: 85_000,
+  entryGzip: 85_200,
   cssRaw: 40_000,
   workerRaw: 60_000,
 };
