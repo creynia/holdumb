@@ -81,6 +81,48 @@ jobs:
           name: playwright-report
           path: playwright-report
 
+  # Lighthouse budgets for the Pages build (I077): mobile emulation (Moto G Power, 4x CPU) on #/,
+  # #/play and #/learn/a-full-hand. Serves the check job's build artifact (no rebuild, I043).
+  # Not a required check yet: make it required after two green weeks. LCP must be <= 2.5 s on Home
+  # and Play; the lesson page waits for the lazy lesson bundle (3.2-3.6 s measured), so it gets 4 s
+  # until that is fixed (lighthouserc.json assertMatrix).
+  lighthouse:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Lighthouse 11 still has the PWA category and the installable-manifest audit (12 removed them).
+      LHCI: '@lhci/cli@0.13.0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+      - name: Lighthouse (collect)
+        id: collect
+        run: npx --yes "$LHCI" collect
+      - name: Lighthouse (reports)
+        if: always()
+        run: |
+          npx --yes "$LHCI" upload --target=filesystem --outputDir=lhci-report || true
+          npx --yes "$LHCI" upload --target=temporary-public-storage || true
+          node scripts/lhci-summary.mjs >> "$GITHUB_STEP_SUMMARY" || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse
+          path: lhci-report
+          retention-days: 14
+      - name: Lighthouse (budgets)
+        # Always checked once collect worked, even if the reports or the summary failed.
+        if: always() && steps.collect.outcome == 'success'
+        run: npx --yes "$LHCI" assert
+
   # Screenshot comparison at 4 viewports x light/dark (playwright.visual.config.ts). Runs in the
   # Playwright image that matches @playwright/test 1.56.1, so fonts and rasterisation are the same
   # as when the baselines were generated. Baselines: tests/visual/__screenshots__/.
