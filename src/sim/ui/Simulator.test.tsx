@@ -419,6 +419,94 @@ describe('Simulator container', () => {
     });
   });
 
+  describe('narration toast Details and the same-tick guard (I094)', () => {
+    const FLOP_SCENE: SceneConfig = {
+      id: 'sandbox',
+      version: 1,
+      startAt: {
+        street: 'flop',
+        deal: { player: ['Ah', 'Tc'], flop: ['7d', 'Ks', '2c'], dealer: ['9d', '9s'] },
+      },
+    };
+    const ready = () =>
+      waitFor(() => expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'), {
+        timeout: 8000,
+      });
+    it('one tap acts, the toast offers Details, Details opens the reveal and Esc returns focus to it', async () => {
+      const { evClient } = mount(FLOP_SCENE);
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="check"]')!);
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river'),
+      );
+      const btn = await screen.findByTestId('toast-details');
+      expect(btn.textContent).toBe('Details');
+      expect(screen.queryByTestId('ev-sheet')).toBeNull();
+      fireEvent.click(btn);
+      await flush();
+      const sheet = screen.getByTestId('ev-sheet');
+      expect(screen.getByTestId('reveal-result').textContent).toMatch(/Check/);
+      expect(sheet).toBeTruthy();
+      fireEvent.keyDown(sheet, { key: 'Escape' });
+      await act(() => new Promise((r) => setTimeout(r, 20)));
+      expect(screen.queryByTestId('ev-sheet')).toBeNull();
+      expect(screen.getByTestId('toast-details')).toBe(document.activeElement);
+      evClient.dispose();
+    });
+    it('Continue (not only Esc) returns focus to the toast Details button', async () => {
+      const { evClient } = mount(FLOP_SCENE, { settings: { ...settings, confirmOn: 'never' } });
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="check"]')!);
+      const btn = await screen.findByTestId('toast-details');
+      fireEvent.click(btn);
+      await flush();
+      const cont = [...document.querySelectorAll('button')].find(
+        (b) => b.textContent === 'Continue',
+      );
+      expect(cont, 'the reveal has a Continue button').toBeTruthy();
+      fireEvent.click(cont!);
+      await act(() => new Promise((r) => setTimeout(r, 20)));
+      expect(screen.queryByTestId('ev-sheet')).toBeNull();
+      expect(screen.getByTestId('toast-details')).toBe(document.activeElement);
+      evClient.dispose();
+    });
+    it('no toast and no button with EV never; with EV after the reveal opens by itself', async () => {
+      const never = mount(FLOP_SCENE, { settings: { ...settings, evMode: 'never' } });
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="check"]')!);
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river'),
+      );
+      expect(screen.queryByTestId('toast-details')).toBeNull();
+      never.evClient.dispose();
+      cleanup();
+      const after = mount(FLOP_SCENE, { settings: { ...settings, evMode: 'after' } });
+      await ready();
+      fireEvent.click(document.querySelector('[data-option="check"]')!);
+      await waitFor(() => expect(screen.queryByTestId('ev-sheet')).toBeTruthy());
+      expect(screen.queryByTestId('toast-details')).toBeNull();
+      after.evClient.dispose();
+    });
+    it('two clicks in the same tick play one move, never "You cannot check here."', async () => {
+      const { evClient } = mount(FLOP_SCENE);
+      await ready();
+      const check = document.querySelector('[data-option="check"]')!;
+      await act(() => {
+        // Both clicks run before the first act has been awaited.
+        check.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        check.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river'),
+      );
+      await flush();
+      expect(screen.getByTestId('simulator').getAttribute('data-street')).toBe('river');
+      const toasts = [...document.querySelectorAll('.sim-toast')].map((t) => t.textContent);
+      expect(toasts.join(' ')).not.toMatch(/cannot|Working on the last move/i);
+      evClient.dispose();
+    });
+  });
+
   describe('hand verdict line (I059)', () => {
     const RIVER_19: SceneConfig = {
       id: 'sandbox',
@@ -467,7 +555,7 @@ describe('Simulator container', () => {
       expect(text).toMatch(
         /^Fold: (a small mistake|a mistake|a big mistake), costs \$[\d.,]+ against /,
       );
-      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
+      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.(Details)?$/);
       expect(text).not.toMatch(/on average/);
       evClient.dispose();
     });
@@ -479,7 +567,7 @@ describe('Simulator container', () => {
       const after = await playRiver('fold', { settings: { ...settings, evMode: 'after' } });
       // the reveal card has the cost, so the toast carries only the figures
       const text = document.querySelector('.sim-toast')!.textContent;
-      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.$/);
+      expect(text).toMatch(/Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\.(Details)?$/);
       expect(text).not.toMatch(/cost/);
       after.evClient.dispose();
     });
