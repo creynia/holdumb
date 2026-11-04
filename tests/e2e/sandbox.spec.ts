@@ -260,7 +260,7 @@ test.describe('sandbox', () => {
         return out;
       };
       const withToast = await boxes();
-      await toast.locator('button').click();
+      await toast.getByRole('button', { name: 'Dismiss' }).click();
       await expect(toast).toHaveCount(0);
       const without = await boxes();
       for (const k of Object.keys(withToast)) {
@@ -305,7 +305,7 @@ test.describe('sandbox', () => {
         ),
       );
     const withToast = await at();
-    await toast.locator('button').click();
+    await toast.getByRole('button', { name: 'Dismiss' }).click();
     await expect(toast).toHaveCount(0);
     const without = await at();
     withToast
@@ -763,6 +763,40 @@ for (const vp of [
   });
 }
 
+// I094: the narration toast offers Details, which opens the reveal for the move just made.
+for (const vp of [
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+]) {
+  test(`the toast's Details opens the reveal for that move and Esc returns focus to it at ${vp.width}x${vp.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+    await ready(page);
+    await opt(page, 'check').click();
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'river');
+    const details = page.getByTestId('toast-details');
+    await expect(details).toBeVisible();
+    expect((await details.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    // the bar does not move with the button present (page coordinates)
+    const bar = async () =>
+      page.locator('[role="group"][aria-label="Your decision"]').evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [r.x + scrollX, r.y + scrollY, r.width, r.height];
+      });
+    const withButton = await bar();
+    await details.click();
+    const reveal = page.getByTestId('reveal-result');
+    await expect(reveal).toContainText('Check');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+    await expect(details).toBeFocused();
+    const after = await bar();
+    withButton.forEach((v, i) => expect(Math.abs(v - after[i]!)).toBeLessThanOrEqual(1));
+  });
+}
+
 // I047: keyboard shortcuts press the same buttons as a tap (one-tap and confirm rules included).
 test.describe('keyboard shortcuts', () => {
   const ready = (page: import('@playwright/test').Page) =>
@@ -805,4 +839,24 @@ test.describe('keyboard shortcuts', () => {
     await page.keyboard.press('2');
     await expect(sim).toHaveAttribute('data-street', 'settled');
   });
+});
+
+// I094: the combined narration + result toast keeps its Details button when the hand ends.
+test('Details on the result toast of a hand that just ended opens the reveal; Esc returns focus to it', async ({
+  page,
+}) => {
+  await page.goto('/#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river&speed=instant');
+  await ready(page);
+  await opt(page, 'play-1').click();
+  await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
+  const toast = page.locator('.sim-toast');
+  await expect(toast).toContainText('Bet 1x: a mistake, costs $3.59 against Fold');
+  await expect(toast).toContainText('Net');
+  const details = page.getByTestId('toast-details');
+  await expect(details).toBeVisible();
+  await details.click();
+  await expect(page.getByTestId('reveal-result')).toContainText('Bet 1x');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('ev-sheet')).toHaveCount(0);
+  await expect(details).toBeFocused();
 });

@@ -64,7 +64,7 @@ describe('Six Card Bonus panel (I062)', () => {
     expect(last.textContent).toMatch(/best five: .+ · (\+\$\d|−\$5$)/);
     fireEvent.click(screen.getByTestId('session-toggle'));
     expect(screen.getByTestId('session-six-card').textContent).toMatch(
-      /^wagered \$5 · expected −\$0\.97 · actual/,
+      /^wagered \$5 · expected −\u2060\$0\.97 · actual/,
     );
   });
 

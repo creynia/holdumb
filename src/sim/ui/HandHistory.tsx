@@ -1,12 +1,13 @@
 import './container.css';
 import { useState } from 'preact/hooks';
-import { RANK_CHARS, cardName, formatMoney, parseCards, recordResult } from '../engine';
+import { RANK_CHARS, cardName, parseCards, recordResult } from '../engine';
 import type { Card, HandRecord, TableRules } from '../engine';
 import { cmp, frac } from '../math/fraction';
 import type { Fraction } from '../math';
 import { STREET_OF_CODE } from '../engine';
 import { replayQuery } from '../scene';
 import { describeResult, typographic } from './text';
+import { signedMoney } from './text';
 
 export interface HandHistoryProps {
   /** Newest first (driver view). */
@@ -98,7 +99,7 @@ export function HandHistory({ records, rules, replayHref }: HandHistoryProps) {
                 class="sim-history-head"
                 aria-expanded={open}
                 aria-controls={id}
-                aria-label={`Hand ${r.n}, net ${typographic(formatMoney(r.net, { sign: true }))}, ${actionsText(r)}`}
+                aria-label={`Hand ${r.n}, net ${typographic(signedMoney(r.net))}, ${actionsText(r)}`}
                 onClick={() => setOpenN(open ? null : r.n)}
               >
                 <span class="sim-history-n">#{r.n}</span>
@@ -108,9 +109,7 @@ export function HandHistory({ records, rules, replayHref }: HandHistoryProps) {
                   <InlineCards codes={r.d} label="Dealer" />
                 </span>
                 <span class="sim-history-actions">{actionsText(r)}</span>
-                <span class="sim-money sim-history-net">
-                  {typographic(formatMoney(r.net, { sign: true }))}
-                </span>
+                <span class="sim-money sim-history-net">{typographic(signedMoney(r.net))}</span>
               </button>
               {open ? (
                 <div id={id} class="sim-history-body">

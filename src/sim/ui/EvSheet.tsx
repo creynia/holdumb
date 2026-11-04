@@ -1,16 +1,9 @@
 import './sim.css';
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
-import type { ComponentChildren } from 'preact';
-import type { OptionKey } from '../scene';
-import { basicFlopRule, riverFacts } from '../math';
-import type { DecisionPreview, PreviewRequest } from '../math';
-import { alternativeCopy, flopRuleLine } from './altCopy';
-import { DealerOuts } from './DealerOuts';
+import { alternativeCopy } from './altCopy';
 import { EvOptionList } from './EvOptionList';
-import type { BetterAlternative } from '../math';
 import { TierBadge } from './TierBadge';
 import { WhyTable } from './WhyTable';
-import type { EvMode } from './types';
 import {
   OPTION_LABELS,
   isUsablePreview,
@@ -24,91 +17,15 @@ import {
   typographic,
 } from './text';
 import { Say } from './announcer';
+import { Alternative } from './evsheet/Alternative';
+import { ResultCard } from './evsheet/ResultCard';
+import { sheetActions } from './evsheet/SheetActions';
+import { SheetLoading } from './evsheet/SheetStates';
+import { useSheetFocus } from './evsheet/useSheetFocus';
+import type { EvSheetProps } from './evsheet/types';
+import { sheetFacts } from './evsheet/facts';
 
-export interface EvSheetProps {
-  /** null while the flop EV is still computing (shows a skeleton; Confirm stays enabled). */
-  preview: DecisionPreview | null;
-  /** The option the player tapped. */
-  selected: OptionKey;
-  onSelect?: (k: OptionKey) => void;
-  /** Omit for a read-only result sheet: no Confirm/Cancel, rows not selectable. */
-  onConfirm?: (k: OptionKey) => void;
-  onCancel?: () => void;
-  /** `error`: the EV could not be computed. Shows "EV not available"; Confirm still works. */
-  error?: boolean;
-  /** 0..1 progress of a running preview. */
-  progress?: number;
-  /** `sheet`: modal dialog (portrait); `rail`: panel in the landscape rail; `inline`: plain panel. */
-  variant?: 'sheet' | 'rail' | 'inline';
-  /**
-   * EV visibility (D11, D40): `before` the full sheet; `after` EV hidden until the move is made;
-   * `never` no option rows and no numbers at all (the sheet is then only the confirm step).
-   */
-  evMode?: EvMode;
-  /**
-   * Opened as the confirm step (D40): a Mistake or Big mistake shows its warning at once and the
-   * primary reads "Do it anyway". Otherwise the primary reads "Confirm <label>".
-   */
-  confirming?: boolean;
-  /** A tiered confirm waiting for the preview: "Checking your move…" and Cancel only. */
-  checking?: boolean;
-  /** Set once the move is made in evMode 'after': shows the result card and the full sheet. */
-  chosen?: OptionKey | null;
-  onContinue?: () => void;
-  /** `basic` = EV + badge; `full` = + alternative + Why? */
-  detail?: 'basic' | 'full';
-  whyOpen?: boolean;
-  onWhyToggle?: (open: boolean) => void;
-  /** Adds "about $x an hour" to the cost line. */
-  handsPerHour?: number;
-  /** Options a scene forbids are hidden. */
-  allowed?: readonly OptionKey[];
-  /** math.betterAlternative(...) for the selected option; renders curriculum 8.4 copy. */
-  alternative?: BetterAlternative | null;
-  /** Move focus into the sheet when it opens even when it is not modal (opened by Details, I092). */
-  focusOnOpen?: boolean;
-  /** The cards behind the preview. On the river it adds the dealer-outs facts (lesson 12). */
-  request?: PreviewRequest | null;
-}
-
-const FOCUSABLE =
-  'button:not([disabled]),[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
-
-/** The revealed result of a move ('after'), e.g. "Bet 2x was worth $0.48 more than Check". */
-function ResultCard({
-  preview,
-  chosen,
-  children,
-}: {
-  preview: DecisionPreview;
-  chosen: OptionKey;
-  children?: ComponentChildren;
-}) {
-  const best = bestOf(preview);
-  const o = preview.options.find((x) => optionKeyOf(x.action) === chosen);
-  if (!o) return null;
-  const cost = costCents(best, o);
-  const isBest = optionKeyOf(best.action) === chosen || o.tier === 'best';
-  return (
-    <div class="sim-result" data-testid="reveal-result">
-      <Say
-        text={
-          isBest
-            ? `${o.label} was the best play.`
-            : `${best.label} was worth ${fmtCostC(cost)} more than ${o.label}.`
-        }
-        dedupeKey="ev-result"
-      />
-      <TierBadge tier={o.tier} />
-      <p>
-        {isBest
-          ? `${o.label} was the best play.`
-          : `${best.label} was worth ${fmtCostC(cost)} more than ${o.label}.`}
-      </p>
-      {children}
-    </div>
-  );
-}
+export type { EvSheetProps } from './evsheet/types';
 
 /** The EV sheet (simulator.md 3.4): headline, every option, the better alternative, "Why?", Confirm. */
 export function EvSheet({
@@ -137,17 +54,6 @@ export function EvSheet({
   const preview = isUsablePreview(rawPreview) ? rawPreview : null;
   const failed = !!error || (!!rawPreview && !preview);
   const rootRef = useRef<HTMLDivElement>(null);
-  // Escape (and closing) return focus to whatever opened the sheet.
-  const opener = useRef<Element | null>(
-    typeof document === 'undefined' ? null : document.activeElement,
-  );
-  useEffect(
-    () => () => {
-      const el = opener.current;
-      if (el instanceof HTMLElement && el.isConnected) el.focus();
-    },
-    [],
-  );
   const titleId = useId();
   const whyId = useId();
   // The skeleton only appears after 150 ms, so fast previews never flash it.
@@ -161,17 +67,7 @@ export function EvSheet({
   useEffect(() => setWhy(!!whyOpen), [whyOpen]);
   const readOnly = !onConfirm && !onCancel;
   const modal = variant === 'sheet';
-  useEffect(() => {
-    if (modal || focusOnOpen)
-      rootRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
-  }, [modal, focusOnOpen]);
-  // The confirm sheet turns into the reveal in place ('after'): focus moves to Continue, so it
-  // never falls back to the page body when the Confirm button goes away.
-  const revealed = chosen != null;
-  useEffect(() => {
-    if (revealed) rootRef.current?.querySelector<HTMLElement>('[data-continue]')?.focus();
-  }, [revealed]);
-
+  const onKey = useSheetFocus({ rootRef, modal, focusOnOpen, chosen, onCancel });
   const confirmed = chosen != null;
   // 'never' shows no EV at all; 'after' hides it until the move is made (then the reveal shows it).
   const noEv = evMode === 'never' && !confirmed;
@@ -191,27 +87,6 @@ export function EvSheet({
   const danger = warn && confirming;
   const label = OPTION_LABELS[selected];
   const confirm = () => onConfirm?.(selected);
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      onCancel?.();
-      return;
-    }
-    if (modal && e.key === 'Tab' && rootRef.current) {
-      const els = [...rootRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-      if (els.length === 0) return;
-      const first = els[0]!;
-      const last = els[els.length - 1]!;
-      const active = document.activeElement;
-      if (e.shiftKey && (active === first || !rootRef.current.contains(active))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  };
   const toggleWhy = () => {
     const next = !why;
     setWhy(next);
@@ -225,33 +100,13 @@ export function EvSheet({
     preview && opt && handsPerHour && !isBest
       ? wrongEveryTimePerHour(preview, opt, handsPerHour)
       : null;
-  // River facts (lesson 12): on every river preview, hidden only while EV after the move hides it.
-  // 47 hand evaluations, so cheap enough to recompute on each render.
-  const river =
-    preview?.street === 'river' &&
-    request?.street === 'river' &&
-    request.board.length === 5 &&
-    !hidden
-      ? riverFacts(request.hole, request.board)
-      : null;
-  // Flop (I058): which basic-card rule fires. Same visibility as the river facts: hidden while
-  // EV after the move hides it, shown after the move, and never in a read-only sheet's absence.
-  const flopRule =
-    detail === 'full' &&
-    preview?.street === 'flop' &&
-    request?.street === 'flop' &&
-    request.board.length === 3 &&
-    !hidden
-      ? flopRuleLine(basicFlopRule(request.hole, request.board), preview)
-      : null;
-  const outs =
-    river && request ? (
-      <DealerOuts
-        facts={river}
-        request={request}
-        mode={confirmed || readOnly ? 'after' : 'before'}
-      />
-    ) : null;
+  const { flopRule, outs } = sheetFacts({
+    preview,
+    request,
+    hidden,
+    detail,
+    after: confirmed || readOnly,
+  });
 
   const body = (
     <div
@@ -331,30 +186,7 @@ export function EvSheet({
             allowed={allowed}
           />
           {alt ? (
-            <div class="sim-alt" data-testid="alternative">
-              <p>
-                {altText ? (
-                  <>
-                    <b>{altText.lead}</b> {altText.text}
-                  </>
-                ) : (
-                  <>
-                    <b>{alt.label} instead:</b> {typographic(fmtCentsFraction(alt.evCents))} against{' '}
-                    {typographic(fmtCentsFraction(opt!.evCents))}. You keep {fmtCostC(cost!)} more
-                    per hand on average.
-                  </>
-                )}
-              </p>
-              {onSelect ? (
-                <button
-                  type="button"
-                  class="sim-btn sim-btn-secondary"
-                  onClick={() => onSelect(optionKeyOf(alt.action))}
-                >
-                  Use this
-                </button>
-              ) : null}
-            </div>
+            <Alternative alt={alt} altText={altText} opt={opt!} cost={cost!} onSelect={onSelect} />
           ) : null}
           {detail === 'full' && !hidden && selectedWhy ? (
             <div class="sim-why-wrap">
@@ -377,71 +209,20 @@ export function EvSheet({
           EV not available. You can still play this move.
         </p>
       ) : (
-        <div class="sim-skeleton" data-testid="ev-loading" aria-busy="true">
-          <p class="sim-muted sim-calc">
-            <Say text="Calculating." dedupeKey="ev-state" />
-            <span class="sim-spinner" aria-hidden="true" />
-            Calculating…
-          </p>
-          {skel ? (
-            <>
-              <div
-                class="sim-progress"
-                role="progressbar"
-                aria-label="EV progress"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round((progress ?? 0) * 100)}
-              >
-                <span style={`width:${Math.round((progress ?? 0) * 100)}%`} />
-              </div>
-              <span class="sim-skel-row" />
-              <span class="sim-skel-row" />
-            </>
-          ) : null}
-        </div>
+        <SheetLoading skel={skel} progress={progress} />
       )}
 
-      {warn && !checking ? (
-        <p
-          class="sim-warn"
-          role="alert"
-          data-testid={opt.tier === 'blunder' ? 'blunder-warning' : 'mistake-warning'}
-        >
-          This is a {opt.tier === 'blunder' ? 'big mistake' : 'mistake'}
-          {best ? `: ${best.label} is the better play` : ''}.
-        </p>
-      ) : null}
-
-      {readOnly ? null : (
-        <div class="sim-evsheet-actions">
-          {confirmed ? (
-            <button
-              type="button"
-              class="sim-btn sim-btn-primary"
-              onClick={onContinue ?? onCancel}
-              data-continue
-            >
-              Continue
-            </button>
-          ) : (
-            <>
-              <button type="button" class="sim-btn sim-btn-secondary" onClick={onCancel}>
-                Cancel
-              </button>
-              {checking ? null : (
-                <button
-                  type="button"
-                  class={`sim-btn ${danger ? 'sim-btn-danger' : 'sim-btn-primary'}`}
-                  onClick={confirm}
-                  data-testid="confirm"
-                >
-                  {danger ? 'Do it anyway' : `Confirm ${label}`}
-                </button>
-              )}
-            </>
-          )}
-        </div>
+      {sheetActions(
+        warn && !checking ? opt : null,
+        best,
+        readOnly,
+        confirmed,
+        checking,
+        danger,
+        label,
+        confirm,
+        onCancel,
+        onContinue,
       )}
     </div>
   );
