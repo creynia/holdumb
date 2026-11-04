@@ -705,11 +705,14 @@ describe('Drill', () => {
     expect(el.querySelector('[data-testid="drill-result"]')!.getAttribute('data-tier')).toBe(
       'costly',
     );
-    expect(store.drill.recentMisses).toEqual(['f:x']);
+    expect(store.drill.review).toEqual([{ code: 'f:x', box: 1, due: 4 }]);
     expect(store.drill.bestStreak).toBe(0);
     await act(() => btn(el, 'Next hand').click());
     expect(el.querySelector('[data-testid="drill-result"]')).toBeNull();
-    expect(btn(el, /Review misses/)).toBeTruthy();
+    // not due yet: the chip says so (a miss is due after 3 more answers)
+    expect(el.querySelector('[data-testid="review-due"]')!.textContent).toContain(
+      'Review due: 0 (1 waiting)',
+    );
   });
   it('shows the shell with a clear message while the strategy engine is a stub', async () => {
     const { store, d } = setup(0, {
@@ -812,9 +815,9 @@ describe('Drill', () => {
         answered: 5,
         correct: 0,
       });
-      expect(store.drill.practical.recentMisses).toHaveLength(5);
+      expect(store.drill.practical.review).toHaveLength(5);
       expect(store.drill.byCategory).toEqual({});
-      expect(store.drill.recentMisses).toEqual([]);
+      expect(store.drill.review).toEqual([]);
       expect(weakestCategory(store.drill)?.id).toBe('flop-flush-draw');
       store.setDrillLens('perfect');
       expect(weakestCategory(store.drill)).toBeNull();
@@ -925,6 +928,22 @@ describe('Drill', () => {
     store.flush();
     expect(new Store(mem).drill.closeCalls).toBe(false);
     expect(el.textContent).toContain('close-call categories');
+  });
+  it('Review due: N lists only the due misses, and the link deals just those', async () => {
+    const { store, d } = setup(0);
+    store.recordDrill('flop', false, 'f:2dJd.4h6d9d'); // box 1, due once 4 answers are given
+    store.recordDrill('flop', false, 'f:7sQd.KsKd9s');
+    let el = await mountDrill(store, d);
+    expect(el.querySelector('[data-testid="review-due"]')!.textContent).toContain('Review due: 0');
+    expect(el.querySelector('[data-testid="review-due"] a')).toBeNull();
+    for (let i = 0; i < 3; i++) store.recordDrill('preflop', true, 'p:AhKd.');
+    document.body.innerHTML = '';
+    el = await mountDrill(store, d);
+    const link = el.querySelector<HTMLAnchorElement>('[data-testid="review-due"] a')!;
+    expect(link.textContent).toBe('Review due: 2');
+    expect(decodeURIComponent(link.getAttribute('href')!)).toContain(
+      'focus=f:2dJd.4h6d9d,f:7sQd.KsKd9s',
+    );
   });
   it('a failed preview offers a retry without recording an answer', async () => {
     const { store, d } = setup(0, { preview: () => Promise.reject(new Error('x')) });

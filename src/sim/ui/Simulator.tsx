@@ -247,7 +247,7 @@ export function Simulator(props: SimulatorViewProps) {
       data-equity={eq}
       style={
         orientation === 'landscape'
-          ? '--sim-table-h: calc(100dvh - var(--chrome-h, 100px))'
+          ? '--sim-table-h: calc(100svh - var(--chrome-h, 100px))'
           : undefined
       }
     >
