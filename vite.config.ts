@@ -51,6 +51,19 @@ export default defineConfig(({ mode }) => {
       ...(single ? [viteSingleFile()] : [seoPlugin(), swPlugin()]),
     ],
     publicDir: single ? false : 'public',
-    build: { outDir: single ? 'dist-single' : 'dist', target: 'es2022' },
+    build: {
+      outDir: single ? 'dist-single' : 'dist',
+      target: 'es2022',
+      rollupOptions: {
+        output: {
+          // Any chunk that carries simulator code is named sim-*, so split.test.ts can assert that
+          // none of them is preloaded by index.html (Home never pays for the table).
+          chunkFileNames: (c) =>
+            c.moduleIds.some((id) => id.includes('/src/sim/'))
+              ? 'assets/sim-[name]-[hash].js'
+              : 'assets/[name]-[hash].js',
+        },
+      },
+    },
   };
 });
