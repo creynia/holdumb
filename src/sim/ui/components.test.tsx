@@ -886,6 +886,21 @@ describe('small pieces', () => {
     expect(screen.getByTestId('on-felt').textContent).toBe('$25');
     expect(screen.getByTestId('session-net').textContent).toBe('\u2212$10');
   });
+  it('a toast with an action renders its button; one without renders none (I094)', () => {
+    const onClick = vi.fn();
+    const { rerender } = render(
+      <Toasts
+        toasts={[{ id: 1, text: 'Check: best play.', action: { label: 'Details', onClick } }]}
+      />,
+    );
+    const b = screen.getByTestId('toast-details');
+    expect(b.textContent).toBe('Details');
+    fireEvent.click(b);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    rerender(<Toasts toasts={[{ id: 2, text: 'Net +$50.' }]} onDismiss={() => {}} />);
+    expect(screen.queryByTestId('toast-details')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Details' })).toBeNull();
+  });
   it('Toasts announce politely and dismiss', () => {
     const onDismiss = vi.fn();
     render(<Toasts toasts={[{ id: 3, text: 'Net +$50.' }]} onDismiss={onDismiss} />);
