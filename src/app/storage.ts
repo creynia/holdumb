@@ -1,8 +1,16 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
-import { PAYTABLE_PRESET_IDS } from '../sim/engine';
-import { CONFIRM_ON, EV_MODES, evModeOfPractice } from '../sim/ui/settings';
-import { DRILL_CATEGORY_IDS } from '../sim/strategy';
-import type { DrillCategoryId } from '../sim/strategy';
+// The store loads with Home, so it imports no simulator module that the lazy table chunks share
+// (Rollup would split it into a chunk Home preloads, I095): the setting value lists live in
+// ./settingValues, kept equal to the simulator's by tests/app/settings-values.test.ts.
+import {
+  CONFIRM_ON,
+  DRILL_CATEGORY_IDS,
+  EV_MODES,
+  PAYTABLE_PRESET_IDS,
+  evModeOfPractice,
+} from './settingValues';
+import type { DrillCategoryId } from '../sim/strategy/types';
+import { MAX_REVIEW, REVIEW_BOXES, type ReviewItem } from './review';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
 
@@ -63,7 +71,8 @@ export interface LessonProgress {
 
 export type DrillStreet = 'preflop' | 'flop' | 'river';
 export const DRILL_STREETS: readonly DrillStreet[] = ['preflop', 'flop', 'river'];
-export const MAX_RECENT_MISSES = 50;
+/** Drill answers remembered per lens for the skill windows on Learn (I069). */
+export const MAX_RECENT_ANSWERS = 200;
 
 export type DrillLens = 'perfect' | 'practical';
 type StreetCounts = Record<DrillStreet, { answered: number; correct: number }>;
@@ -74,8 +83,10 @@ export interface LensStats {
   byStreet: StreetCounts;
   /** per spot category (I016); absent key = never answered. Records written before I016 lack it. */
   byCategory: Partial<Record<DrillCategoryId, { answered: number; correct: number }>>;
-  /** spot codes (strategy/drill.ts), newest first */
-  recentMisses: string[];
+  /** The spaced-review deck of missed spots (I067); `clock` is the answers given in this lens. */
+  review: ReviewItem[];
+  /** The last answers, oldest first: `<category>:<1 if correct, else 0>`. Older records lack it. */
+  recent: string[];
 }
 
 /**
@@ -87,7 +98,7 @@ export interface DrillStats extends LensStats {
   practical: LensStats;
   /** "Close calls" (I068): about 60% of spots are close, streets weighted by real play. Default on. */
   closeCalls: boolean;
-  /** The two drills that are not "pick an action": read the showdown (I061), count the outs (I060). */
+  /** Drills that are not "pick an action": read the showdown (I061); count the outs (I060) adds its own. */
   modes: DrillModes;
 }
 
@@ -104,16 +115,8 @@ export interface ShowdownStats {
   spots: number;
   allRight: number;
 }
-/** Count the outs: exact hits, hits within two, and the summed absolute error (mean = sum / answered). */
-export interface OutsStats {
-  answered: number;
-  exact: number;
-  within2: number;
-  absErrorSum: number;
-}
 export interface DrillModes {
   showdown: ShowdownStats;
-  outs: OutsStats;
 }
 
 /** Stats of the lens currently selected. */
@@ -138,7 +141,8 @@ const emptyLens = (): LensStats => ({
   bestStreak: 0,
   byStreet: emptyStreets(),
   byCategory: {},
-  recentMisses: [],
+  review: [],
+  recent: [],
 });
 
 const emptyCount = (): QuestionCount => ({ answered: 0, correct: 0 });
@@ -150,7 +154,6 @@ export const emptyModes = (): DrillModes => ({
     spots: 0,
     allRight: 0,
   },
-  outs: { answered: 0, exact: 0, within2: 0, absErrorSum: 0 },
 });
 
 export function emptyDrill(): DrillStats {
@@ -251,6 +254,12 @@ function sanitizeStreets(raw: unknown): StreetCounts {
   return out;
 }
 
+/** A spot code (strategy/drill.ts): street letter, hole, board of 0 / 3 / 5 cards. */
+const CARD = '(?:[2-9TJQKA][shdc])';
+const SPOT_CODE = new RegExp(
+  `^(p:${CARD}{2}\\.|f:${CARD}{2}\\.${CARD}{3}|r:${CARD}{2}\\.${CARD}{5})$`,
+);
+
 function sanitizeLens(raw: unknown): LensStats {
   const d = emptyLens();
   if (!isObj(raw)) return d;
@@ -267,10 +276,39 @@ function sanitizeLens(raw: unknown): LensStats {
         correct: Math.min(clampInt(v.correct, 0, 10_000_000, 0), answered),
       };
     }
-  if (Array.isArray(raw.recentMisses))
-    d.recentMisses = raw.recentMisses
-      .filter((x): x is string => typeof x === 'string' && x.length <= 64)
-      .slice(0, MAX_RECENT_MISSES);
+  const clock = DRILL_STREETS.reduce((n, s) => n + d.byStreet[s].answered, 0);
+  const seen = new Set<string>();
+  const keep = (code: unknown): code is string => {
+    if (typeof code !== 'string' || code.length > 64 || seen.has(code) || !SPOT_CODE.test(code))
+      return false; // unknown or malformed code
+    seen.add(code);
+    return true;
+  };
+  if (Array.isArray(raw.review)) {
+    for (const x of raw.review) {
+      if (!isObj(x) || !keep(x.code)) continue;
+      d.review.push({
+        code: x.code,
+        box: clampInt(x.box, 1, REVIEW_BOXES, 1),
+        due: clampInt(x.due, 0, 100_000_000, clock),
+      });
+    }
+    d.review = d.review.slice(0, MAX_REVIEW);
+  } else if (Array.isArray(raw.recentMisses)) {
+    // Before I067 the deck was a flat list of misses: each goes to box 1, due now.
+    for (const code of raw.recentMisses)
+      if (keep(code)) d.review.push({ code, box: 1, due: clock });
+    d.review = d.review.slice(0, MAX_REVIEW);
+  }
+  if (Array.isArray(raw.recent))
+    d.recent = raw.recent
+      .filter(
+        (x): x is string =>
+          typeof x === 'string' &&
+          /^[a-z0-9-]+:[01]$/.test(x) &&
+          (DRILL_CATEGORY_IDS as readonly string[]).includes(x.slice(0, -2)),
+      )
+      .slice(-MAX_RECENT_ANSWERS);
   return d;
 }
 
@@ -293,19 +331,6 @@ function sanitizeModes(raw: unknown): DrillModes {
       blind: sanitizeCount(s.blind),
       spots,
       allRight: Math.min(clampInt(s.allRight, 0, MAX_COUNT, 0), spots),
-    };
-  }
-  if (isObj(raw.outs)) {
-    const o = raw.outs;
-    const answered = clampInt(o.answered, 0, MAX_COUNT, 0);
-    const exact = Math.min(clampInt(o.exact, 0, MAX_COUNT, 0), answered);
-    d.outs = {
-      answered,
-      exact,
-      // within2 includes the exact hits.
-      within2: Math.max(exact, Math.min(clampInt(o.within2, 0, MAX_COUNT, 0), answered)),
-      // An answer is 0-45 and the truth 0-45, so no single error exceeds 45.
-      absErrorSum: Math.min(clampInt(o.absErrorSum, 0, MAX_COUNT * 45, 0), answered * 45),
     };
   }
   return d;

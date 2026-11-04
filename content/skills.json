@@ -1,0 +1,41 @@
+[
+  {
+    "id": "preflop",
+    "title": "Preflop chart",
+    "lessonId": "preflop-raise",
+    "categories": [
+      "pre-premium",
+      "pre-ace",
+      "pre-king",
+      "pre-queen-jack",
+      "pre-small-pair",
+      "pre-low"
+    ]
+  },
+  {
+    "id": "flop",
+    "title": "Flop rules",
+    "lessonId": "flop-raise",
+    "categories": [
+      "flop-hidden-pair",
+      "flop-two-pair-plus",
+      "flop-board-pair",
+      "flop-flush-draw",
+      "flop-straight-draw",
+      "flop-nothing",
+      "flop-deuces"
+    ]
+  },
+  {
+    "id": "river",
+    "title": "River outs",
+    "lessonId": "counting-dealer-outs",
+    "categories": [
+      "river-hidden-pair",
+      "river-outs-low",
+      "river-outs-edge",
+      "river-outs-high",
+      "river-board-plays"
+    ]
+  }
+]

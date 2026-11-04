@@ -1,9 +1,11 @@
-// PWA build: every screen except Play and Home (the first-paint screens, kept in the entry
-// chunk) is its own chunk, loaded on first visit and precached by the service worker (I039).
+// PWA build: every screen except Home (the first-paint screen, kept in the entry chunk) is its own
+// chunk, loaded on first visit and precached by the service worker (I039). Play is lazy too, so
+// the simulator never sits in Home's first paint (I095).
 // vite.config.ts aliases `#screens` here; the single-file build uses ./screens-static instead.
 import { lazyScreen } from './lazy';
 
 export { Home } from './screens/Home';
+export const Play = lazyScreen(() => import('./screens/Play').then((m) => m.Play));
 export const Drill = lazyScreen(() => import('./screens/DrillRoute').then((m) => m.Drill), true);
 export const Learn = lazyScreen(() => import('./screens/Learn').then((m) => m.Learn), true);
 export const LessonView = lazyScreen(

@@ -22,6 +22,10 @@ describe('validateScene', () => {
     expect(scenes.length).toBe(30);
     for (const s of scenes) expect(errs(s), s.id).toEqual([]);
   });
+  it('ui.verdict is an optional boolean (I059)', () => {
+    expect(validateScene({ ...base, ui: { verdict: true } }).ok).toBe(true);
+    expect(errs({ ...base, ui: { verdict: 'yes' } }).join()).toMatch(/verdict: must be a boolean/);
+  });
   it('rejects shape errors and unknown keys', () => {
     expect(errs(null)[0]).toMatch(/object/);
     expect(errs({ id: '', version: 2 })).toHaveLength(2);

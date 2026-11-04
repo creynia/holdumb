@@ -1,5 +1,7 @@
+import { dueCodes, reviewAfterAnswer } from './review';
 import {
-  MAX_RECENT_MISSES,
+  DRILL_STREETS,
+  MAX_RECENT_ANSWERS,
   createStorage,
   decodeImport,
   defaultPersisted,
@@ -189,11 +191,8 @@ export class Store {
     const cur = lensStats(d);
     const row = cur.byStreet[street];
     const cat = category ? cur.byCategory[category] : undefined;
-    const misses = spotCode
-      ? correct
-        ? cur.recentMisses.filter((c) => c !== spotCode)
-        : [spotCode, ...cur.recentMisses.filter((c) => c !== spotCode)].slice(0, MAX_RECENT_MISSES)
-      : cur.recentMisses;
+    const clock = DRILL_STREETS.reduce((n, s) => n + cur.byStreet[s].answered, 0);
+    const review = spotCode ? reviewAfterAnswer(cur.review, spotCode, correct, clock) : cur.review;
     const next: LensStats = {
       bestStreak: Math.max(cur.bestStreak, streak),
       byStreet: {
@@ -209,7 +208,10 @@ export class Store {
             },
           }
         : cur.byCategory,
-      recentMisses: misses,
+      review,
+      recent: category
+        ? [...cur.recent, `${category}:${correct ? 1 : 0}`].slice(-MAX_RECENT_ANSWERS)
+        : cur.recent,
     };
     this.commit({
       ...this.data,
@@ -243,26 +245,13 @@ export class Store {
     });
   }
 
-  /** Count the outs: one typed answer against the exact count. */
-  recordOuts(said: number, actual: number) {
-    const d = this.data.drill;
-    const o = d.modes.outs;
-    const err = Math.abs(said - actual);
-    this.commit({
-      ...this.data,
-      drill: {
-        ...d,
-        modes: {
-          ...d.modes,
-          outs: {
-            answered: o.answered + 1,
-            exact: o.exact + (err === 0 ? 1 : 0),
-            within2: o.within2 + (err <= 2 ? 1 : 0),
-            absErrorSum: o.absErrorSum + err,
-          },
-        },
-      },
-    });
+  /** Drill: spot codes due for review now in the current lens, longest overdue first (I067). */
+  dueReview(): string[] {
+    const cur = lensStats(this.data.drill);
+    return dueCodes(
+      cur.review,
+      DRILL_STREETS.reduce((n, s) => n + cur.byStreet[s].answered, 0),
+    );
   }
 
   /** Drill: choose the grading lens (kept across visits; accuracy is tracked per lens). */

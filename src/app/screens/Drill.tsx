@@ -11,6 +11,7 @@ import {
   fmtFixed,
   gradeSpot,
   nextSpot,
+  pickDueReview,
   optionKeyOf,
   optionsFor,
   riverFacts,
@@ -33,6 +34,7 @@ import { useContent, useStore } from '../context';
 import { getEvClient } from '../evClient';
 import { navigate } from '../router';
 import { DRILL_STREETS, lensStats } from '../storage';
+import { reviewAllowed } from '../review';
 import {
   DRILL_CATEGORY_LABELS,
   categoriesOf,
@@ -154,6 +156,8 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const focus = (props.query.get('focus') ?? '').split(',').filter(Boolean);
   const focusKey = focus.join(',');
   const rng = useRef<RngState>(rngFromSeed(deps.seed ?? Date.now()));
+  const dealt = useRef(0);
+  const reviews = useRef(0);
   const [spot, setSpot] = useState<DrillSpot | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -173,7 +177,19 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         ...(focus.length ? { focus } : {}),
         ...(store.drill.closeCalls ? { interesting: true } : {}),
       };
-      const [s, r] = deps.nextSpot(rng.current, filter);
+      // Spaced review (I067): a due miss now and then, never more than 30% of the spots dealt.
+      let [s, r]: [DrillSpot | null, RngState] = [null, rng.current];
+      if (!focus.length) {
+        [s, r] = pickDueReview(
+          r,
+          store.dueReview(),
+          { street, ...(category ? { category } : {}) },
+          reviewAllowed(dealt.current, reviews.current),
+        );
+      }
+      if (s) reviews.current++;
+      else [s, r] = deps.nextSpot(r, filter);
+      dealt.current++;
       rng.current = r;
       setSpot(s);
       setUnavailable(false);
@@ -211,8 +227,8 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
   const d = store.drill;
   const weakest = weakestCategory(d);
   const ls = lensStats(d);
+  const due = store.dueReview();
   const counts = ls.byStreet;
-  const total = DRILL_STREETS.reduce((n, s) => n + counts[s].answered, 0);
   const chosenOpt =
     spot && answer
       ? answer.preview.options.find((o) =>
@@ -392,11 +408,15 @@ export function Drill(props: { query: URLSearchParams; deps?: DrillDeps }) {
         </section>
       )}
 
-      {total > 0 && ls.recentMisses.length > 0 && (
-        <p>
-          <Link to={`/drill?focus=${ls.recentMisses.join(',')}`} class="btn btn-ghost">
-            Review misses ({ls.recentMisses.length})
-          </Link>
+      {ls.review.length > 0 && (
+        <p data-testid="review-due">
+          {due.length > 0 ? (
+            <Link to={`/drill?focus=${due.join(',')}`} class="btn btn-ghost">
+              Review due: {due.length}
+            </Link>
+          ) : (
+            <span class="muted">Review due: 0 ({ls.review.length} waiting)</span>
+          )}
         </p>
       )}
 

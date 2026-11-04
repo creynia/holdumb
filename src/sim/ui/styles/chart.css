@@ -28,6 +28,7 @@
   height: 16px;
 }
 .sim-chart-cell {
+  position: relative;
   display: grid;
   place-items: center;
   flex: 1 1 0;
@@ -48,6 +49,19 @@
 .sim-chart-swatch.is-bet {
   background: var(--accent);
   color: var(--sim-on-accent);
+}
+.sim-chart-cell.is-close::after,
+.sim-chart-swatch.is-close::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sim-close, #ffd23f);
+  box-shadow: 0 0 0 1px var(--text);
+  pointer-events: none;
 }
 .sim-chart-cell.is-hl {
   outline: 2px solid var(--sim-hl);
@@ -71,6 +85,7 @@
   color: var(--muted);
 }
 .sim-chart-swatch {
+  position: relative;
   display: inline-grid;
   place-items: center;
   width: 24px;

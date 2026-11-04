@@ -40,7 +40,7 @@ function mount(
     const sim = useSimDriver(props, 'sandbox');
     const ev = useEvSheet(
       sim,
-      evMode === 'after',
+      evMode,
       'portrait',
       resolveEvShown(s, sim.d.view.scene, true, sim.d.view.step),
       isDecisionStreet(sim.d.view.state.street),

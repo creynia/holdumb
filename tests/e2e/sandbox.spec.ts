@@ -313,6 +313,23 @@ test.describe('sandbox', () => {
       .forEach((v, i) => expect(Math.abs(v - without.flat()[i]!)).toBeLessThanOrEqual(1));
   });
 
+  test('a finished hand ends with one skill-versus-luck sentence in the same toast (I059)', async ({
+    page,
+  }) => {
+    await page.goto('/#/play?hole=3c4d&board=AhKsQd9c7h&dealer=TdTs&street=river&speed=instant');
+    await ready(page);
+    await opt(page, 'play-1').click(); // one tap acts (D40)
+    await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
+    const toast = page.locator('.sim-toast');
+    await expect(toast).toHaveCount(1);
+    // the I080 narration, the result, then the verdict, in that order, in one toast
+    await expect(toast).toHaveText(
+      /Bet 1x: a mistake, costs \$3\.59 against Fold\..*Net.*Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\./s,
+    );
+    // the cost is said once
+    await expect(toast).not.toContainText('on average');
+  });
+
   test('with EV set to Never there are no EV numbers in the toast (I080)', async ({ page }) => {
     await page.goto('/#/settings');
     await page.getByRole('radio', { name: 'Off' }).first().check();
@@ -479,8 +496,8 @@ test.describe('sandbox', () => {
   test('the hand result stays on screen after the toast is dismissed (I051)', async ({ page }) => {
     await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
     await ready(page);
+    // Default policy since I089: one tap acts, no confirm sheet.
     await opt(page, 'play-2').click();
-    await page.getByTestId('confirm').click();
     const sim = page.getByTestId('simulator');
     await expect(sim).toHaveAttribute('data-street', 'settled');
     const toast = page.locator('.sim-toast');
@@ -745,3 +762,47 @@ for (const vp of [
     expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(46);
   });
 }
+
+// I047: keyboard shortcuts press the same buttons as a tap (one-tap and confirm rules included).
+test.describe('keyboard shortcuts', () => {
+  const ready = (page: import('@playwright/test').Page) =>
+    expect(page.getByTestId('simulator')).toHaveAttribute('data-ev', 'ready', { timeout: 20_000 });
+  test('D deals, then 4 bets 4x and the hand settles, as for a click', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop', 'a keyboard is a desktop thing');
+    await page.goto('/#/play?seed=3&speed=instant');
+    const sim = page.getByTestId('simulator');
+    await expect(sim).toHaveAttribute('data-street', 'betting');
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('d');
+    await expect(sim).toHaveAttribute('data-street', 'preflop');
+    await ready(page);
+    await page.keyboard.press('4');
+    await expect(sim).toHaveAttribute('data-street', 'settled');
+    // Rebet & Deal from the keyboard too (Enter on the page).
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('Enter');
+    await expect(sim).toHaveAttribute('data-street', 'preflop');
+    await ready(page);
+    await page.keyboard.press('c');
+    await expect(sim).toHaveAttribute('data-street', 'flop');
+  });
+  test('no shortcut fires while an input has focus, nor for an option not offered', async ({
+    page,
+  }, info) => {
+    test.skip(info.project.name !== 'desktop', 'a keyboard is a desktop thing');
+    await page.goto('/#/play?hole=AhTc&board=7dKs2c&dealer=9d9s&street=flop&speed=instant');
+    const sim = page.getByTestId('simulator');
+    await ready(page);
+    await page.getByRole('radio', { name: 'Before' }).focus();
+    await page.keyboard.press('c');
+    await page.keyboard.press('4');
+    await expect(sim).toHaveAttribute('data-street', 'flop');
+    // 4 is not offered on the flop: nothing happens.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('4');
+    await page.waitForTimeout(300);
+    await expect(sim).toHaveAttribute('data-street', 'flop');
+    await page.keyboard.press('2');
+    await expect(sim).toHaveAttribute('data-street', 'settled');
+  });
+});
