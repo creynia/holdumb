@@ -160,6 +160,7 @@ export function Simulator(props: SimulatorViewProps) {
   const table = (
     <Table
       orientation={orientation}
+      feltScrollKey={hand?.n ?? 0}
       options={sandbox && scene.ui?.showSettings ? props.options : null}
       toasts={watching ? null : tableToasts}
       status={

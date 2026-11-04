@@ -48,6 +48,12 @@
 .sim-toast-bad {
   border-left-color: var(--tier-blunder);
 }
+/* The message takes the room left by the buttons and wraps at spaces (I053). No overflow-wrap:
+   anywhere, which would break signed amounts across their word joiner (I008). */
+.sim-toast > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .sim-toast-x {
   flex: none;
   width: 44px;
@@ -65,13 +71,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   min-height: 44px;
   font-size: 0.9rem;
   flex: none;
 }
 .sim-rail .sim-options {
   font-size: 0.8rem;
+}
+/* Large text (I053), portrait only: Confirm moves under the EV group instead of overflowing. The
+   rail row never wraps: a second line would squeeze the rail body and its toast. */
+@container sim-table (max-width: calc(13rem + 32px)) {
+  .sim-options {
+    flex-wrap: wrap;
+  }
 }
 .sim-seg {
   display: flex;
@@ -161,7 +174,7 @@
 /* The button's 44px hit area overflows its 24px slot so the status bar keeps its height. */
 .sim-status [data-testid='ev-details-column'] dd {
   position: relative;
-  height: 24px;
+  height: 1.5em; /* 24px at the default size; grows with large text (I053) */
   width: 100%;
   display: flex;
   justify-content: center;
