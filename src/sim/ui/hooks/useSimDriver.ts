@@ -7,7 +7,13 @@ import type { LoggedHand } from '../moveLogData';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
 import { randomSeed, resolveEvMode, resolveEvShown, resolveSpeed } from '../settings';
 import { soundOf } from '../soundEvents';
-import { foldAnnouncement, handVerdictText, settledToastText, typographic } from '../text';
+import {
+  foldAnnouncement,
+  handVerdictText,
+  settledToastText,
+  typographic,
+  unjoined,
+} from '../text';
 import type { SimulatorProps } from '../types';
 
 export interface Toast {
@@ -118,7 +124,11 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
         pushToast(
           typographic(`${lead}${settledToastText(e)}${tail}`),
           e.result.net > 0 ? 'good' : undefined,
-          e.result.outcome === 'fold' ? `${lead}${foldAnnouncement(e.result)}${tail}` : undefined,
+          unjoined(
+            e.result.outcome === 'fold'
+              ? `${lead}${foldAnnouncement(e.result)}${tail}`
+              : typographic(`${lead}${settledToastText(e)}${tail}`),
+          ),
           lead ? action : undefined,
         );
       } else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);

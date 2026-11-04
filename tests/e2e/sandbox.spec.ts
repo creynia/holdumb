@@ -291,7 +291,7 @@ test.describe('sandbox', () => {
     await expect(toast).toContainText(
       `Bet 1x: a mistake, costs ${sheetCost[1]} against ${sheetCost[2]}.`,
     );
-    await expect(toast).toContainText(/Whole-hand expected result from here: [+\u2212]\$/);
+    await expect(toast).toContainText(/Whole-hand expected result from here: [+\u2212]\u2060?\$/);
     await expect(toast).toContainText('Net');
     // The combined toast does not move the settled bar or the felt either (page coordinates).
     const rebet = page.getByRole('button', { name: /Rebet/ });
@@ -324,7 +324,7 @@ test.describe('sandbox', () => {
     await expect(toast).toHaveCount(1);
     // the I080 narration, the result, then the verdict, in that order, in one toast
     await expect(toast).toHaveText(
-      /Bet 1x: a mistake, costs \$3\.59 against Fold\..*Net.*Expected [+\u2212]\$[\d.,]+, result [+\u2212]?\$[\d.,]+\./s,
+      /Bet 1x: a mistake, costs \$3\.59 against Fold\..*Net.*Expected [+\u2212]\u2060?\$[\d.,]+, result [+\u2212]?\u2060?\$[\d.,]+\./s,
     );
     // the cost is said once
     await expect(toast).not.toContainText('on average');
@@ -687,7 +687,7 @@ test.describe('sandbox', () => {
     await expect(last.locator('.sim-inline-card')).toHaveCount(4);
     // The bet settled with the deal: equity moved by exactly the Six Card profit ($5 bet).
     const text = (await last.textContent()) ?? '';
-    const m = /([+−])\$([\d,.]+)\s*$/.exec(text);
+    const m = /([+−])\u2060?\$([\d,.]+)\s*$/.exec(text);
     expect(m).not.toBeNull();
     const profit = Math.round(Number(m![2]!.replace(/,/g, '')) * 100) * (m![1] === '−' ? -1 : 1);
     expect(profit === -500 || profit >= 3_500).toBe(true);

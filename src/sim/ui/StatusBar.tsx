@@ -1,6 +1,7 @@
 import './sim.css';
 import type { Cents, HandResult } from '../engine';
 import { formatMoney } from '../engine';
+import { signedMoney } from './text';
 
 export interface StatusBarProps {
   bankroll: Cents;
@@ -26,7 +27,7 @@ const OUTCOME_WORD: Record<HandResult['outcome'], string> = {
   fold: 'Folded',
 };
 
-const signed = (c: Cents) => formatMoney(c, { sign: true }).replace('-', '\u2212');
+const signed = (c: Cents) => signedMoney(c).replace('-', '\u2212');
 
 /** Bankroll, money on the felt, the last hand's result, session result. */
 export function StatusBar({ bankroll, onFelt, sessionNet, hand, onDetails }: StatusBarProps) {

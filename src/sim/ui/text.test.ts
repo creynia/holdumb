@@ -60,7 +60,7 @@ describe('exact fraction formatting', () => {
   it('says "less than 1¢" for a cost that rounds to nothing', () => {
     expect(fmtCost(frac(1, 10))).toBe('less than 1¢');
     expect(fmtVsBest(frac(1, 10))).toBe('less than 1¢');
-    expect(fmtVsBest(frac(1408))).toBe('−$14.08');
+    expect(fmtVsBest(frac(1408))).toBe('−\u2060$14.08');
     expect(fmtCost(frac(0))).toBe('$0');
   });
 });
@@ -142,9 +142,9 @@ describe('hand verdict line (I059)', () => {
         netCents: -3000,
         decisions: [d('preflop', 'Bet 4x', 'best', 0), d('river', 'Bet 1x', 'close', 1)],
       }),
-    ).toBe('Played it right. Expected +$4.20, result \u2212$30.');
+    ).toBe('Played it right. Expected +$4.20, result \u2212\u2060$30.');
     expect(handVerdictText({ expectedCents: frac(-12), netCents: 0, decisions: [] })).toBe(
-      'Played it right. Expected \u2212$0.12, result $0.',
+      'Played it right. Expected \u2212\u2060$0.12, result $0.',
     );
   });
   it('never says a cost twice: a last decision already described by the narration or the reveal gets only the figures', () => {
@@ -154,7 +154,7 @@ describe('hand verdict line (I059)', () => {
       decisions: [d('preflop', 'Bet 4x', 'costly', 399)],
     };
     // described: expected against result, no cost
-    expect(handVerdictText(one, true)).toBe('Expected \u2212$8.66, result +$40.');
+    expect(handVerdictText(one, true)).toBe('Expected \u2212\u2060$8.66, result +$40.');
     // not described (a lesson step, no narration): the costliest decision is named
     expect(handVerdictText(one, false)).toBe(
       'Your preflop Bet 4x cost $3.99 on average (Mistake).',
@@ -174,7 +174,7 @@ describe('hand verdict line (I059)', () => {
       netCents: -500,
       decisions: [d('preflop', 'Bet 3x', 'small', 51), d('river', 'Fold', 'costly', 704)],
     };
-    expect(handVerdictText(lastWorst, true)).toBe('Expected +$1, result \u2212$5.');
+    expect(handVerdictText(lastWorst, true)).toBe('Expected +$1, result \u2212\u2060$5.');
     // a fine last decision after a mistake: the mistake is named (the narration was about the fine one)
     const earlier = {
       expectedCents: frac(0),
@@ -229,7 +229,7 @@ describe('post-action narration (I080)', () => {
         expect(text.startsWith(`${o.label}: `)).toBe(true);
         expect(text).not.toMatch(/-\$/); // the typographic minus, never an ASCII hyphen
         expect(text).toContain(
-          `Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents))}.`,
+          `Whole-hand expected result from here: ${typographic(fmtCentsFraction(o.evCents)).replace(/^\u2212/, '\u2212\u2060')}.`,
         );
         if (o === best) expect(text).toContain('best play');
         else {
@@ -297,7 +297,9 @@ describe('prose', () => {
     expect(describeResult(withWager('trips', 'trips', 'win', 3000))).toContain(
       'Trips +$30 (three of a kind pays 3 to 1 on Trips 8/6/5)',
     );
-    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).toContain('Trips -$5');
+    expect(describeResult(withWager('trips', 'trips', 'lose', -500))).toContain(
+      'Trips \u2212\u2060$5',
+    );
     expect(describeResult(withWager('trips', 'trips', 'lose', -500))).not.toContain('pays');
   });
   it('reads the odds from the active Trips preset, not a fixed string (I011)', () => {
@@ -372,8 +374,26 @@ describe('prose', () => {
       'full house pays 9 to 1 on Trips 9/7/4',
     );
   });
+  it('shows negative money with U+2212 and no line break inside the amount (I008)', () => {
+    const loss: HandResult = {
+      ...WON_RESULT,
+      wagers: [
+        { wager: 'ante', amount: 1000, result: 'lose', profit: -1000, reason: 'dealer-wins' },
+        { wager: 'play', amount: 4000, result: 'lose', profit: -4000, reason: 'dealer-wins' },
+      ],
+      net: -5000,
+    };
+    const text = describeResult(loss);
+    expect(text).not.toMatch(/-\$/);
+    expect(text).toContain('Ante \u2212\u2060$10');
+    expect(text).toMatch(/Net \u2212\u2060\$50\.$/);
+    const fold: HandResult = { ...WON_RESULT, outcome: 'fold', net: -2000 };
+    expect(describeResult(fold)).not.toMatch(/-\$/);
+  });
   it('makes a fold toast carry only the money (the reveal has the rest)', () => {
-    expect(describeResult(FOLDED_RESULT)).toBe('Folded. Ante -$10, Blind -$10. Net -$20.');
+    expect(describeResult(FOLDED_RESULT)).toBe(
+      'Folded. Ante \u2212\u2060$10, Blind \u2212\u2060$10. Net \u2212\u2060$20.',
+    );
   });
   it('says what a fold would have done (D7) with the net difference', () => {
     // FOLDED_RESULT: folded -$20; playing would have lost $30, so folding saved $10.
@@ -392,7 +412,7 @@ describe('prose', () => {
   });
   it('announces the real net once, with the dealer and the would-have line', () => {
     expect(foldAnnouncement(FOLDED_RESULT)).toBe(
-      'You folded. Net -$20. The dealer had a pair of tens (qualifies). You would have lost $30 (folding saved $10).',
+      'You folded. Net \u2212\u2060$20. The dealer had a pair of tens (qualifies). You would have lost $30 (folding saved $10).',
     );
   });
   it('compares only the ante and blind when a Trips bet is up (trips settles either way)', () => {

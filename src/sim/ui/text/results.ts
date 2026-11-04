@@ -1,5 +1,6 @@
 // Text helpers (results); re-exported unchanged by ../text.ts (I082 split).
 import { formatMoney, nearMisses } from '../../engine';
+import { signedMoney } from './format';
 import { BLIND_PAYTABLES, DEFAULT_PAYTABLE_PRESET, TRIPS_PAYTABLES } from '../../engine/paytables';
 import type { GameState, Paytable, TripsPaytableId } from '../../engine/types';
 import type { Deal, Cents, EvaluatedHand, HandResult, WagerSettlement } from '../../engine';
@@ -37,7 +38,7 @@ function describeSettlement(s: WagerSettlement, hand: EvaluatedHand, t: Settleme
           : '';
     return `${name} push${why}`;
   }
-  const money = formatMoney(s.profit, { sign: true });
+  const money = signedMoney(s.profit);
   if (s.result !== 'win') return `${name} ${money}`;
   const hn = CATEGORY_NAME[hand.category];
   if (s.wager === 'blind') {
@@ -95,7 +96,7 @@ export function describeResult(
   } else if (r.outcome === 'tie') lead = tieLead(r.player, r.dealer);
   else lead = 'Folded.';
   const parts = r.wagers.map((w) => describeSettlement(w, r.player, t)).join(', ');
-  return `${lead} ${parts}. Net ${formatMoney(r.net, { sign: true })}.`;
+  return `${lead} ${parts}. Net ${signedMoney(r.net)}.`;
 }
 
 /** The settled toast, with the Trips preset the hand actually settled at (the event's own rules). */
@@ -105,7 +106,7 @@ export function settledToastText(e: { result: HandResult; state: GameState }): s
 
 /** The one spoken fold announcement: the real net, then the reveal's dealer and would-have lines. */
 export function foldAnnouncement(r: HandResult): string {
-  return `You folded. Net ${formatMoney(r.net, { sign: true })}. ${foldRevealText(r)}`;
+  return `You folded. Net ${signedMoney(r.net)}. ${foldRevealText(r)}`;
 }
 
 /**

@@ -56,8 +56,17 @@ export function fmtCost(regretCents: Fraction): string {
 /** "−$14.08" for a cost against the best option; "less than 1¢" when it rounds to nothing. */
 export function fmtVsBest(costCents: Fraction): string {
   const c = fmtCost(costCents);
-  return isZero(costCents) || roundFraction(costCents) === 0n ? c : `\u2212${c}`;
+  return isZero(costCents) || roundFraction(costCents) === 0n ? c : `\u2212\u2060${c}`;
 }
 /** The "minus" sign used in prose is a real minus (U+2212). */
 export const typographic = (s: string): string => s.replace(/^-/, '−').replace(/ -/g, ' −');
+
+/** A signed amount for prose: U+2212 with a word joiner after it, so no line breaks inside it (I008). */
+export const signedMoney = (cents: number): string => {
+  const m = formatMoney(cents, { sign: true });
+  return m.startsWith('-') ? `\u2212\u2060${m.slice(1)}` : m;
+};
+
+/** The spoken form: word joiners removed (I008). */
+export const unjoined = (s: string): string => s.replace(/\u2060/g, '');
 export const fmtPct = (f: Fraction, digits = 1): string => formatPct(f, digits);

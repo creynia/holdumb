@@ -131,10 +131,10 @@ async function resultVisible(page: Page, vp: { width: number; height: number }) 
   }
   // The one-line result in the status row: outcome word and the hand's net.
   const hand = page.getByTestId('hand-result');
-  await expect(hand).toHaveText(/^(Won|Lost|Push|Folded)([+\u2212]\$[\d,.]+|\$0)$/);
+  await expect(hand).toHaveText(/^(Won|Lost|Push|Folded)([+\u2212]\u2060?\$[\d,.]+|\$0)$/);
   await onScreen(hand, vp, 'hand result');
   const net = page.getByTestId('session-net');
-  await expect(net).toHaveText(/^([+\u2212]\$[\d,.]+|\$0)$/);
+  await expect(net).toHaveText(/^([+\u2212]\u2060?\$[\d,.]+|\$0)$/);
   await onScreen(net, vp, 'session net');
 }
 

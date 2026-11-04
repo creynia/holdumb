@@ -2,6 +2,7 @@
 // `simulate` job through the EvClient; show exact vs simulated figures and the charts.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { formatMoney } from '../engine/money';
+import { signedMoney } from './text';
 import type { SimulatorEvent } from './types';
 import type { SimSettings } from './types';
 import type { EvClient, Progress } from '../worker/protocol';
@@ -169,8 +170,8 @@ export function AutoPlayPanel({
         setCmp,
       )}
       <p style={{ margin: 0, fontSize: '13px' }}>
-        Exact: {formatMoney(Math.round(hourCents), { sign: true })} per hour at {formatMoney(ante)}{' '}
-        Ante ({settings.handsPerHour} hands/hour, house edge{' '}
+        Exact: {signedMoney(Math.round(hourCents))} per hour at {formatMoney(ante)} Ante (
+        {settings.handsPerHour} hands/hour, house edge{' '}
         {(fracToNumber(metrics.edgePerAnte) * 100).toFixed(2)}% of the Ante).
       </p>
       <p style={{ margin: 0, fontSize: '13px' }} data-testid="auto-play-cost">
@@ -203,7 +204,7 @@ export function AutoPlayPanel({
                   {STRATEGY_CONSTANTS[s.id].name}
                 </th>
                 <td>{(fracToNumber(m.edgePerAnte) * 100).toFixed(2)}%</td>
-                <td>{formatMoney(Math.round(fracToNumber(m.evPerHourCents)), { sign: true })}</td>
+                <td>{signedMoney(Math.round(fracToNumber(m.evPerHourCents)))}</td>
                 <td>{cost === 0 ? '--' : `+${formatMoney(cost)}`}</td>
               </tr>
             ))}

@@ -14,7 +14,9 @@ export interface SessionPanelProps {
 }
 
 /** Money with the real minus sign (curriculum 8.6). */
-const m = (c: number, sign = false): string => typographic(formatMoney(Math.round(c), { sign }));
+// A minus is joined to its dollar sign so no line breaks inside an amount (I008).
+const m = (c: number, sign = false): string =>
+  typographic(formatMoney(Math.round(c), { sign })).replace(/^\u2212/, '\u2212\u2060');
 
 /**
  * Session panel (curriculum 8.5): your result, total wagered, what perfect play expects, what your
