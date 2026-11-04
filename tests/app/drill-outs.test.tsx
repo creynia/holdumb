@@ -184,6 +184,53 @@ describe('Drill ?mode=outs', () => {
   });
 });
 
+describe('count the outs and spaced review (I067)', () => {
+  it('never deals a due review: every spot comes from the outs mix', async () => {
+    const store = new Store(new MemoryStorage());
+    // a deck of misses that would be due: none of them is the outs spot
+    for (const code of [
+      'f:2dJd.4h6d9d',
+      'f:AhKh.7d8s9c',
+      'r:2c3d.AhKsQd9c7h',
+      'p:7s2d.',
+      'p:9s9h.',
+    ]) {
+      store.recordDrill('flop', false, code, 'flop-nothing');
+    }
+    for (let i = 0; i < 12; i++) store.recordDrill('flop', true, `f:x${i}`, 'flop-nothing');
+    expect(store.dueReview().length).toBeGreaterThan(0);
+    let calls = 0;
+    const deps: DrillDeps = {
+      nextSpot: (rng) => {
+        calls++;
+        return [SPOT, rng];
+      },
+      gradeSpot,
+      preview: () => Promise.resolve(PREVIEW),
+      seed: 3,
+    };
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    await act(() => {
+      render(
+        <AppProviders content={content} store={store}>
+          <Drill query={new URLSearchParams('mode=outs')} deps={deps} />
+        </AppProviders>,
+        el,
+      );
+    });
+    for (let i = 0; i < 8; i++) {
+      await typeAndCheck(el, '19');
+      await act(() => el.querySelectorAll<HTMLButtonElement>('.choice-row button')[1]!.click());
+      await act(() => new Promise((r) => setTimeout(r, 0)));
+      await act(() =>
+        [...el.querySelectorAll('button')].find((b) => b.textContent === 'Next hand')!.click(),
+      );
+    }
+    expect(calls).toBe(9); // the first deal and eight more, none replaced by a review
+  });
+});
+
 describe('outs stats: sanitize', () => {
   it('clamps and defaults malformed records', () => {
     const p = sanitize({
