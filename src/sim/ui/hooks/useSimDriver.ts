@@ -5,9 +5,9 @@ import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
 import type { LoggedHand } from '../moveLogData';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
-import { randomSeed, resolveEvMode, resolveSpeed } from '../settings';
+import { randomSeed, resolveEvMode, resolveEvShown, resolveSpeed } from '../settings';
 import { soundOf } from '../soundEvents';
-import { foldAnnouncement, settledToastText, typographic } from '../text';
+import { foldAnnouncement, handVerdictText, settledToastText, typographic } from '../text';
 import type { SimulatorProps } from '../types';
 
 export interface Toast {
@@ -88,11 +88,22 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
         // The decision's narration (I080) leads the result in one toast.
         const lead = narration.current ? `${narration.current} ` : '';
         narration.current = null;
+        // I059: one skill-versus-luck sentence rides on the result (never a second toast), unless
+        // EV is hidden; a lesson opts in with ui.verdict.
+        const dd = holder.current;
+        const scene = dd?.view.scene;
+        const verdict =
+          dd && scene && (mode === 'sandbox' || scene.ui?.verdict === true) ? dd.verdict() : null;
+        const tail =
+          verdict &&
+          resolveEvShown(latest.current.settings, scene!, mode === 'sandbox', dd!.view.step)
+            ? ` ${handVerdictText(verdict, lead !== '' || dd!.view.evMode === 'after')}`
+            : '';
         // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
         pushToast(
-          typographic(`${lead}${settledToastText(e)}`),
+          typographic(`${lead}${settledToastText(e)}${tail}`),
           e.result.net > 0 ? 'good' : undefined,
-          e.result.outcome === 'fold' ? `${lead}${foldAnnouncement(e.result)}` : undefined,
+          e.result.outcome === 'fold' ? `${lead}${foldAnnouncement(e.result)}${tail}` : undefined,
         );
       } else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
       else if (e.type === 'action-rejected' && !holder.current?.view.step)
