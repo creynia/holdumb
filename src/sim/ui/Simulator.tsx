@@ -87,6 +87,7 @@ export function Simulator(props: SimulatorViewProps) {
     () => buildTimeline(d.view.lastEvents, speed).totalMs,
   );
   const watching = watch.running;
+  sim.soundMuted.current = watching; // no table sounds while the table plays itself (I027)
   // I047: keyboard shortcuts press the same buttons a tap would (Play: also from the page body).
   const onTableKey = useShortcuts(rootRef, {
     global: sandbox && !!scene.ui?.showSettings,
