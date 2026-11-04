@@ -208,7 +208,7 @@ main:has(> .page-wide) {
   /* The table options row (44 + gap 8, I090) comes out of the felt, never out of the action bar's
      place: where the felt was width-bound (390x844) it gives up those 52px, so the bar stays where
      it was without the row. The felt is drawn 390:600 inside the page's 24px side padding. */
-  max-height: min(calc(100dvh - var(--play-chrome)), calc((100vw - 48px) * 600 / 390 - 52px));
+  max-height: min(calc(100svh - var(--play-chrome)), calc((100vw - 48px) * 600 / 390 - 52px));
 }
 @media (min-width: 768px) {
   .page-play {
