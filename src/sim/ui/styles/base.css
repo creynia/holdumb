@@ -56,7 +56,7 @@
   min-height: 0;
 }
 .sim-table-portrait .sim-felt {
-  max-height: calc(100dvh - 232px);
+  max-height: calc(100svh - 232px);
 }
 .sim-table-landscape {
   max-width: none;
@@ -64,7 +64,7 @@
   grid-template-columns: minmax(0, 1fr) 284px;
   /* One row of exactly the table height: an open EV sheet scrolls inside the rail, never grows it. */
   grid-template-rows: minmax(0, 1fr);
-  height: var(--sim-table-h, 100dvh);
+  height: var(--sim-table-h, 100svh);
   min-height: 0;
 }
 .sim-table-landscape .sim-table-felt,
