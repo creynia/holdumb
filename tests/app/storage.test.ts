@@ -215,6 +215,13 @@ describe('storage', () => {
     expect(off.drill.closeCalls).toBe(false);
     expect(decodeImport(encodeExport(off))!.drill.closeCalls).toBe(false);
   });
+  it('sounds defaults off and only a real boolean turns it on', () => {
+    expect(sanitize({ version: 1, settings: {} })!.settings.sounds).toBe(false);
+    expect(sanitize({ version: 1, settings: { sounds: 'yes' } })!.settings.sounds).toBe(false);
+    const on = sanitize({ version: 1, settings: { sounds: true } })!;
+    expect(on.settings.sounds).toBe(true);
+    expect(decodeImport(encodeExport(on))!.settings.sounds).toBe(true);
+  });
   it('export codes round-trip and reject other prefixes', () => {
     const d = defaultPersisted();
     expect(decodeImport(encodeExport(d))).toEqual(d);

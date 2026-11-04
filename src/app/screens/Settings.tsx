@@ -272,6 +272,15 @@ export function Settings() {
           checked={s.fourColorDeck}
           onChange={(v) => set({ fourColorDeck: v })}
         />
+        <Check
+          label="Sounds (short table sounds; never in Watch or at instant speed)"
+          checked={s.sounds}
+          onChange={(v) => {
+            set({ sounds: v });
+            // One preview blip, played from inside this click so the browser allows it.
+            if (v) void import('../../sim/ui/sound').then((m) => m.previewSound());
+          }}
+        />
       </section>
 
       <section class="card form" aria-label="Your progress">

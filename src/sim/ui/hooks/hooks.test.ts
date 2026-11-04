@@ -9,6 +9,8 @@ import type { SimSettings, SimulatorProps } from '../types';
 import { useBetHandlers } from './useBetHandlers';
 import { usePreviewBar } from './usePreviewBar';
 import { useSandboxSync, useSimDriver } from './useSimDriver';
+import { __setAudioContextFactory } from '../sound';
+import { fakeAudio } from '../fakeAudio';
 
 const settings = { ...DEFAULT_SIM_SETTINGS, animationSpeed: 'instant' as const };
 const sandbox: SceneConfig = { id: 'sandbox', version: 1, seed: 7, bankroll: 50_000 };
@@ -94,6 +96,85 @@ describe('useSimDriver', () => {
     });
     expect(r?.ok).toBe(false);
     expect(result.current.toast?.tone).toBe('bad');
+  });
+});
+
+describe('table sounds in the driver hook (I027)', () => {
+  const preflopAA: SceneConfig = {
+    id: 'sandbox',
+    version: 1,
+    startAt: { street: 'preflop', deal: { player: ['As', 'Ad'] } },
+  };
+  /** Mounts with sounds, waits for the lazy audio module, and taps once (the user gesture). */
+  async function mountWithSounds(extra: Partial<SimSettings>, muted = false) {
+    const { log, mk } = fakeAudio();
+    __setAudioContextFactory(mk);
+    const p = props(preflopAA, { settings: { ...settings, sounds: true, ...extra } });
+    const r = renderHook(() => useSimDriver(p, 'sandbox'));
+    r.result.current.soundMuted.current = muted;
+    // the audio module loads on demand and arms its first-gesture listener
+    await waitFor(() => {
+      window.dispatchEvent(new Event('pointerdown'));
+      expect(log.created).toBeGreaterThan(0);
+    });
+    log.oscs.length = 0;
+    return { ...r, log };
+  }
+
+  it('settling a hand and dealing the next one each make their sound', async () => {
+    const { result, log } = await mountWithSounds({ animationSpeed: 'normal' });
+    await act(async () => {
+      await result.current.act({ type: 'play', multiple: 4 }); // AA wins
+    });
+    await waitFor(() => expect(log.oscs.length).toBeGreaterThan(0));
+    const afterSettle = log.oscs.length;
+    // win = 3 notes, lose = 2, push = 1 (the dealer's hand is random here)
+    expect([1, 2, 3]).toContain(afterSettle);
+    await act(async () => {
+      await result.current.act({ type: 'deal' });
+    });
+    expect(log.oscs.length).toBe(afterSettle + 2); // the deal's two clicks
+  });
+
+  it('a chip placed makes the chip blip', async () => {
+    const { result, log } = await mountWithSounds({ animationSpeed: 'normal' });
+    await act(async () => {
+      await result.current.act({ type: 'play', multiple: 4 });
+    });
+    await waitFor(() => expect(log.oscs.length).toBeGreaterThan(0));
+    log.oscs.length = 0;
+    await act(async () => {
+      await result.current.act({ type: 'set-bet', wager: 'trips', amount: 500 });
+    });
+    expect(log.oscs.length).toBe(1);
+  });
+
+  it('nothing plays at instant speed, while the table plays itself, or with Sounds off', async () => {
+    for (const [extra, muted] of [
+      [{ animationSpeed: 'instant' as const }, false],
+      [{ animationSpeed: 'normal' as const }, true],
+    ] as const) {
+      const { result, log } = await mountWithSounds(extra, muted);
+      await act(async () => {
+        await result.current.act({ type: 'play', multiple: 4 });
+      });
+      await waitFor(() => expect(result.current.d.view.state.street).toBe('settled'));
+      expect(log.oscs, JSON.stringify(extra)).toHaveLength(0);
+      cleanup();
+    }
+    const { log, mk } = fakeAudio();
+    __setAudioContextFactory(mk);
+    const p = props(preflopAA, {
+      settings: { ...settings, sounds: false, animationSpeed: 'normal' },
+    });
+    const { result } = renderHook(() => useSimDriver(p, 'sandbox'));
+    window.dispatchEvent(new Event('pointerdown'));
+    await act(async () => {
+      await result.current.act({ type: 'play', multiple: 4 });
+    });
+    await waitFor(() => expect(result.current.d.view.state.street).toBe('settled'));
+    expect(log.created).toBe(0);
+    expect(log.oscs).toHaveLength(0);
   });
 });
 

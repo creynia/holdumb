@@ -13,6 +13,8 @@ export interface Settings extends SimSettings {
   persistAsked: 'no' | 'granted' | 'denied';
   /** Scope of the Confirm box (D40). confirmOn is the effective policy; 'never' = box unticked. */
   confirmTiers: ConfirmTiers;
+  /** Table sounds (I027), off by default. */
+  sounds: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultBankrollCents: 50_000,
   persistAsked: 'no',
   confirmTiers: 'all',
+  sounds: false,
 };
 
 /** Confirm bets is on (the box is ticked). */
