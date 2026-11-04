@@ -83,7 +83,8 @@ jobs:
 
   # Lighthouse budgets for the Pages build (I077): mobile emulation (Moto G Power, 4x CPU) on #/,
   # #/play and #/learn/a-full-hand. Serves the check job's build artifact (no rebuild, I043).
-  # Not a required check yet: make it required after two green weeks.
+  # Not a required check yet: make it required after two green weeks. LCP fails above 3.5 s for now
+  # (target 2.5 s; the lesson page loads the lesson bundle and measured 3.2 s on a CI runner).
   lighthouse:
     needs: check
     runs-on: ubuntu-latest
