@@ -7,7 +7,8 @@ test('a failed chunk load shows a retry, and Retry loads the page once the netwo
   page,
 }) => {
   let blocked = true;
-  await page.route(/\/assets\/Lesson-[^/]*\.js$/, (route) =>
+  // Chunks that carry simulator code are named sim-* (I095).
+  await page.route(/\/assets\/(sim-)?Lesson-[^/]*\.js$/, (route) =>
     blocked ? route.abort('failed') : route.continue(),
   );
   await page.goto('/#/learn/welcome');
