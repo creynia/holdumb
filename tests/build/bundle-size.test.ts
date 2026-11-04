@@ -16,12 +16,13 @@ import { describe, expect, it } from 'vitest';
  * route's preloads (follow-up item).
  * 2026-11-03: raw raised to 220 kB (gzip stays 85 kB). I078 Watch +6.4 kB (2026-11-03); I095 tracks
  * the structural fix (keep src/sim out of Home's preloads).
- * 2026-11-03: gzip raised to 85.2 kB: I007 (best-five marks on the felt) adds about 90 B gzip to the
- * table code, and main was already within 50 B of the old limit.
+ * 2026-11-03 (I095): back to 200 kB / 80 kB. Play is a lazy screen, the app imports simulator leaf
+ * modules (never the barrels), the store's value lists are plain data and the test hook loads after
+ * first paint: Home's first paint is about 46 kB raw (entry + preact), with no simulator chunk.
  */
 const BUDGET = {
-  entryRaw: 220_000,
-  entryGzip: 85_200,
+  entryRaw: 200_000,
+  entryGzip: 80_000,
   cssRaw: 40_000,
   workerRaw: 60_000,
 };
