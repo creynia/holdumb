@@ -130,6 +130,16 @@ export interface StrategyCopy {
 /** content/drill.json: the grading reminder per Drill category (curriculum.md 9.2). `{outs}` is filled in. */
 export type DrillReminders = Partial<Record<DrillCategoryId, string>>;
 
+/** content/skills.json: a skill Learn tracks from Drill accuracy (I069). */
+export interface Skill {
+  id: string;
+  title: string;
+  /** The lesson to revisit when the skill needs work. */
+  lessonId: string;
+  /** The Drill categories whose answers make up the skill. */
+  categories: DrillCategoryId[];
+}
+
 export interface ContentBundle {
   chapters: Chapter[];
   lessons: Lesson[];
@@ -138,5 +148,6 @@ export interface ContentBundle {
   hands: Record<HandCategory, HandCopy>;
   strategy: Record<StrategyId, StrategyCopy>;
   drill: DrillReminders;
+  skills: Skill[];
   sources: SourceGroup[];
 }

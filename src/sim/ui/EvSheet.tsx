@@ -225,7 +225,7 @@ export function EvSheet({
     preview && opt && handsPerHour && !isBest
       ? wrongEveryTimePerHour(preview, opt, handsPerHour)
       : null;
-  // River facts (lesson 12): on every river preview, hidden only while practice mode hides the EV.
+  // River facts (lesson 12): on every river preview, hidden only while EV after the move hides it.
   // 47 hand evaluations, so cheap enough to recompute on each render.
   const river =
     preview?.street === 'river' &&
@@ -235,7 +235,7 @@ export function EvSheet({
       ? riverFacts(request.hole, request.board)
       : null;
   // Flop (I058): which basic-card rule fires. Same visibility as the river facts: hidden while
-  // practice mode hides the EV, shown after the move, and never in a read-only sheet's absence.
+  // EV after the move hides it, shown after the move, and never in a read-only sheet's absence.
   const flopRule =
     detail === 'full' &&
     preview?.street === 'flop' &&

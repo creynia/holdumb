@@ -26,13 +26,14 @@ import { WatchControls, WatchStatus } from './WatchBar';
 import { buildTimeline, useSkippableMotion } from './animation';
 import { useBetHandlers } from './hooks/useBetHandlers';
 import { useEvSheet } from './hooks/useEvSheet';
+import { useShortcuts } from './hooks/useShortcuts';
 import { useMoveLog } from './hooks/useMoveLog';
 import { usePreviewBar } from './hooks/usePreviewBar';
 import { useSandboxSync, useSimDriver } from './hooks/useSimDriver';
 import { useWatch } from './hooks/useWatch';
 import { decodeMoveLog } from './moveLogData';
 import { decodeSnapshot } from './persist';
-import { resolveEvShown, resolvePractice, resolveSpeed } from './settings';
+import { resolveEvMode, resolveEvShown, resolveSpeed } from './settings';
 import { autoOnlyOf, isDecisionStreet, resultLabels, splitHighlight } from './simView';
 import type { SimulatorProps } from './types';
 import { optionKeyOf } from './text';
@@ -61,12 +62,14 @@ export function Simulator(props: SimulatorViewProps) {
   const decision = isDecisionStreet(street);
   const evShown = resolveEvShown(settings, scene, sandbox, step);
   // EV after the move (D11): the settings decide in the sandbox and the table follows at once.
-  const practice = sandbox ? resolvePractice(settings, baseScene) : view.practice;
+  const evMode = sandbox ? resolveEvMode(settings, baseScene, 'sandbox') : view.evMode;
 
-  const ev = useEvSheet(sim, practice, orientation, evShown, decision);
+  const ev = useEvSheet(sim, evMode, orientation, evShown, decision);
   // I092: Details is the way into the EV sheet that does not act (EV shown before the move).
-  const detailsOpen = decision && evShown && !practice && ev.open === null && !view.pendingStart;
+  const detailsOpen =
+    decision && evShown && evMode !== 'after' && ev.open === null && !view.pendingStart;
   const bets = useBetHandlers(d, act, scene.ui?.defaultChip ?? 500);
+  const rootRef = useRef<HTMLDivElement>(null);
   // The move log is the sandbox's (Play); a restored session brings its log back.
   const moveLog = useMoveLog(view, () =>
     sandbox && !baseScene.startAt && decodeSnapshot(props.snapshot, settings.paytable)
@@ -84,6 +87,11 @@ export function Simulator(props: SimulatorViewProps) {
     () => buildTimeline(d.view.lastEvents, speed).totalMs,
   );
   const watching = watch.running;
+  // I047: keyboard shortcuts press the same buttons a tap would (Play: also from the page body).
+  const onTableKey = useShortcuts(rootRef, {
+    global: sandbox && !!scene.ui?.showSettings,
+    blocked: watching || !!ev.sheet || view.pendingStart,
+  });
   // No sheet can act while Watch plays the table: starting Watch closes it (D40, I078).
   useEffect(() => {
     if (watching) ev.close();
@@ -192,7 +200,7 @@ export function Simulator(props: SimulatorViewProps) {
           street={street}
           layout={orientation === 'landscape' ? 'rail' : 'bar'}
           preview={bar.showPreviewOnBar}
-          hideEv={practice}
+          hideEv={evMode === 'after'}
           evOff={!evShown}
           evStatus={bar.barStatus}
           selected={ev.open}
@@ -227,6 +235,8 @@ export function Simulator(props: SimulatorViewProps) {
 
   return (
     <div
+      ref={rootRef}
+      onKeyDown={onTableKey}
       class={`sim-container${view.pendingStart ? ' is-pending' : ''}`}
       data-testid="simulator"
       data-street={street}

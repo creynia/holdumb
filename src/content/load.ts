@@ -9,6 +9,7 @@ import type {
   GlossaryEntry,
   DrillReminders,
   HandCopy,
+  Skill,
   Lesson,
   SourceGroup,
   SourceItem,
@@ -58,6 +59,7 @@ export interface ContentSources {
   hands: Record<string, HandCopy>;
   strategy: Record<string, StrategyCopy>;
   drill: DrillReminders;
+  skills: Skill[];
   sources: SourceGroup[];
   samplesActive: boolean;
   lessonFiles: { file: string; slug: string; source: string }[];
@@ -96,6 +98,7 @@ export function readSources(root: string, includeSamples = false): ContentSource
     hands: json<Record<string, HandCopy>>('hands.json', '_sample-hands.json', {}),
     strategy: json<Record<string, StrategyCopy>>('strategy.json', '_sample-strategy.json', {}),
     drill: json<DrillReminders>('drill.json', '_sample-drill.json', {}),
+    skills: json<Skill[]>('skills.json', '_sample-skills.json', []),
     sources: has('sources.json')
       ? (JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')) as SourceGroup[])
       : [],
@@ -170,6 +173,7 @@ export function buildContent(root: string): ContentBundle {
     hands: src.hands,
     strategy,
     drill: src.drill,
+    skills: src.skills,
     sources: src.sources,
   };
 }
