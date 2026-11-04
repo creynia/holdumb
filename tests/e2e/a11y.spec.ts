@@ -230,6 +230,10 @@ test.describe('text zoom 200%', () => {
       await zoom();
       await expect(page.getByTestId('drill-spot')).toBeVisible();
       await noHScroll('drill');
+      // The graded result (EV rows, links row) must fit too.
+      await page.locator('.choice-row button').first().click();
+      await expect(page.getByTestId('drill-result')).toBeVisible();
+      await noHScroll('drill result');
       await page.close();
     });
   }
