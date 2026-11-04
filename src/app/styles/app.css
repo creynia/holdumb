@@ -221,7 +221,7 @@ main:has(> .page-wide) {
    its own, so the status bar and the ActionBar stay where they are and the page does not scroll. */
 @container sim-table (max-width: calc(13rem + 32px)) {
   .page-play .sim-table-portrait .sim-table-felt {
-    height: calc(100dvh - var(--play-chrome));
+    height: calc(100svh - var(--play-chrome));
     overflow-y: auto;
     overscroll-behavior: contain;
     touch-action: pan-y;
