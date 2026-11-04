@@ -1,12 +1,12 @@
 // How the container combines app settings, scene options and URL presets.
 import type { DecisionTier } from '../math';
-import { stepConfirmOn, stepEvMode } from '../scene';
-import type { SceneConfig, SceneStep } from '../scene';
+import { stepConfirmOn, stepEvMode } from '../scene/modes';
+import type { SceneConfig, SceneStep } from '../scene/types';
 import type { ConfirmOn, EvMode, SimSettings } from './types';
 import { effectiveSpeed } from './animation';
 import type { Speed } from './animation';
 
-export { CONFIRM_ON, EV_MODES } from '../scene';
+export { CONFIRM_ON, EV_MODES } from '../scene/modes';
 
 /** EV shown on the buttons and sheet before you act (D39). */
 export function evVisibleBefore(mode: EvMode): boolean {
