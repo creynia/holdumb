@@ -48,11 +48,11 @@
 .sim-toast-bad {
   border-left-color: var(--tier-blunder);
 }
-/* The message takes the room left by the buttons and wraps, even mid-word at large text (I053). */
+/* The message takes the room left by the buttons and wraps at spaces (I053). No overflow-wrap:
+   anywhere, which would break signed amounts across their word joiner (I008). */
 .sim-toast > span:first-child {
   flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
 }
 .sim-toast-x {
   flex: none;
