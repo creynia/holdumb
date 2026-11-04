@@ -16,21 +16,24 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const links = existsSync(linksFile) ? JSON.parse(readFileSync(linksFile, 'utf8')) : {};
 const pct = (s) => (typeof s === 'number' ? String(Math.round(s * 100)) : '–');
 const ms = (a) => (a ? `${Math.round(a.numericValue)} ms` : '–');
-const rows = manifest.map((run) => {
-  const r = JSON.parse(readFileSync(run.jsonPath, 'utf8'));
-  const a = r.audits;
-  const s = run.summary;
-  const page = new URL(run.url).hash || '/';
-  const link = links[run.url] ? ` ([report](${links[run.url]}))` : '';
-  const cls = a['cumulative-layout-shift']?.numericValue;
-  const installable = a['installable-manifest']?.score === 1 ? 'pass' : 'fail';
-  return `| \`${page}\`${link} | ${pct(s.performance)} | ${pct(s.accessibility)} | ${pct(s['best-practices'])} | ${pct(s.pwa)} | ${ms(a['largest-contentful-paint'])} | ${ms(a['total-blocking-time'])} | ${cls === undefined ? '–' : cls.toFixed(3)} | ${installable} |`;
-});
+// Three runs per page: the summary shows the representative (median) run of each.
+const rows = manifest
+  .filter((run) => run.isRepresentativeRun)
+  .map((run) => {
+    const r = JSON.parse(readFileSync(run.jsonPath, 'utf8'));
+    const a = r.audits;
+    const s = run.summary;
+    const page = new URL(run.url).hash || '#/';
+    const link = links[run.url] ? ` ([report](${links[run.url]}))` : '';
+    const cls = a['cumulative-layout-shift']?.numericValue;
+    const installable = a['installable-manifest']?.score === 1 ? 'pass' : 'fail';
+    return `| \`${page}\`${link} | ${pct(s.performance)} | ${pct(s.accessibility)} | ${pct(s['best-practices'])} | ${pct(s.pwa)} | ${ms(a['largest-contentful-paint'])} | ${ms(a['total-blocking-time'])} | ${cls === undefined ? '–' : cls.toFixed(3)} | ${installable} |`;
+  });
 console.log(
   [
     '### Lighthouse (mobile, Moto G Power, 4x CPU)',
     '',
-    'Budgets (lighthouserc.json): performance ≥ 85, accessibility ≥ 95, best practices ≥ 90, LCP ≤ 3.5 s (target 2.5 s: the lesson page measured 3.2 s on CI, the Home and Play pages 2.1 s), TBT ≤ 300 ms, CLS ≤ 0.05 (warning), installable manifest.',
+    'Budgets (lighthouserc.json): performance ≥ 85, accessibility ≥ 95, best practices ≥ 90, LCP ≤ 2.5 s (the lesson page ≤ 4 s for now: it waits for the lazy lesson bundle), TBT ≤ 300 ms, CLS ≤ 0.05 (warning), installable manifest.',
     '',
     '| Page | Perf | A11y | Best practices | PWA | LCP | TBT | CLS | Installable |',
     '|---|---|---|---|---|---|---|---|---|',
