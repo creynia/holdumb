@@ -98,6 +98,13 @@ function Choice<T extends string>(props: {
   );
 }
 
+/** A small string hash (FNV-1a) for seeding the next deal from the current spot code. */
+function hashCode(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
 function replaceUrl(code: string, seed?: string | null) {
   const qs = new URLSearchParams({ mode: 'showdown', spot: code });
   if (seed) qs.set('seed', seed);
@@ -125,6 +132,9 @@ export function DrillShowdown(props: { query: URLSearchParams; seed?: number }) 
   useAnnounceFrom(feedbackRef, graded && spot ? spot.code : null, { dedupeKey: 'showdown' });
 
   const deal = () => {
+    // With ?seed= the next spot is a function of the current one, so a reload (which restarts the
+    // generator) still moves on instead of repeating the first deal.
+    if (seedParam !== null && code) rng.current = rngFromSeed(Number(seedParam) ^ hashCode(code));
     const [s, r] = nextShowdownSpot(rng.current, { teaching: true });
     rng.current = r;
     replaceUrl(s.code, seedParam);

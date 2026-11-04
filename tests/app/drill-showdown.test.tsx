@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -117,5 +118,12 @@ describe('Drill: read the showdown (I061)', () => {
     const code = new URLSearchParams(location.hash.split('?')[1]).get('spot')!;
     expect(code).toMatch(/^s:[2-9TJQKA][shdc]{1}/);
     expect(el).toBeTruthy();
+  });
+  it('the not-playing cue is an edge, never a dim of the ink', () => {
+    const css = readFileSync('src/app/styles/app.css', 'utf8');
+    const rule = /\.pc-out\s*{([^}]*)}/.exec(css);
+    expect(rule).toBeTruthy();
+    expect(rule![1]).toContain('border-style: dashed');
+    expect(rule![1]).not.toMatch(/opacity|filter|(^|[\s;{])color:/);
   });
 });

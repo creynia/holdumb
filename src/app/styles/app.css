@@ -1294,7 +1294,10 @@ html[data-route='play'] body {
   font-size: 1.15em;
 }
 .pc-out {
-  opacity: 0.6;
+  /* Not one of the five that play: a dashed grey edge on the same 1px box. The ink is never dimmed
+     (it must stay >= 4.5:1), the same cue as the felt cards (I007). */
+  border-style: dashed;
+  border-color: #6f6c62;
 }
 .sd-q {
   margin: 0;
