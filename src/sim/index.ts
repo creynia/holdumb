@@ -8,7 +8,7 @@ export * from './worker';
 export { Simulator } from './ui/Simulator';
 export { Say, announce, muteAnnouncements, useAnnounce, useAnnounceFrom } from './ui/announcer';
 export { EvSheet } from './ui/EvSheet';
-export { costCents, fmtCostC, fmtFixed, optionKeyOf } from './ui/text';
+export { costCents, fmtCostC, fmtFixed, optionKeyOf, outsDetailText } from './ui/text';
 export { StrategyChart } from './ui/StrategyChart';
 export { DEFAULT_SIM_SETTINGS } from './ui/types';
 export type { SimSettings, SimulatorProps, SimulatorEvent } from './ui/types';
