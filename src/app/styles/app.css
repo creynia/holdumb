@@ -627,6 +627,12 @@ textarea {
   max-width: 100%;
   min-width: 0;
 }
+/* The Trips paytable names are long: a smaller face keeps "default" readable at 360px. */
+@media (max-width: 400px) {
+  .form select {
+    font-size: 0.875rem;
+  }
+}
 .form label {
   display: grid;
   gap: 0.25rem;

@@ -76,6 +76,8 @@ async function check(page: Page, street: string, w: number, h: number) {
   const opts = await box(page, '.sim-options');
   expect(opts, `${where}: options row`).not.toBeNull();
   expect(opts!.top, `${where}: options top`).toBeGreaterThanOrEqual(top!.bottom);
+  // In the rail the row never wraps: a second line would squeeze the rail body and its toast.
+  if (w > h) expect(opts!.height, `${where}: options row is one line`).toBeLessThanOrEqual(46);
   expect(opts!.bottom, `${where}: options bottom`).toBeLessThanOrEqual(tab ? tab.top : h);
   const rects = await page.evaluate(() =>
     [...document.querySelectorAll('.sim-actions, [data-hit], g.sim-card, .sim-felt .sim-slot')].map(

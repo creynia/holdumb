@@ -63,7 +63,6 @@
 /* ---------- table options (I090): EV segments and the Confirm box ---------- */
 .sim-options {
   display: flex;
-  flex-wrap: wrap; /* large text (I053): Confirm moves under the EV group instead of overflowing */
   align-items: center;
   justify-content: space-between;
   gap: 4px 8px;
@@ -73,6 +72,13 @@
 }
 .sim-rail .sim-options {
   font-size: 0.8rem;
+}
+/* Large text (I053), portrait only: Confirm moves under the EV group instead of overflowing. The
+   rail row never wraps: a second line would squeeze the rail body and its toast. */
+@container sim-table (max-width: calc(13rem + 32px)) {
+  .sim-options {
+    flex-wrap: wrap;
+  }
 }
 .sim-seg {
   display: flex;
