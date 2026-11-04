@@ -2,7 +2,6 @@ import type { VNode } from 'preact';
 import { matchPath } from './router';
 import type { ParsedHash } from './router';
 import { NotFound } from './screens/NotFound';
-import { Play } from './screens/Play';
 import {
   About,
   BetDetail,
@@ -14,6 +13,7 @@ import {
   Learn,
   LessonView,
   More,
+  Play,
   Settings,
   Sources,
   Strategy,

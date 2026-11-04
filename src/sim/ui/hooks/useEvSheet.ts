@@ -145,6 +145,7 @@ export function useEvSheet(
   /** Acts on `k`; in 'after' mode the move is then revealed against the pre-move preview. */
   const confirm = async (k: OptionKey) => {
     // Set before anything is awaited: a second click in the same tick must meet the guard.
+    const prevAct = lastActAt.current;
     lastActAt.current = Date.now();
     setPending(false);
     const pre = d.view.preview;
@@ -177,7 +178,7 @@ export function useEvSheet(
     sim.narration.current = null;
     sim.narrationAction.current = null;
     if (r.ok) startGuard();
-    else lastActAt.current = 0; // nothing was played: taps are welcome again
+    else lastActAt.current = prevAct; // nothing was played: back to the guard that was running
     if (r.ok && evMode === 'after' && before)
       setReveal({ preview: before, chosen: k, req: reqBefore });
     else setOpen(null);
@@ -292,6 +293,12 @@ export function useEvSheet(
           onContinue: () => {
             setReveal(null);
             setOpen(null);
+            // A reveal opened from the toast's Details gives focus back to that button (I094).
+            if (fromToast.current)
+              setTimeout(
+                () => document.querySelector<HTMLElement>('[data-testid="toast-details"]')?.focus(),
+                0,
+              );
           },
           detail: scene.evDetail ?? 'full',
           whyOpen: scene.whyOpen,

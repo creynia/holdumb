@@ -1,8 +1,15 @@
 // Persistence: one localStorage key with an in-memory fallback (private windows, file:// quirks).
-import { PAYTABLE_PRESET_IDS } from '../sim/engine';
-import { CONFIRM_ON, EV_MODES, evModeOfPractice } from '../sim/ui/settings';
-import { DRILL_CATEGORY_IDS } from '../sim/strategy';
-import type { DrillCategoryId } from '../sim/strategy';
+// The store loads with Home, so it imports no simulator module that the lazy table chunks share
+// (Rollup would split it into a chunk Home preloads, I095): the setting value lists live in
+// ./settingValues, kept equal to the simulator's by tests/app/settings-values.test.ts.
+import {
+  CONFIRM_ON,
+  DRILL_CATEGORY_IDS,
+  EV_MODES,
+  PAYTABLE_PRESET_IDS,
+  evModeOfPractice,
+} from './settingValues';
+import type { DrillCategoryId } from '../sim/strategy/types';
 import { DEFAULT_SETTINGS } from './settings';
 import type { Settings } from './settings';
 
@@ -64,6 +71,8 @@ export interface LessonProgress {
 export type DrillStreet = 'preflop' | 'flop' | 'river';
 export const DRILL_STREETS: readonly DrillStreet[] = ['preflop', 'flop', 'river'];
 export const MAX_RECENT_MISSES = 50;
+/** Drill answers remembered per lens for the skill windows on Learn (I069). */
+export const MAX_RECENT_ANSWERS = 200;
 
 export type DrillLens = 'perfect' | 'practical';
 type StreetCounts = Record<DrillStreet, { answered: number; correct: number }>;
@@ -76,6 +85,8 @@ export interface LensStats {
   byCategory: Partial<Record<DrillCategoryId, { answered: number; correct: number }>>;
   /** spot codes (strategy/drill.ts), newest first */
   recentMisses: string[];
+  /** The last answers, oldest first: `<category>:<1 if correct, else 0>`. Older records lack it. */
+  recent: string[];
 }
 
 /**
@@ -112,6 +123,7 @@ const emptyLens = (): LensStats => ({
   byStreet: emptyStreets(),
   byCategory: {},
   recentMisses: [],
+  recent: [],
 });
 
 export function emptyDrill(): DrillStats {
@@ -226,6 +238,15 @@ function sanitizeLens(raw: unknown): LensStats {
     d.recentMisses = raw.recentMisses
       .filter((x): x is string => typeof x === 'string' && x.length <= 64)
       .slice(0, MAX_RECENT_MISSES);
+  if (Array.isArray(raw.recent))
+    d.recent = raw.recent
+      .filter(
+        (x): x is string =>
+          typeof x === 'string' &&
+          /^[a-z0-9-]+:[01]$/.test(x) &&
+          (DRILL_CATEGORY_IDS as readonly string[]).includes(x.slice(0, -2)),
+      )
+      .slice(-MAX_RECENT_ANSWERS);
   return d;
 }
 
