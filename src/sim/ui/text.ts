@@ -22,7 +22,7 @@ import type {
   RiverFacts,
   WagerTier,
 } from '../math';
-import type { OptionKey } from '../scene';
+import type { HandVerdict, OptionKey } from '../scene';
 
 // ---------- exact fractions -> text ----------
 
@@ -78,7 +78,7 @@ export function fmtCost(regretCents: Fraction): string {
 /** "−$14.08" for a cost against the best option; "less than 1¢" when it rounds to nothing. */
 export function fmtVsBest(costCents: Fraction): string {
   const c = fmtCost(costCents);
-  return isZero(costCents) || roundFraction(costCents) === 0n ? c : `\u2212${c}`;
+  return isZero(costCents) || roundFraction(costCents) === 0n ? c : `\u2212\u2060${c}`;
 }
 /** The "minus" sign used in prose is a real minus (U+2212). */
 export const typographic = (s: string): string => s.replace(/^-/, '−').replace(/ -/g, ' −');
@@ -168,6 +168,33 @@ export const DECISION_TIER_SHORT: Record<DecisionTier, string> = {
 export function bestOf(preview: DecisionPreview): DecisionOption {
   return preview.options[preview.bestIndex]!;
 }
+
+/**
+ * The skill-versus-luck line after a hand (I059). Every decision fine -> "Played it right" with
+ * what the line expected against what the cards gave. A mistake is named (the costliest only,
+ * once) unless the last decision was the costliest and was just described in words (the I080
+ * narration, or the After-mode reveal): then the line carries only expected against result, so
+ * the cost is never said twice.
+ */
+export function handVerdictText(v: HandVerdict, lastDescribed = false): string {
+  const mistakes = v.decisions.filter((d) => d.tier !== 'best' && d.tier !== 'close');
+  const worst = mistakes.reduce<HandVerdict['decisions'][number] | null>(
+    (w, d) => (!w || compareFractions(d.costCents, w.costCents) > 0 ? d : w),
+    null,
+  );
+  const e = Number(roundFraction(v.expectedCents));
+  const figures = `Expected ${signedMoney(e)}, result ${signedMoney(v.netCents)}.`;
+  if (!worst) return `Played it right. ${figures}`;
+  if (lastDescribed && worst === v.decisions[v.decisions.length - 1]) return figures;
+  const cost = fmtCostC(Number(roundFraction(worst.costCents)));
+  return `Your ${worst.street} ${worst.label} cost ${cost} on average (${DECISION_TIER_LABEL[worst.tier]}).`;
+}
+
+const compareFractions = (a: Fraction, b: Fraction): number => {
+  const l = a.num * b.den;
+  const r = b.num * a.den;
+  return l < r ? -1 : l > r ? 1 : 0;
+};
 
 const TIER_PHRASE: Record<DecisionTier, string> = {
   best: 'best play',
@@ -554,7 +581,7 @@ export function fmtCostC(cents: number): string {
 }
 /** "−$14.08" or "−<$0.01". */
 export function fmtVsBestC(cents: number): string {
-  return `\u2212${fmtCostC(cents)}`;
+  return `\u2212\u2060${fmtCostC(cents)}`;
 }
 
 /** The ante in cents, recovered from a preview (evCents / ev of any option with a non-zero EV). */

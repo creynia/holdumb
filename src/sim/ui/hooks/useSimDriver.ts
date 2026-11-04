@@ -5,8 +5,14 @@ import { SimDriver } from '../../scene';
 import type { DriverEvent, SceneConfig } from '../../scene';
 import type { LoggedHand } from '../moveLogData';
 import { decodeSnapshot, encodeSnapshot } from '../persist';
-import { randomSeed, resolveEvMode } from '../settings';
-import { foldAnnouncement, settledToastText, typographic, unjoined } from '../text';
+import { randomSeed, resolveEvMode, resolveEvShown } from '../settings';
+import {
+  foldAnnouncement,
+  handVerdictText,
+  settledToastText,
+  typographic,
+  unjoined,
+} from '../text';
 import type { SimulatorProps } from '../types';
 
 export interface Toast {
@@ -82,13 +88,24 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
         // The decision's narration (I080) leads the result in one toast.
         const lead = narration.current ? `${narration.current} ` : '';
         narration.current = null;
+        // I059: one skill-versus-luck sentence rides on the result (never a second toast), unless
+        // EV is hidden; a lesson opts in with ui.verdict.
+        const dd = holder.current;
+        const scene = dd?.view.scene;
+        const verdict =
+          dd && scene && (mode === 'sandbox' || scene.ui?.verdict === true) ? dd.verdict() : null;
+        const tail =
+          verdict &&
+          resolveEvShown(latest.current.settings, scene!, mode === 'sandbox', dd!.view.step)
+            ? ` ${handVerdictText(verdict, lead !== '' || dd!.view.evMode === 'after')}`
+            : '';
         // A fold is announced once, from the toast's spoken line (the reveal and Felt stay quiet).
         pushToast(
-          typographic(`${lead}${settledToastText(e)}`),
+          typographic(`${lead}${settledToastText(e)}${tail}`),
           e.result.net > 0 ? 'good' : undefined,
           e.result.outcome === 'fold'
-            ? unjoined(`${lead}${foldAnnouncement(e.result)}`)
-            : unjoined(typographic(`${lead}${settledToastText(e)}`)),
+            ? unjoined(`${lead}${foldAnnouncement(e.result)}${tail}`)
+            : unjoined(typographic(`${lead}${settledToastText(e)}${tail}`)),
         );
       } else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
       else if (e.type === 'action-rejected' && !holder.current?.view.step)
@@ -118,7 +135,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
 
 /**
  * Sandbox sync: saves a snapshot after every driver event (PersistedV1.sandbox, owned by the app
- * store) and keeps the table's practice mode in step with the settings, its source of truth.
+ * store) and keeps the table's EV mode in step with the settings, its source of truth.
  */
 export function useSandboxSync(
   h: SimDriverHandle,

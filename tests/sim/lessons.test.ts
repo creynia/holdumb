@@ -13,7 +13,7 @@ import {
 import type { DriverEvent, SceneConfig } from '../../src/sim/scene';
 import { createEvClient } from '../../src/sim/worker';
 import { optionKeyOfAction } from '../../src/sim/scene';
-import { CONFIRM_ON, EV_MODES, resolveEvMode, resolvePractice } from '../../src/sim/ui/settings';
+import { CONFIRM_ON, EV_MODES, resolveEvMode } from '../../src/sim/ui/settings';
 import { DEFAULT_SIM_SETTINGS } from '../../src/sim/ui/types';
 import type { SimSettings } from '../../src/sim/ui/types';
 
@@ -52,7 +52,6 @@ async function script(
     mode: 'scene',
     seed: 1,
     evMode: resolveEvMode(settings, scene, 'scene'),
-    practice: resolvePractice(settings, scene),
     preview: (req, o) => client.run('preview', req, o),
     onEvent: (e) => {
       events.push(e);

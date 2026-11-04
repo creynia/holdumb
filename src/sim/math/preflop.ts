@@ -1,6 +1,8 @@
 // Preflop: hand classes and the precomputed exact table (simulator.md §2.7).
 import { RANK_CHARS } from '../engine/types';
 import type { BlindPaytableId, Card } from '../engine/types';
+import type { Fraction } from './types';
+import { frac } from './fraction';
 import { PREFLOP_BLIND_STANDARD } from './tables/preflop-blind-standard';
 import type { PreflopTable } from './tables/preflop-blind-standard';
 
@@ -100,6 +102,19 @@ export function preflopRow(blind: BlindPaytableId, name: string): PreflopRow {
 }
 export function preflopClasses(blind: BlindPaytableId): string[] {
   return [...decodeTable(PREFLOP_TABLES[blind]).keys()];
+}
+
+/**
+ * Exact EV in antes of Bet 4x and of Check (then perfect play) for a class: the same fractions the
+ * preflop EV sheet shows (`preflopPreview`). The strategy chart reads these at runtime.
+ */
+export function classEv(blind: BlindPaytableId, name: string): { bet4: Fraction; check: Fraction } {
+  const row = preflopRow(blind, name);
+  const s = rowSums(row);
+  return {
+    bet4: frac(s.SA + 4n * s.SP, 2n * DEALER * BOARDS),
+    check: frac(s.SC, 2n * DEALER * FLOPS * RUNOUTS_BIG),
+  };
 }
 
 /** The classic chart (D3 §3): 69 of 169 classes. 3x is never best. */
