@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// I007: after a showdown every face-up card says whether it plays, and the unused ones are dimmed.
+// I007: after a showdown every face-up card says whether it plays, and the unused ones get a dashed edge.
 test('a settled showdown marks the five cards that play on each side', async ({ page }) => {
   await page.goto('/#/play?seed=7&speed=instant');
   await page.locator('button[data-action="deal"]').click();
@@ -9,8 +9,9 @@ test('a settled showdown marks the five cards that play on each side', async ({ 
     .locator('g.sim-card:not(.sim-card-back)')
     .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
   expect(before.every((n) => !/plays/.test(n ?? ''))).toBe(true);
+  await page.waitForSelector('[data-testid="simulator"][data-ev="ready"]', { timeout: 20_000 });
   await page.locator('button[data-option="play-4"]').click();
-  await page.getByTestId('confirm').click();
+  // One tap acts by default (D40), so the bet settles the hand: no confirm step.
   await expect(page.getByTestId('simulator')).toHaveAttribute('data-street', 'settled');
   const cards = page.locator('g.sim-card:not(.sim-card-back)');
   await expect(cards).toHaveCount(9);
@@ -25,12 +26,13 @@ test('a settled showdown marks the five cards that play on each side', async ({ 
   expect(playing).toBeGreaterThanOrEqual(5);
   expect(out).toBeLessThanOrEqual(4);
   // The ActionBar did not move (dimming is opacity only).
+  // The cue is an edge, not a dim: the card keeps full opacity (ink contrast), and nothing animates.
+  const first = page.locator('g.sim-card.is-out').first();
+  expect(await first.evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
+  expect(await first.evaluate((e) => getComputedStyle(e).transitionDuration)).toBe('0s');
   expect(
-    await page
-      .locator('g.sim-card.is-out')
-      .first()
-      .evaluate((e) => getComputedStyle(e).transitionDuration),
-  ).toBe('0s');
+    await first.locator('.sim-card-body').evaluate((e) => getComputedStyle(e).strokeDasharray),
+  ).not.toBe('none');
 });
 
 // Through the real Simulator: folding on the river leaves your own cards unlabelled, and only the
