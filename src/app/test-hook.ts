@@ -2,8 +2,8 @@
 // Clients are created on first access, so a cold load constructs no worker (I042).
 import { simulateUpdateAvailable } from '../pwa/register';
 import { announce, flushAnnouncements } from '../sim/ui/announcer';
-import { parseCards } from '../sim/engine';
-import { createEvClient } from '../sim/worker';
+import { parseCards } from '../sim/engine/cards';
+import { createEvClient } from '../sim/worker/client';
 import type { EvClient } from '../sim';
 import { getEvClient } from './evClient';
 

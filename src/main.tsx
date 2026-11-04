@@ -8,11 +8,12 @@ import { applyTheme } from './app/theme';
 import { registerSW } from './pwa/register';
 import './app/styles/tokens.css';
 import './app/styles/app.css';
-import './app/test-hook';
 
 const store = new Store();
 applyTheme(store.settings);
 registerSW();
+// The e2e test hook loads after first paint, so its EV clients stay out of Home's JS (I095).
+void import('./app/test-hook');
 
 render(
   <AppProviders content={content} store={store}>
