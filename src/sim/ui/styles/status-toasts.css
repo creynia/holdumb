@@ -174,3 +174,17 @@
   transform: translate(-50%, -50%);
   line-height: 1;
 }
+/* A text button inside a toast: Details opens the reveal for the move just made (I094). */
+.sim-toast-action {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

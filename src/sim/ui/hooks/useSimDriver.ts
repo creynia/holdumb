@@ -14,6 +14,7 @@ export interface Toast {
   text: string;
   tone?: 'info' | 'good' | 'bad';
   spoken?: string;
+  action?: { label: string; onClick: () => void };
 }
 
 export type SimMode = 'sandbox' | 'scene';
@@ -59,9 +60,16 @@ export interface SimDriverHandle {
   latest: { current: SimulatorProps };
   toast: Toast | null;
   setToast: (t: Toast | null) => void;
-  pushToast: (text: string, tone?: Toast['tone'], spoken?: string) => void;
+  pushToast: (
+    text: string,
+    tone?: Toast['tone'],
+    spoken?: string,
+    action?: Toast['action'],
+  ) => void;
   /** I080: what the confirmed decision was worth; the result toast leads with it if the hand ends. */
   narration: { current: string | null };
+  /** The Details button that goes with `narration` (I094). */
+  narrationAction: { current: Toast['action'] | null };
   /** Runs a driver action and toasts a rejection outside scene steps. */
   act: (a: DriverAction) => ReturnType<SimDriver['act']>;
 }
@@ -71,10 +79,15 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
   latest.current = props;
   const [toast, setToast] = useState<Toast | null>(null);
   const toastId = useRef(0);
-  const pushToast = (text: string, tone?: Toast['tone'], spoken?: string): void =>
-    setToast({ id: ++toastId.current, text, tone, spoken });
+  const pushToast = (
+    text: string,
+    tone?: Toast['tone'],
+    spoken?: string,
+    action?: Toast['action'],
+  ): void => setToast({ id: ++toastId.current, text, tone, spoken, action });
 
   const narration = useRef<string | null>(null);
+  const narrationAction = useRef<Toast['action'] | null>(null);
   const holder = useRef<SimDriver | null>(null);
   if (!holder.current) {
     holder.current = makeDriver(props, mode, (e) => {
@@ -82,6 +95,8 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
         // The decision's narration (I080) leads the result in one toast.
         const lead = narration.current ? `${narration.current} ` : '';
         narration.current = null;
+        const action = narrationAction.current ?? undefined;
+        narrationAction.current = null;
         // I059: one skill-versus-luck sentence rides on the result (never a second toast), unless
         // EV is hidden; a lesson opts in with ui.verdict.
         const dd = holder.current;
@@ -98,6 +113,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
           typographic(`${lead}${settledToastText(e)}${tail}`),
           e.result.net > 0 ? 'good' : undefined,
           e.result.outcome === 'fold' ? `${lead}${foldAnnouncement(e.result)}${tail}` : undefined,
+          lead ? action : undefined,
         );
       } else if (e.type === 'action-confirmed' && e.action.type === 'deal') setToast(null);
       else if (e.type === 'action-rejected' && !holder.current?.view.step)
@@ -122,7 +138,7 @@ export function useSimDriver(props: SimulatorProps, mode: SimMode): SimDriverHan
     if (!r.ok && !d.view.step) pushToast(r.message, 'bad');
     return r;
   };
-  return { d, latest, toast, setToast, pushToast, narration, act };
+  return { d, latest, toast, setToast, pushToast, narration, narrationAction, act };
 }
 
 /**
