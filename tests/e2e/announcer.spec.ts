@@ -22,7 +22,7 @@ test.describe('one live region (I036)', () => {
     await expect(polite).toContainText(/Your cards/);
     await page.waitForSelector('[data-testid="simulator"][data-ev="ready"]'); // past the tap guard
     await page.locator('button[data-option="play-4"]').click();
-    await expect(polite).toContainText(/Net \+?[-\u2212]?\$/);
+    await expect(polite).toContainText(/Net \+?[-\u2212]?\u2060?\$/);
     // The same text twice in a row still mutates the region.
     const writes = await page.evaluate(async () => {
       const r = document.querySelector('[aria-live=polite]')!;

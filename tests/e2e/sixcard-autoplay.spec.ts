@@ -11,7 +11,7 @@ test('auto-play counts the Six Card Bonus when the table has it on', async ({ pa
   await expect(page.getByTestId('auto-play-result')).toBeVisible({ timeout: 30_000 });
   // 30 hands (one hour) at the default $5 bet from a $500 rack: every bet is taken.
   await expect(page.getByTestId('auto-play-six-card')).toHaveText(
-    /^Six Card: 30 bets, \$150 wagered, net [+−-]?\$[\d,]+(\.\d\d)?, \d+ paid$/,
+    /^Six Card: 30 bets, \$150 wagered, net [+−-]?\u2060?\$[\d,]+(\.\d\d)?, \d+ paid$/,
   );
 
   // Off again: the next run has no Six Card line.

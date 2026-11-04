@@ -68,7 +68,7 @@ test.describe('move log', () => {
     await expect(lines(0).filter({ hasText: /^Flop: Bet 2x \(\$\d+\)\. / })).toHaveCount(1);
     for (const i of [0, 1, 2]) {
       await expect(lines(i).filter({ hasText: tier })).not.toHaveCount(0);
-      await expect(lines(i).last()).toHaveText(/Net [+−-]?\$[\d,]+(\.\d\d)?\.$/);
+      await expect(lines(i).last()).toHaveText(/Net [+−-]?\u2060?\$[\d,]+(\.\d\d)?\.$/);
     }
 
     // The settlement nets add up to the bankroll change, to the cent.
