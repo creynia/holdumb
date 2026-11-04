@@ -597,8 +597,9 @@ describe('Simulator container', () => {
   });
 });
 
-describe('Watch closes an open EV sheet (I097)', () => {
-  it('starting Watch closes the EV sheet that a tap opened', async () => {
+describe('Watch closes the sheet and it does not return after Watch ends (I097)', () => {
+  it('open sheet, start Watch, stop Watch: no stale sheet', async () => {
+    const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
     const confirmSettings = { ...settings, evMode: 'before' as const, confirmOn: 'all' as const };
     const evClient = createEvClient({ mode: 'inthread' });
     render(
@@ -612,11 +613,16 @@ describe('Watch closes an open EV sheet (I097)', () => {
     await waitFor(() =>
       expect(screen.getByTestId('simulator').getAttribute('data-ev')).toBe('ready'),
     );
+    await wait(700);
     fireEvent.click(document.querySelector('[data-option="play-4"]')!);
     await waitFor(() => expect(screen.getByTestId('ev-sheet')).toBeTruthy());
     fireEvent.click(screen.getByTestId('watch-start'));
-    await waitFor(() => expect(screen.queryByTestId('ev-sheet')).toBeNull());
-    await flush();
+    await wait(5);
+    expect(screen.queryByTestId('ev-sheet'), 'closed when Watch starts').toBeNull();
+    // Stop Watch at once, before it has made a move, and let things settle.
+    const stop = screen.queryByTestId('watch-stop');
+    if (stop) fireEvent.click(stop);
+    await wait(1500);
     expect(screen.queryByTestId('ev-sheet')).toBeNull();
     evClient.dispose();
   });
