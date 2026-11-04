@@ -104,13 +104,14 @@ jobs:
         with:
           name: build
       - name: Lighthouse (collect)
+        id: collect
         run: npx --yes "$LHCI" collect
       - name: Lighthouse (reports)
         if: always()
         run: |
           npx --yes "$LHCI" upload --target=filesystem --outputDir=lhci-report || true
           npx --yes "$LHCI" upload --target=temporary-public-storage || true
-          node scripts/lhci-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+          node scripts/lhci-summary.mjs >> "$GITHUB_STEP_SUMMARY" || true
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -118,6 +119,8 @@ jobs:
           path: lhci-report
           retention-days: 14
       - name: Lighthouse (budgets)
+        # Always checked once collect worked, even if the reports or the summary failed.
+        if: always() && steps.collect.outcome == 'success'
         run: npx --yes "$LHCI" assert
 
   # Screenshot comparison at 4 viewports x light/dark (playwright.visual.config.ts). Runs in the
