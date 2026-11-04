@@ -219,6 +219,28 @@ export class Store {
     });
   }
 
+  /** Read the showdown (I061): one answered spot (each question graded on its own). */
+  recordShowdown(g: { winner: boolean; qualifies: boolean; blind: boolean; all: boolean }) {
+    const s = this.data.drill.showdown;
+    const bump = (c: { answered: number; correct: number }, ok: boolean) => ({
+      answered: c.answered + 1,
+      correct: c.correct + (ok ? 1 : 0),
+    });
+    this.commit({
+      ...this.data,
+      drill: {
+        ...this.data.drill,
+        showdown: {
+          winner: bump(s.winner, g.winner),
+          qualifies: bump(s.qualifies, g.qualifies),
+          blind: bump(s.blind, g.blind),
+          spots: s.spots + 1,
+          allRight: s.allRight + (g.all ? 1 : 0),
+        },
+      },
+    });
+  }
+
   /** Count the outs (I060): one answer, the number said against the exact count. */
   recordOuts(guess: number, actual: number) {
     const o = this.data.drill.outs;
