@@ -1,7 +1,7 @@
 // The EV sheet's focus handling, moved out of EvSheet.tsx (I082): focus returns to the opener on
 // close, the title takes focus when the sheet opens, Continue takes it when the move is revealed,
 // Escape cancels and Tab is trapped inside a modal sheet.
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import type { RefObject } from 'preact';
 
 const FOCUSABLE =
@@ -26,16 +26,29 @@ export function useSheetFocus(o: {
     },
     [],
   );
-  useEffect(() => {
+  // Layout effects, not passive ones: focus is inside the sheet the moment it is on screen, so a
+  // key pressed right then (Esc) reaches it. Passive effects can lag a frame or 100 ms on a slow
+  // device, and a key in that gap went to whatever opened the sheet (I094).
+  useLayoutEffect(() => {
     if (modal || focusOnOpen)
       rootRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
   }, [modal, focusOnOpen]);
   // The confirm sheet turns into the reveal in place ('after'): focus moves to Continue, so it
   // never falls back to the page body when the Confirm button goes away.
   const revealed = chosen != null;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (revealed) rootRef.current?.querySelector<HTMLElement>('[data-continue]')?.focus();
   }, [revealed]);
+  // Esc also works when focus is somewhere else on the page while the sheet is open (the sheet's
+  // own handler stops the event, so this only sees keys that did not start inside it).
+  useLayoutEffect(() => {
+    if (!onCancel) return;
+    const onDoc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) onCancel();
+    };
+    document.addEventListener('keydown', onDoc);
+    return () => document.removeEventListener('keydown', onDoc);
+  }, [onCancel]);
 
   return (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
