@@ -87,6 +87,7 @@ export function Simulator(props: SimulatorViewProps) {
     () => buildTimeline(d.view.lastEvents, speed).totalMs,
   );
   const watching = watch.running;
+  sim.soundMuted.current = watching; // no table sounds while the table plays itself (I027)
   // I047: keyboard shortcuts press the same buttons a tap would (Play: also from the page body).
   const onTableKey = useShortcuts(rootRef, {
     global: sandbox && !!scene.ui?.showSettings,
@@ -186,6 +187,14 @@ export function Simulator(props: SimulatorViewProps) {
           fourColor={settings.fourColorDeck}
           highlight={circleHl}
           labels={resultLabels(result, hand?.deal)}
+          plays={
+            settled && result
+              ? {
+                  ...(result.outcome === 'fold' ? {} : { player: result.player.best5 }),
+                  dealer: result.dealer.best5,
+                }
+              : null
+          }
           // Watch announces each hand once (its toast), so the felt's card read-out stays quiet.
           quiet={result?.outcome === 'fold' || watching}
           timeline={timeline}

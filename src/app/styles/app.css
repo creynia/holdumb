@@ -1278,6 +1278,34 @@ html[data-route='play'] body {
   white-space: nowrap;
   pointer-events: none;
 }
+/* Drill: count the dealer's outs (I060). */
+.drill-outs-form {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.drill-outs-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.drill-outs-field .btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+.drill-outs-input {
+  min-height: 44px;
+  width: 4.5rem;
+  font: inherit;
+  font-size: 1.1rem;
+  text-align: center;
+  padding: 0 0.4rem;
+  box-sizing: border-box;
+}
+.drill-outs-feedback {
+  margin: 0.5rem 0;
+}
 /* Learn: "Your skills" (I069). Status is always a word; colour only backs it up. */
 .skill-list {
   list-style: none;

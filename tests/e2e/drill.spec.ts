@@ -180,3 +180,57 @@ for (const vp of [
     expect(rowWith.y + rowWith.height).toBeLessThanOrEqual(vp.height);
   });
 }
+
+// I060: count the dealer's outs.
+for (const vp of [
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+]) {
+  test(`count the outs: number, exact answer, then the action, at ${vp.width}x${vp.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    await page.goto('/#/drill?mode=outs');
+    await expect(page.getByTestId('drill-spot')).toBeVisible();
+    await expect(page.locator('.choice-row')).toHaveCount(0);
+    const input = page.getByRole('spinbutton', { name: 'Dealer outs' });
+    await expect(input).toBeVisible();
+    // the field and its steppers are real tap targets and nothing scrolls sideways
+    for (const l of [
+      input,
+      page.getByRole('button', { name: 'One more out' }),
+      page.getByRole('button', { name: 'One fewer out' }),
+      page.getByRole('button', { name: 'Check count' }),
+    ]) {
+      expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      vp.width,
+    );
+    await page.getByRole('button', { name: 'One more out' }).click();
+    await expect(input).toHaveValue('0');
+    await input.fill('20');
+    await page.getByRole('button', { name: 'Check count' }).click();
+    const fb = page.getByTestId('outs-feedback');
+    await expect(fb).toContainText(/outs|Exactly right/);
+    await expect(fb).toContainText('So: bet 1x or fold?');
+    // the action question follows and is graded as before
+    await expect(page.locator('.choice-row button')).toHaveCount(2);
+    await page.locator('.choice-row button').first().click();
+    await expect(page.getByTestId('drill-result')).toBeVisible();
+    // the count is kept
+    await expect(page.getByTestId('outs-stats')).toContainText(/1 answers?/);
+    await page.reload();
+    await expect(page.getByTestId('outs-stats')).toContainText(/1 answers?/);
+  });
+}
+
+test('the Drill page links to count-the-outs and back', async ({ page }) => {
+  await page.goto('/#/drill');
+  await page.getByRole('link', { name: "Count the dealer's outs" }).click();
+  await expect(page).toHaveURL(/mode=outs/);
+  await page.getByRole('link', { name: 'Back to the action drill' }).click();
+  await expect(page).not.toHaveURL(/mode=outs/);
+});

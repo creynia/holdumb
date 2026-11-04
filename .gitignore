@@ -8,3 +8,7 @@ test-results/
 .DS_Store
 *.log
 visual-report.json
+
+# Lighthouse CI (I077)
+.lighthouseci/
+lhci-report/

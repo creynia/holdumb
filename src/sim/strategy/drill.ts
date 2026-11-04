@@ -251,6 +251,25 @@ export function nextSpot(rng: RngState, filter: DrillFilter): [DrillSpot, RngSta
   return [last!, r];
 }
 
+// ---------- count the outs (I060) ----------
+/** Dealer-outs spots: the edge band 19-23 (where the card's 21 line bites) gets 45%, the rest 27.5% each. */
+export const OUTS_MIX: readonly { category: DrillCategoryId; weight: number }[] = [
+  { category: 'river-outs-edge', weight: 45 },
+  { category: 'river-outs-low', weight: 27 },
+  { category: 'river-outs-high', weight: 28 },
+];
+
+/** Picks the band for the next count-the-outs spot (seeded, so a run replays). */
+export function pickOutsCategory(rng: RngState): [DrillCategoryId, RngState] {
+  const [u, r] = randBelow(rng, 100);
+  let left = u;
+  for (const m of OUTS_MIX) {
+    if (left < m.weight) return [m.category, r];
+    left -= m.weight;
+  }
+  return [OUTS_MIX[0]!.category, r];
+}
+
 // ---------- grading ----------
 const sameAction = (a: DecisionAction, b: DecisionAction): boolean =>
   a.type === b.type && (a.type !== 'play' || (b.type === 'play' && a.multiple === b.multiple));
