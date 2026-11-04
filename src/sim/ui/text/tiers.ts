@@ -8,7 +8,7 @@ import type {
   WagerTier,
 } from '../../math';
 import type { HandVerdict } from '../../scene';
-import { costCents, fmtCostC } from './costs';
+import { bestOf, costCents, fmtCostC } from './costs';
 import { fmtCentsFraction, roundFraction, typographic } from './format';
 
 // ---------- tiers ----------
@@ -35,10 +35,6 @@ export const DECISION_TIER_SHORT: Record<DecisionTier, string> = {
   costly: 'Mistake',
   blunder: 'Big mistake',
 };
-
-export function bestOf(preview: DecisionPreview): DecisionOption {
-  return preview.options[preview.bestIndex]!;
-}
 
 /**
  * The skill-versus-luck line after a hand (I059). Every decision fine -> "Played it right" with

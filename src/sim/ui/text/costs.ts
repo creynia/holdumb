@@ -3,7 +3,11 @@ import { formatMoney } from '../../engine';
 import { classWeight } from '../../math';
 import type { DecisionOption, DecisionPreview, Fraction } from '../../math';
 import { roundFraction, sub } from './format';
-import { bestOf } from './tiers';
+
+/** The best option of a preview (moved here from ./tiers so the two modules don't import each other). */
+export function bestOf(preview: DecisionPreview): DecisionOption {
+  return preview.options[preview.bestIndex]!;
+}
 
 // ---------- rounded costs (the figures on screen must add up) ----------
 
