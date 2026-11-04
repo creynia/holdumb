@@ -1,5 +1,10 @@
-import { WAGER_IDS } from '../sim';
-import type { WagerId } from '../sim';
+import type { WagerId } from '../sim/engine/types';
+
+/**
+ * The four wagers, in table order. A copy of the engine's WAGER_IDS so naming a bet page does not
+ * load the engine's wager module (and its evaluator) with Home (I095); a test keeps them equal.
+ */
+export const WAGER_IDS: readonly WagerId[] = ['ante', 'blind', 'play', 'trips'];
 
 // Kept apart from the Bets screen so App can name a bet page without loading the screen (I039).
 export const NAME: Record<WagerId, string> = {
