@@ -119,7 +119,9 @@ for (const size of TARGET_SIZES) {
 // on screen at scrollY 0 and above the tab bar on every street; Settings and Drill do not scroll
 // sideways either.
 test.describe('text zoom 200%', () => {
-  const ZOOM = 'html { font-size: 200% !important; }';
+  // Plus 5% letter spacing: CI's fonts run a little wider than local ones, and a fit that only
+  // holds to the pixel here would scroll sideways there.
+  const ZOOM = 'html { font-size: 200% !important; } * { letter-spacing: 0.05em !important; }';
   for (const [w, h] of [
     [360, 740],
     [390, 844],
