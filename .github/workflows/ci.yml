@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -31,12 +31,12 @@ jobs:
       - run: npm run build:all
       # After the build, so the single-file and SW tests see real output.
       - run: npm test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: holdumb-html
           path: dist-single/holdumb.html
       # e2e and visual serve this build instead of rebuilding it (I043).
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build
           path: |
@@ -50,20 +50,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build
       # Chromium is cached per @playwright/test version; only a cache miss downloads it.
       - id: pw-version
         run: echo "v=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
       - id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ms-playwright-chromium-${{ runner.os }}-${{ steps.pw-version.outputs.v }}
@@ -76,7 +76,7 @@ jobs:
         env:
           PREBUILT: '1'
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report
@@ -94,13 +94,13 @@ jobs:
       # Lighthouse 11 still has the PWA category and the installable-manifest audit (12 removed them).
       LHCI: '@lhci/cli@0.13.0'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build
       - name: Lighthouse (collect)
@@ -113,7 +113,7 @@ jobs:
           npx --yes "$LHCI" upload --target=temporary-public-storage || true
           node scripts/lhci-summary.mjs >> "$GITHUB_STEP_SUMMARY" || true
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lighthouse
           path: lhci-report
@@ -139,19 +139,19 @@ jobs:
       CI: '1'
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Node in the image matches .nvmrc
         run: |
           want=$(cut -d. -f1 < .nvmrc | tr -d 'v ')
           have=$(node -p 'process.versions.node.split(".")[0]')
           echo "node $(node --version), .nvmrc major $want"
           [ "$have" = "$want" ] || { echo "::error::container node $have != .nvmrc $want"; exit 1; }
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: visual-npm-${{ hashFiles('package-lock.json') }}
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build
       - run: npx playwright test -c playwright.visual.config.ts
@@ -159,7 +159,7 @@ jobs:
           PREBUILT: '1'
       - if: failure()
         id: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: visual-diff
           path: |
@@ -170,7 +170,7 @@ jobs:
       - if: failure()
         run: node scripts/visual-summary.mjs visual-report.json "${{ steps.upload.outputs.artifact-url }}" | tee visual-summary.md >> "$GITHUB_STEP_SUMMARY"
       - if: failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -184,7 +184,7 @@ jobs:
             else await github.rest.issues.createComment({ owner, repo, issue_number, body });
       # A later green run updates the sticky comment (if one exists) so it never shows a stale failure.
       - if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const marker = '<!-- holdumb-visual-diff -->';
